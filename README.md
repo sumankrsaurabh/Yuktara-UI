@@ -16,7 +16,7 @@
 
 ## Quick start
 
-The framework source is being imported in the initial source commit. After cloning:
+The repository currently contains project identity and contributor documentation. The native framework source snapshot is maintained separately; see [IMPORT_NATIVE_SOURCE.md](IMPORT_NATIVE_SOURCE.md) for the exact import procedure.
 
 ```bash
 python -m pip install -e .
