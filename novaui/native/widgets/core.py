@@ -485,13 +485,17 @@ class TextField:
         self._composition_selection_length = 0
         if self._built_node is not None:
             self._built_node.text_composition = None
+            self._built_node.text_layout = None
         return True
 
     def _sync_node(self):
         node = self._built_node
         if node is None:
             return
-        node.text = self._display_text()
+        display_text = self._display_text()
+        if node.text != display_text:
+            node.text_layout = None
+        node.text = display_text
         node.text_color = (self.theme.disabled_text if self.disabled else
                            self.theme.muted if not self.value else self.theme.foreground)
         node.accessibility_value = self.value
@@ -581,7 +585,7 @@ class TextField:
         self._focused = True
         self._last_text_input_area = None
         start_text_input = getattr(self.clipboard, "start_text_input", None)
-        if callable(start_text_input):
+        if callable(start_text_input) and not self.disabled and not self.read_only:
             start_text_input()
         self._sync_node()
         if self._built_node is not None:
@@ -722,8 +726,10 @@ class TextField:
     def _text_input(self, event):
         if self.disabled or self.read_only:
             return False
-        self._clear_composition(restore_selection=True)
         text = getattr(event, "text", None) or ""
+        if not text:
+            return False
+        self._clear_composition(restore_selection=True)
         if not self.multiline:
             text = text.replace("\r", "").replace("\n", "")
         return self._replace_selection(text)
