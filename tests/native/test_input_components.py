@@ -295,7 +295,7 @@ def test_tabs_select_panel_and_keyboard_navigation():
 def test_tabs_support_widget_content_and_disabled_tabs():
     tabs = Tabs((TabItem("One", TextField("text")), TabItem("Two", "two", disabled=True)))
     root = tabs.build()
-    assert root.children[1].accessibility_role == "textbox"
+    assert root.children[1].accessibility_role == "tabpanel"
     assert root.children[0].children[1].on_click is None
     with pytest.raises(ValueError):
         Tabs(("A", "A"))
