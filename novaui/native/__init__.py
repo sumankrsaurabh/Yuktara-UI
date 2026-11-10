@@ -34,7 +34,7 @@ from .dependencies import DependencyError, ensure_skia_python, ensure_sdl3_runti
 __all__ += ["DependencyError", "ensure_skia_python", "ensure_sdl3_runtime"]
 
 from .accessibility import SemanticNode, build_accessibility_tree
-from .widgets import (Badge, Button, Card, Checkbox, Divider, Dropdown, IconButton, Label, Surface,
+from .widgets import (Avatar, Badge, Button, Card, Checkbox, Chip, Divider, Dropdown, FloatingActionButton, IconButton, Label, ListTile, Surface,
                       ProgressBar, RadioGroup, RichText, SegmentedControl, Slider, Spacer,
                       Switch, TabItem, Tabs, TextArea, TextField, column, row, stack,
                       ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip,
@@ -42,8 +42,8 @@ from .widgets import (Badge, Button, Card, Checkbox, Divider, Dropdown, IconButt
                       NavigationItem, NavigationScaffold, AdaptiveWorkspace, ListDetailItem, ListDetailPane, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
                       Responsive, ResponsiveVariant, AdaptiveLayout, AdaptiveVariant)
 __all__ += [
-    "SemanticNode", "build_accessibility_tree", "Badge", "Button", "Card",
-    "Checkbox", "Divider", "Dropdown", "IconButton", "Label", "Surface", "ProgressBar", "RadioGroup", "RichText",
+    "SemanticNode", "build_accessibility_tree", "Avatar", "Badge", "Button", "Card",
+    "Checkbox", "Chip", "Divider", "Dropdown", "FloatingActionButton", "IconButton", "Label", "ListTile", "Surface", "ProgressBar", "RadioGroup", "RichText",
     "SegmentedControl", "Slider", "Spacer", "Switch", "TabItem", "Tabs",
     "TextArea", "TextField", "column", "row", "stack", "ContextMenu",
     "Dialog", "MenuItem", "Popover", "Toast", "Tooltip", "Calendar",
