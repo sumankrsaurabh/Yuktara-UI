@@ -71,7 +71,7 @@ def test_navigation_scaffold_retains_one_content_node_across_compositions():
     root = scaffold.build()
     compact, rail, drawer = [entry[2] for entry in root.adaptive_variants]
 
-    assert compact.children[0].children[0] is scaffold._content_node
+    assert compact.children[0] is scaffold._content_node
     assert rail.children[1] is scaffold._content_node
     assert drawer.children[1] is scaffold._content_node
     assert scaffold._content_node.children[0] is content
@@ -85,7 +85,8 @@ def test_navigation_scaffold_disabled_item_cannot_be_selected():
         selected="home",
     )
     root = scaffold.build()
-    root.adaptive_variants[0][2].children[1].children[1].on_click(None)
+    disabled_node = root.adaptive_variants[0][2].children[1].children[1]
+    assert disabled_node.on_click is None
     assert scaffold.selected == "home"
 
 
