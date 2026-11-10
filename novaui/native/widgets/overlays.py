@@ -164,6 +164,82 @@ class ContextMenu:
 
 
 @dataclass
+class Alert:
+    """Inline semantic feedback panel for important contextual messages."""
+    message: str
+    title: str | None = None
+    variant: str = "info"
+    icon: str | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"info", "success", "warning", "danger"})
+
+    def __post_init__(self):
+        if not isinstance(self.message, str) or not self.message.strip():
+            raise ValueError("Alert message must be a non-empty string")
+        if self.title is not None and not isinstance(self.title, str):
+            raise TypeError("Alert title must be a string or None")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported alert variant: {self.variant}")
+        if self.icon is not None and not isinstance(self.icon, str):
+            raise TypeError("Alert icon must be a string or None")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        palette = {
+            "info": (t.info_soft, t.info, "ⓘ"),
+            "success": (t.success_soft, t.success, "✓"),
+            "warning": (t.warning_soft, t.warning_text, "!"),
+            "danger": (t.danger_soft, t.danger, "×"),
+        }
+        background, accent, default_icon = palette[self.variant]
+        icon = LayoutNode(
+            "text",
+            text=self.icon or default_icon,
+            text_color=accent,
+            font_size=t.type_title_medium,
+            font_weight="semibold",
+            width=28,
+            min_width=28,
+            text_align="center",
+            accessibility_role="image",
+            accessibility_label=f"{self.variant.capitalize()}",
+        )
+        message_nodes = []
+        if self.title:
+            message_nodes.append(LayoutNode(
+                "text", text=self.title, text_color=t.on_surface,
+                font_size=t.type_title_medium, font_weight="semibold",
+                accessibility_role="heading", accessibility_label=self.title,
+            ))
+        message_nodes.append(LayoutNode(
+            "text", text=self.message, text_color=t.on_surface,
+            font_size=t.type_body_medium,
+            accessibility_role="text", accessibility_label=self.message,
+        ))
+        content = LayoutNode.column(
+            *message_nodes, spacing=t.space_1,
+            cross_align=Alignment.START,
+        )
+        content.weight = 1.0
+        return LayoutNode.row(
+            icon,
+            content,
+            spacing=t.space_3,
+            padding=Insets.all(t.space_4),
+            background=background,
+            radius=t.radius_large,
+            border_color=accent,
+            border_width=1,
+            cross_align=Alignment.CENTER,
+            accessibility_role="alert" if self.variant == "danger" else "status",
+            accessibility_label=self.title or self.message,
+            accessibility_value=self.message if self.title else None,
+            accessibility_live="assertive" if self.variant == "danger" else "polite",
+        )
+
+
+@dataclass
 class Toast:
     message: str
     variant: str = "info"
