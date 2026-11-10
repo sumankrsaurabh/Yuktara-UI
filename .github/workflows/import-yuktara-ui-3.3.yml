@@ -35,7 +35,7 @@ jobs:
           import tomllib
 
           stage = pathlib.Path(".yuktara-import-3.3")
-          parts = [stage / f"payload-{i:02d}.b64" for i in range(1, 12)]
+          parts = [stage / f"payload-{i:02d}.b64" for i in range(1, 9)]
           encoded = "".join(p.read_text(encoding="ascii").strip() for p in parts)
           raw = base64.b64decode(encoded, validate=True)
           expected = "ebc11f68187c770e580d67f24025e78b2da055c1e6214f8d97958e7d7c77cfdc"
