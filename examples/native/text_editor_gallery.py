@@ -1,8 +1,6 @@
 """Native text, selection, multilingual fallback and clipboard gallery."""
 from __future__ import annotations
 
-import time
-
 from novaui.native.dependencies import ensure_skia_python
 
 ensure_skia_python()
@@ -12,7 +10,7 @@ from novaui.native import (
     Badge, Button, Card, Label, NativeRuntime, NativeTheme, TextArea, TextField,
     column, row,
 )
-from novaui.native.platform import EventType, SDL3Window
+from novaui.native.platform import SDL3Window
 from novaui.native.platform.skia_bridge import renderer_frame
 from novaui.native.renderer import RenderSize, SkiaRenderer
 
@@ -21,8 +19,6 @@ def main():
     width, height = 960, 720
     theme = NativeTheme()
     window = SDL3Window("Yuktara UI — Native Text Gallery", width, height)
-    window.open()
-
     status = Label(
         "Select text, drag to highlight, then use Ctrl+C / Ctrl+X / Ctrl+V.",
         size=13, color=theme.muted, theme=theme,
@@ -94,25 +90,10 @@ def main():
     renderer = SkiaRenderer(RenderSize(width, height), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, width, height,
                             clear_color=theme.background)
-    runtime.start()
-    previous = time.monotonic()
-    running = True
-    try:
-        while running:
-            for event in window.poll_input_events():
-                if event.type is EventType.QUIT:
-                    running = False
-                    break
-                runtime.dispatch(event)
-            if running:
-                now = time.monotonic()
-                runtime.advance_time((now - previous) * 1000.0)
-                previous = now
-                runtime.render()
-                window.present(renderer_frame(renderer, skia_module=skia))
-    finally:
-        runtime.stop()
-        window.close()
+    window.run_runtime(
+        runtime,
+        lambda _runtime: renderer_frame(renderer, skia_module=skia),
+    )
 
 
 if __name__ == "__main__":
