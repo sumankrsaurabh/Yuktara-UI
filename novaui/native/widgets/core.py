@@ -907,6 +907,7 @@ class Dropdown:
         self._header: LayoutNode | None = None
         self._overlay_handle = None
         self._overlay_option_nodes: list[LayoutNode] = []
+        self._overlay_scroll_node: LayoutNode | None = None
         if self.overlay_manager is not None:
             self._validate_overlay_manager(self.overlay_manager)
 
@@ -939,6 +940,8 @@ class Dropdown:
     def _overlay_dismissed(self, _reason="programmatic"):
         self._overlay_handle = None
         self.is_open = False
+        self._overlay_option_nodes = []
+        self._overlay_scroll_node = None
         if self._header is not None:
             self._header.accessibility_expanded = False
 
@@ -971,6 +974,7 @@ class Dropdown:
                 scroll_axis="vertical",
                 accessibility_role="list", accessibility_label=self.placeholder,
             )
+            self._overlay_scroll_node = scroll
             popover = Popover(
                 scroll, width=self.width, padding=6, spacing=0, theme=self.theme
             )
@@ -990,6 +994,7 @@ class Dropdown:
             if handle is not None:
                 self.overlay_manager.dismiss(handle, reason="programmatic")
             self._overlay_option_nodes = []
+            self._overlay_scroll_node = None
 
     def _toggle(self, _event=None):
         self._set_open(not self.is_open)
@@ -1019,6 +1024,23 @@ class Dropdown:
                                self.theme.surface_variant if selected else self.theme.surface)
             node.accessibility_focused = active
             node.accessibility_selected = selected
+        self._ensure_active_option_visible()
+
+    def _ensure_active_option_visible(self):
+        """Keep the keyboard-active option inside the floating list viewport."""
+        scroll = self._overlay_scroll_node
+        if (scroll is None or not self._overlay_option_nodes
+                or self._active_index >= len(self._overlay_option_nodes)):
+            return
+        option = self._overlay_option_nodes[self._active_index]
+        viewport = scroll.content_bounds
+        if option.bounds.y < viewport.y:
+            scroll.scroll_y = max(0.0, scroll.scroll_y - (viewport.y - option.bounds.y))
+        elif option.bounds.bottom > viewport.bottom:
+            scroll.scroll_y = min(
+                scroll.max_scroll_y,
+                scroll.scroll_y + (option.bounds.bottom - viewport.bottom),
+            )
 
     def _option_nodes(self):
         nodes = []
@@ -1083,6 +1105,7 @@ class Dropdown:
         self.is_open = False
         self._overlay_handle = None
         self._overlay_option_nodes = []
+        self._overlay_scroll_node = None
         self._root = LayoutNode.column(
             self._header, *(self._option_nodes() if was_open and self.overlay_manager is None else []),
             spacing=3, width=self.width,

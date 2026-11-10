@@ -634,3 +634,29 @@ def test_dropdown_can_attach_or_detach_overlay_manager_while_open():
     assert dropdown.is_open is True
     assert len(root.children) == 3
     assert manager.entries == ()
+
+
+def test_dropdown_keyboard_navigation_scrolls_active_option_into_view():
+    options = tuple(f"Option {index}" for index in range(12))
+    manager = OverlayManager()
+    dropdown = Dropdown(options).attach_overlay_manager(manager)
+    root = layout(dropdown.build(), 480, 360)
+    dispatcher = InputDispatcher(root, overlays=manager)
+    header = root.children[0]
+    engine = LayoutEngine()
+
+    click(dispatcher, root, header.bounds.x + 8, header.bounds.y + 8)
+    manager.layout(engine, 480, 360)
+    scroll = dropdown._overlay_scroll_node
+    assert scroll is not None
+    assert scroll.max_scroll_y > 0
+    assert scroll.scroll_y == 0
+
+    for _ in range(9):
+        dispatcher.dispatch(key(KEY_DOWN))
+        manager.layout(engine, 480, 360)
+
+    active = dropdown._overlay_option_nodes[dropdown._active_index]
+    assert scroll.scroll_y > 0
+    assert active.bounds.y >= scroll.content_bounds.y
+    assert active.bounds.bottom <= scroll.content_bounds.bottom
