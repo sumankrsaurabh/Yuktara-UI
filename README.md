@@ -20,8 +20,10 @@ For a cumulative inventory of implemented features, development milestones, exam
 - **Native typography and editing** — Inter-first glyph fallback runs,
   cluster-aware text metrics, selection/caret painting, text scrolling,
   SDL3-backed system clipboard access, paragraph-aware Unicode line wrapping
-  and source-indexed rich inline text styling. Optional HarfBuzz shaping is
-  available through the `shaping` extra and explicit font-file configuration.
+  and source-indexed rich inline text styling. Optional Unicode extended
+  grapheme segmentation is available through the `unicode` extra; optional
+  HarfBuzz shaping is available through the `shaping` extra and explicit
+  font-file configuration.
 - **Native component library** — responsive `Responsive`/`ResponsiveVariant` layouts, labels, buttons, containers, cards, badges,
   dividers, progress bars, checkboxes, switches, radio groups, text inputs,
   dropdowns, sliders, tabs, segmented controls, responsive grids, scroll views,
