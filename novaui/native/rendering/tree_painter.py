@@ -123,6 +123,7 @@ class LayoutTreePainter:
                     color=apply_opacity(node.text_color or self.default_text_color, opacity),
                     font=font,
                 )
+            self._paint_text_composition(node, opacity, layout, origin_x, origin_y)
             self._paint_text_caret(node, opacity, layout, origin_x, origin_y)
             if clip:
                 self.renderer.restore()
@@ -195,6 +196,31 @@ class LayoutTreePainter:
                       max(0.0, (end - start) * char_width),
                       max(node.font_size * 1.35, 1.0),
                       apply_opacity(node.text_selection_color, opacity))
+
+    def _paint_text_composition(self, node, opacity, layout, origin_x, origin_y):
+        """Underline the active IME pre-edit range without changing committed text."""
+        draw_rect = getattr(self.renderer, "draw_rect", None)
+        composition = node.text_composition
+        if (not callable(draw_rect) or opacity <= 0 or composition is None
+                or composition[0] == composition[1]):
+            return
+        color = apply_opacity(node.text_composition_color, opacity)
+        if layout is not None and callable(getattr(layout, "selection_rects", None)):
+            for x, y, width, height in layout.selection_rects(*composition):
+                if width > 0 and height > 0:
+                    underline_y = origin_y + y + max(0.0, height - 1.5)
+                    draw_rect(origin_x + x, underline_y, width, 1.5, color)
+            return
+        start, end = composition
+        char_width = node.font_size * 0.55
+        line_height = max(node.font_size * 1.35, 1.0)
+        draw_rect(
+            origin_x + start * char_width,
+            origin_y + line_height - 1.5,
+            max(0.0, (end - start) * char_width),
+            1.5,
+            color,
+        )
 
     def _paint_text_caret(self, node, opacity, layout, origin_x, origin_y):
         """Paint the insertion caret after glyphs so it remains visible."""
