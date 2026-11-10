@@ -2,7 +2,7 @@
 
 > **Purpose:** This file is the living record of features and engineering work implemented in the Yuktara UI source repository. Update it whenever a feature batch is merged.
 >
-> **Recorded source baseline:** `main` — `3.3.0.dev0`  
+> **Recorded source baseline:** `main` — package version `3.3.0.dev0`; 3.4 development work is in progress.  
 > **Last inventory review:** 2026-11-10  
 > **Python import namespace:** `novaui` (the historical namespace is retained for compatibility)
 
@@ -79,10 +79,10 @@ The following catalog is the documented native component surface in the 3.3 sour
 - `Switch`.
 - `RadioGroup`.
 - `Dropdown`.
-- `Slider).
+- `Slider`.
 - `Tabs` and `TabItem`.
-- `SegmentedControl).
-- `DatePicker).
+- `SegmentedControl`.
+- `DatePicker`.
 
 ### Data, navigation and hierarchy
 
@@ -95,7 +95,7 @@ The following catalog is the documented native component surface in the 3.3 sour
 
 - `Dialog` — centered modal surface and scrim.
 - `Popover` — anchored floating content.
-- `Tooltip) — pointer-transparent anchored hint.
+- `Tooltip` — pointer-transparent anchored hint.
 - `ContextMenu` and `MenuItem`.
 - `Toast` — timed or persistent notification.
 - `OverlayManager` and `OverlayHandle` — stacking, placement, dismissal and lifecycle management.
@@ -273,6 +273,7 @@ The repository includes native examples for the following workflows:
 | `examples/native/advanced_component_gallery.py` | Grid, containers, tables, navigation, tree, calendar, date picker, images and file dialogs. |
 | `examples/native/advanced_layout.py` | Percentage sizing, wrapping, positioning and grid spans. |
 | `examples/native/harfbuzz_shaping.py` | Optional HarfBuzz shaping with an explicitly supplied font. |
+| `scripts/native_runtime_smoke.py` | Short real-window SDL3 + Skia presentation smoke test used by the manual native integration workflow. |
 
 ## 10. Release and development history
 
@@ -294,6 +295,7 @@ This timeline records the documented source milestones retained in the repositor
 | 3.1 — general-purpose component library | Responsive Grid, Container, ScrollView, Image, Table, NavigationDrawer, Calendar, DatePicker, TreeView and SDL3-backed FilePicker. |
 | 3.2 — runtime stabilization | Retained-tree reconciliation, UI-thread scheduling, runtime/window lifecycle, logical/backing-pixel sizing, touch-coordinate conversion and integrated SDL3 host loop. |
 | 3.3 — advanced layout | Percentage dimensions and constraints, row/column flex wrapping, flex basis, baseline alignment, absolute positioning, GridItem placement and spans. |
+| 3.4 — development in progress (not released) | Permanent cross-platform CI, opt-in SDL3/Skia desktop smoke workflow, SDL3 IME text-editing event decoding and routing, TextField/TextArea pre-edit preview/underline, commit/cancel handling, measured candidate-window positioning, and dedicated regression tests. Package metadata remains at 3.3.0.dev0 until a release decision. |
 
 ## 11. Verification record
 
@@ -311,11 +313,33 @@ Workflow record: [Import verified Yuktara UI Native 3.3.0.dev0](https://github.c
 
 The automated tests primarily validate Python-side behavior using backend-injected services, normalized events and recording renderers. They are not a substitute for testing actual desktop hardware, drivers, system dialogs, input methods, high-DPI displays or accessibility tools.
 
+## 11A. Current 3.4 development work (not yet a release)
+
+The package version remains `3.3.0.dev0`; the following work is on `main` as development code and must pass the new CI before being treated as verified:
+
+### Continuous integration
+
+- `.github/workflows/ci.yml` runs the existing native suite and Python compilation on Ubuntu, Windows and macOS with Python 3.10 and 3.13.
+- The workflow also builds and installs the wheel, verifies the installed package outside the source checkout, and measures package coverage.
+- `.github/workflows/native-integration.yml` is an opt-in Linux/Xvfb job that installs SDL3 build prerequisites, provisions Skia/SDL3 through `python -m novaui setup`, opens a real SDL3 window and presents Skia frames.
+- `scripts/native_runtime_smoke.py` is the bounded three-frame desktop smoke application.
+- The ordinary test matrix is backend-neutral by design; the opt-in job is the first actual SDL3 + Skia window smoke check. The new workflows must be observed completing successfully before their results are recorded as passing.
+
+### IME composition path
+
+- Added normalized `EventType.TEXT_EDITING` events carrying the composition string, cursor position and selection length.
+- Added SDL3 `SDL_EVENT_TEXT_EDITING` decoding.
+- Routed composition events through `NativeRuntime`, `InputDispatcher` and the focused text control.
+- TextField/TextArea now display the temporary pre-edit string and underline without changing their committed value.
+- SDL3 `SDL_SetTextInputArea` and `SDL_ClearComposition` are exposed through `SDL3Window`; the candidate area is updated from measured caret geometry after layout.
+- Committed `TEXT_INPUT` replaces the original selected range; Escape/blur cancels the pre-edit state.
+- Added seven targeted tests in `tests/native/test_ime_composition.py`. They are new regression tests; do not count them as passing until the CI test job reports success.
+
 ## 12. Known limitations and unfinished integration
 
 The following items are **not** to be treated as completed features in the 3.3 baseline:
 
-- Full IME pre-edit/composition rendering, candidate-window placement and complete platform input-method integration.
+- End-to-end IME behavior with physical keyboards and real input methods has not yet been validated on Windows, macOS and Linux. The 3.4 development code now decodes SDL3 text-editing events, routes them through the runtime, displays temporary pre-edit text with an underline without mutating committed text, handles commit and Escape/blur cancellation, and positions SDL's candidate area from measured caret geometry. See the regression tests in `tests/native/test_ime_composition.py`.
 - Migration of `Dropdown` from its inline option list to the overlay manager.
 - Full Unicode Standard Annex #29 segmentation and complete Unicode line breaking.
 - Complete bidirectional text, Arabic joining, Indic shaping, ligature-aware caret geometry and complex-script shaping across all platforms. Optional HarfBuzz support is available, but it does not make the entire text pipeline fully certified.
