@@ -505,3 +505,101 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added tests for width/height selection, short-window fallback, resize transitions and invalid threshold ordering.
 - Added the API usage guide to `docs/native-responsive-layout.md`.
 - This is a composition primitive, not a full adaptive navigation system. Navigation scaffolds, pane-state restoration, previews and platform acceptance testing remain future work.
+
+
+## 3.6 — Adaptive navigation scaffold
+
+- Added `NavigationScaffold` with compact bottom navigation, medium navigation rail and expanded drawer presentations.
+- Added configurable width/height transition thresholds.
+- Reused the same retained content node across the three navigation compositions.
+- Synchronized selected destination styling and accessibility selection state across every presentation; disabled destinations cannot be selected.
+- Added tests for mode transitions, selection callbacks, cross-mode state retention, content-node identity and input validation.
+- Documented the scaffold and its application-owned page-switching responsibility.
+- This does not yet provide list-detail panes, multi-pane selection restoration, native OS navigation conventions or assistive-technology provider integration.
+
+
+## 3.6 — Adaptive navigation and list-detail patterns
+
+- Added `NavigationScaffold` with bottom-bar, navigation-rail and drawer modes, shared content retention and synchronized destination selection.
+- Added `ListDetailPane` and `ListDetailItem` for compact single-surface navigation and expanded side-by-side master-detail layouts.
+- Added compact back-to-list behavior and preserved the selected detail node across window resizing.
+- Added regression tests for scaffold mode changes, selection synchronization, list-detail transitions, disabled entries and retained content identity.
+- Documented both patterns and their application-owned navigation/content responsibilities.
+- These primitives are not yet a complete navigation framework: route stacks, deep links, restoration across process restarts, multi-pane inspector workflows and OS accessibility integration remain open.
+
+
+## CI feedback and regression-test corrections
+
+- The first CI run for PR #2 executed the native suite and exposed five failures in newly added test fixtures/assertions and the resize-host test's startup-sync expectation.
+- Corrected the adaptive grid fixture to construct a supported `LayoutNode("grid", ...)` node.
+- Corrected compact list-detail and navigation test tree paths and changed the disabled-navigation assertion to verify that no click callback is installed.
+- Corrected the resize test to expect the one initial runtime-size synchronization plus one synchronization for the coalesced resize event batch.
+- These corrections are committed after the failing CI head. A CI run for the corrected latest commit has not yet been reported; do not treat this as a green test suite.
+
+
+## 3.7 — Adaptive multi-pane workspace
+
+- Added `AdaptiveWorkspace` with compact content-only, medium sidebar/content and expanded sidebar/content/inspector compositions.
+- Reused retained pane nodes across all variants and exposed configurable width/height thresholds.
+- Made sidebar and inspector optional for simpler workspace configurations.
+- Added regression tests for all three modes, pane identity retention, optional panes and breakpoint validation.
+- Documented the API and its application-owned content/state model.
+
+
+## 3.8 — Multi-viewport adaptive preview and regression harness
+
+- Added `ViewportProfile` for named logical viewport dimensions and display-scale metadata.
+- Added `AdaptivePreviewHarness`, which runs the production `LayoutEngine` against the same retained tree at multiple profiles without initializing SDL or Skia.
+- Added immutable per-viewport snapshots with selected root variant, visible node paths/bounds, accessibility labels and responsive-grid column counts.
+- Exported the preview API from `novaui.native`.
+- Added validation and regression tests for adaptive transitions, nested responsive variants, logical-to-backing-pixel calculations, repeated preview determinism and invalid profiles.
+- Added `examples/native/adaptive_preview.py` and documented how to run the preview suite.
+- Validation status: tests were authored and reviewed through repository source, but were not executed locally in this environment. No CI workflow run is attached to the latest PR head yet. Rendering, SDL integration and physical mixed-DPI/high-refresh validation remain outstanding.
+
+
+## 3.9 — Yuktara semantic design system and consistent component states
+
+- Expanded immutable `NativeTheme` with semantic secondary/tertiary roles, on-surface roles, surface-container levels, outline/inverse roles, shape and spacing scales, typography roles, control metrics and semantic elevation values.
+- Added a complete dark semantic palette while preserving existing token names and defaults for source compatibility.
+- Added shared `Button` variants (primary, tonal, secondary, outline, text, danger and success), three tokenized sizes, minimum control heights and hover/pressed/focus/disabled state styling.
+- Added `IconButton` with a required accessible label and standard/filled/tonal/outlined variants.
+- Added `Surface` with semantic container roles from lowest through highest and outlined.
+- Aligned text-field focus/outline styling, switch geometry and badge typography/spacing with the shared tokens.
+- Added `tests/native/test_design_system.py` for token roles, variants, state transitions, disabled behavior and accessibility names.
+- Added the interactive `examples/native/design_system_gallery.py` and documented the Yuktara design direction and component conventions in `docs/native-component-library.md`.
+- Design boundary: semantic elevation values are available, but complete shadow rendering is not implemented by the current CPU-raster renderer. Platform-native accessibility bridges and device-specific acceptance tests remain outstanding.
+- Validation status: tests were authored but not executed locally in this environment. CI status must be checked on the latest commit before merging.
+
+
+## 3.10 — Content and floating action components
+
+- Added `FloatingActionButton` with small, regular, large and extended presentations; the small target is sized to preserve the framework's 44-unit minimum touch target.
+- Added semantic `Chip` variants with selected/disabled and optional activation behavior.
+- Added `Avatar` with initials/glyph, size and semantic palette variants plus explicit accessible naming.
+- Added `ListTile` with leading/title/subtitle/trailing composition, selected/disabled states and row-wide pointer/keyboard activation.
+- Exported all four components from `novaui.native.widgets` and `novaui.native`.
+- Expanded the interactive gallery and component catalogue documentation.
+- Added `tests/native/test_content_components.py` for component semantics, sizing, validation and interaction.
+- Validation status: tests are authored but have not been executed locally; latest-head CI remains to be checked.
+
+
+## 4.0 — Application chrome, feedback and surface consistency
+
+- Added `AppBar` with compact, regular and prominent sizes; flat, surface and outlined treatments; optional leading widget, subtitle and trailing actions.
+- Added `Alert` with info, success, warning and danger roles, semantic live-region announcements and shared theme colors.
+- Standardized `Card` with outlined, filled, flat and elevated semantic surface variants while preserving the legacy `bordered`, `background`, `radius` and padding API.
+- Added validation for card variants, spacing, radius, padding and border flags.
+- Extended the design-system gallery with toolbar and alert examples.
+- Added `tests/native/test_app_bar_alert.py` and card variant/compatibility tests in `tests/native/test_design_system.py`.
+- Validation status: tests have been authored but not executed locally; CI status must be checked on the latest head. The elevated card variant uses a surface-container role; shadow compositing remains unimplemented.
+
+
+## 4.1 — Keyboard navigation and tab semantics
+
+- Hardened `TabItem` validation for non-empty labels and boolean disabled state.
+- Prevented disabled tabs from being selected as the initial active value; require at least one enabled tab.
+- Added Left/Right Arrow navigation that skips disabled tabs, plus Home/End navigation and wraparound behavior.
+- Synchronized selected state and tab-panel semantics when the active tab changes.
+- Aligned tab typography, spacing and padding with `NativeTheme` tokens.
+- Added `tests/native/test_tabs_accessibility.py` for keyboard behavior, disabled states, callback behavior, panel synchronization and token consistency.
+- Validation status: regression tests authored but not executed locally; CI remains to be checked on the latest commit.

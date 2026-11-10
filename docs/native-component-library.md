@@ -135,3 +135,188 @@ scaling, accessibility provider bridges and input behavior on each supported OS.
 Native accessibility semantics are represented in Yuktara's semantic tree;
 UI Automation, NSAccessibility and AT-SPI provider bridges are separate work.
 Mobile renderers are not included.
+
+
+## Yuktara design system
+
+Yuktara's component language uses a shared semantic token system rather than
+independent per-widget colors and measurements. The design direction combines
+the systematic state and role model common to modern platform design systems
+with restrained native typography, comfortable touch targets, quiet surfaces
+and clear hierarchy. It is an original Yuktara implementation, not a copy of
+Material 3 or Apple's proprietary assets.
+
+### Theme tokens
+
+`NativeTheme` is immutable and provides:
+
+- **Color roles:** primary, secondary, tertiary, danger, warning, success,
+  information, on-colors, outline, focus, inverse surfaces and disabled roles.
+- **Surface scale:** lowest, low, base, high and highest container roles.
+- **Shape scale:** extra-small through extra-large plus pill.
+- **Spacing scale:** 4, 8, 12, 16, 20, 24, 32, 40 and 48 logical units.
+- **Typography roles:** display, headline, title, body and label sizes.
+- **Control metrics:** shared small, medium and large control heights and
+  icon-button dimensions, with a 44-unit default touch target.
+- **Dark palette:** `NativeTheme.dark()` supplies a complete matching semantic
+  palette rather than simply inverting light colors.
+
+Existing token names such as `primary`, `surface`, `radius_medium` and
+`radius_large` remain supported. Components should consume semantic roles
+from the supplied theme; avoid hard-coded colors, radii or arbitrary spacing
+inside new widgets.
+
+### Core component patterns
+
+`Button` supports `primary`, `tonal`, `secondary`, `outline`, `text`,
+`danger` and `success` variants. Small, medium and large sizes share the
+theme's control metrics. Enabled buttons expose hover, pressed and keyboard
+focus states; disabled buttons install no activation or pointer-state handlers.
+
+`IconButton` requires a visible glyph and a separate accessible label. Its
+standard, filled, tonal and outlined variants share the same button state
+behavior and square target metrics.
+
+`Surface` provides lowest, low, base, high, highest and outlined surface
+roles. Use these roles to establish hierarchy before introducing custom colors
+or borders. `Card` remains available as a compatibility-friendly content
+container.
+
+Text fields use the shared surface, outline and focus tokens. Status badges,
+switches and buttons consume the shared typography and spacing scales.
+
+### Usage
+
+```python
+from novaui.native import (
+    Button, IconButton, NativeTheme, Surface, column, row,
+)
+
+theme = NativeTheme()
+screen = Surface(
+    variant="low",
+    children=(
+        row(
+            Button("Continue", variant="primary", theme=theme),
+            Button("Learn more", variant="text", theme=theme),
+        ),
+        IconButton("＋", "Create item", variant="tonal", theme=theme),
+    ),
+    theme=theme,
+)
+```
+
+Run the interactive catalogue with `python examples/native/design_system_gallery.py`.
+Use `--dark` to inspect the dark palette. The automated token and interaction
+regressions are in `tests/native/test_design_system.py`.
+
+### Rendering and platform boundaries
+
+Elevation levels are semantic tokens today; the current CPU-raster renderer
+does not yet provide a complete cross-platform shadow/elevation compositor.
+The gallery and headless tests validate native component trees and states,
+not certification against Android Material You, iOS UIKit, macOS AppKit or
+assistive-technology platform bridges. Yuktara keeps its own component APIs
+and visual identity while adopting familiar interaction conventions.
+
+
+### Content and action components (3.10)
+
+The component catalogue now includes:
+
+- `FloatingActionButton`: small (48), regular (56) and large (96) action
+  targets, plus an extended icon-and-label presentation. The accessible name
+  remains the full action label in both forms.
+- `Chip`: neutral, primary, success, warning, danger and information roles,
+  with selected, disabled and optional activation semantics.
+- `Avatar`: small through extra-large initials/glyph presentation with
+  explicit accessible description and semantic color variants.
+- `ListTile`: leading content, title, optional subtitle and trailing content,
+  selected/disabled states, dense spacing and row-wide activation.
+
+Examples:
+
+```python
+from novaui.native import Avatar, Chip, FloatingActionButton, ListTile
+
+profile = Avatar("Asha Sharma", initials="AS", size="large")
+filter_chip = Chip("Recently updated", selected=True)
+create = FloatingActionButton("Create document", icon="+", extended=True)
+row = ListTile(
+    "Project files",
+    subtitle="18 items",
+    leading=Avatar("Project files", initials="P"),
+    trailing=Chip("Synced", variant="success"),
+)
+```
+
+The interactive design-system gallery demonstrates these components. Tests in
+`tests/native/test_content_components.py` cover semantics, dimensions,
+selection, disabled activation and composition.
+
+
+### Application chrome, feedback and card variants (4.0)
+
+`AppBar` provides a consistent application toolbar with optional leading
+content, title, subtitle and trailing actions. Its compact, regular and
+prominent sizes use shared typography, spacing and surface tokens; flat,
+surface and outlined treatments keep the same layout contract.
+
+```python
+from novaui.native import AppBar, IconButton
+
+toolbar = AppBar(
+    "Workspace",
+    subtitle="Your projects",
+    leading=IconButton("←", "Back"),
+    actions=(IconButton("＋", "Create"),),
+    size="regular",
+)
+```
+
+`Alert` is an inline feedback surface with info, success, warning and danger
+semantics. It exposes a live-region role and uses assertive announcement
+semantics for danger messages.
+
+```python
+from novaui.native import Alert
+
+notice = Alert(
+    "Your changes were saved.",
+    title="Saved",
+    variant="success",
+)
+```
+
+`Card` supports `outlined`, `filled`, `flat` and `elevated` surface
+variants. Existing `bordered`, `background`, `radius` and padding
+arguments remain compatible. The elevated variant currently communicates
+hierarchy through a higher surface-container role; the renderer's shadow
+compositor is still future work.
+
+The design-system gallery now includes application bars, alerts, content
+components and card surfaces. New regression coverage is in
+`tests/native/test_app_bar_alert.py` and `tests/native/test_design_system.py`.
+
+
+### Keyboard navigation and tab semantics (4.1)
+
+`Tabs` now skips disabled items during keyboard navigation and supports
+Left/Right Arrow, Home and End navigation. A disabled tab cannot be selected
+as the initial active value, and a tab set must contain at least one enabled
+item. Selection updates the active tab and its associated tab-panel node
+together. Tab labels, spacing and padding consume the shared typography and
+spacing tokens.
+
+```python
+from novaui.native import TabItem, Tabs
+
+settings = Tabs([
+    TabItem("General", content="General preferences"),
+    TabItem("Security", content="Security preferences"),
+    TabItem("Billing", content="Billing is unavailable", disabled=True),
+])
+```
+
+The keyboard and semantic regression suite is
+`tests/native/test_tabs_accessibility.py`.

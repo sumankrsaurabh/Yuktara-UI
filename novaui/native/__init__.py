@@ -3,12 +3,14 @@
 This package contains the native SDL3 + Skia runtime and no browser-rendering stack.
 """
 from .renderer import SkiaRenderer, RenderSize
+from .preview import (AdaptivePreviewHarness, NodeLayoutSnapshot, ViewportPreview, ViewportProfile)
 from .adaptive import (WindowAdaptiveInfo, WindowSizeBreakpoints,
                        WindowWidthSizeClass, WindowHeightSizeClass,
                        compute_window_adaptive_info)
 from .typography import (FontConfig, FontResolver, FontRun, DEFAULT_FONT_FAMILY)
 
 __all__ = [
+    "AdaptivePreviewHarness", "NodeLayoutSnapshot", "ViewportPreview", "ViewportProfile",
     "DEFAULT_FONT_FAMILY",
     "FontConfig",
     "FontResolver",
@@ -32,21 +34,21 @@ from .dependencies import DependencyError, ensure_skia_python, ensure_sdl3_runti
 __all__ += ["DependencyError", "ensure_skia_python", "ensure_sdl3_runtime"]
 
 from .accessibility import SemanticNode, build_accessibility_tree
-from .widgets import (Badge, Button, Card, Checkbox, Divider, Dropdown, Label,
+from .widgets import (Alert, AppBar, Avatar, Badge, Button, Card, Checkbox, Chip, Divider, Dropdown, FloatingActionButton, IconButton, Label, ListTile, Surface,
                       ProgressBar, RadioGroup, RichText, SegmentedControl, Slider, Spacer,
                       Switch, TabItem, Tabs, TextArea, TextField, column, row, stack,
                       ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip,
                       Calendar, Container, DatePicker, Grid, GridItem, Image, NavigationDrawer,
-                      NavigationItem, NavigationScaffold, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
+                      NavigationItem, NavigationScaffold, AdaptiveWorkspace, ListDetailItem, ListDetailPane, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
                       Responsive, ResponsiveVariant, AdaptiveLayout, AdaptiveVariant)
 __all__ += [
-    "SemanticNode", "build_accessibility_tree", "Badge", "Button", "Card",
-    "Checkbox", "Divider", "Dropdown", "Label", "ProgressBar", "RadioGroup", "RichText",
+    "SemanticNode", "build_accessibility_tree", "Alert", "AppBar", "Avatar", "Badge", "Button", "Card",
+    "Checkbox", "Chip", "Divider", "Dropdown", "FloatingActionButton", "IconButton", "Label", "ListTile", "Surface", "ProgressBar", "RadioGroup", "RichText",
     "SegmentedControl", "Slider", "Spacer", "Switch", "TabItem", "Tabs",
     "TextArea", "TextField", "column", "row", "stack", "ContextMenu",
     "Dialog", "MenuItem", "Popover", "Toast", "Tooltip", "Calendar",
     "Container", "DatePicker", "Grid", "GridItem", "Image", "NavigationDrawer",
-    "NavigationItem", "NavigationScaffold", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
+    "NavigationItem", "NavigationScaffold", "AdaptiveWorkspace", "ListDetailItem", "ListDetailPane", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
     "Responsive", "ResponsiveVariant", "AdaptiveLayout", "AdaptiveVariant",
 ]
 

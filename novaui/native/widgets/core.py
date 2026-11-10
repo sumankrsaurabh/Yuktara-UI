@@ -121,8 +121,20 @@ class RichText:
         return node
 
 
+def _blend_argb(base: int, overlay: int, alpha: float) -> int:
+    """Blend two ARGB colors without allocating renderer-side color objects."""
+    alpha = max(0.0, min(1.0, alpha))
+    channels = []
+    for shift in (24, 16, 8, 0):
+        a = (base >> shift) & 0xFF
+        b = (overlay >> shift) & 0xFF
+        channels.append(round(a * (1.0 - alpha) + b * alpha))
+    return sum(value << shift for value, shift in zip(channels, (24, 16, 8, 0)))
+
+
 @dataclass
 class Button:
+    """Accessible action button with shared semantic variants and interaction states."""
     label: str
     on_click: Callable | None = None
     variant: str = "primary"
@@ -131,7 +143,10 @@ class Button:
     theme: NativeTheme = field(default_factory=NativeTheme)
     accessibility_hint: str | None = None
 
-    VARIANTS = frozenset({"primary", "secondary", "outline", "ghost", "danger", "success"})
+    VARIANTS = frozenset({
+        "primary", "tonal", "filled_tonal", "secondary", "outline",
+        "ghost", "text", "danger", "success",
+    })
     SIZES = frozenset({"small", "medium", "large"})
 
     def __post_init__(self):
@@ -143,40 +158,560 @@ class Button:
             raise ValueError("Button label must be a non-empty string")
         if self.on_click is not None and not callable(self.on_click):
             raise TypeError("on_click must be callable")
+        if not isinstance(self.disabled, bool):
+            raise TypeError("disabled must be a boolean")
 
     def build(self) -> LayoutNode:
         t = self.theme
         palettes = {
             "primary": (t.primary, t.on_primary, None),
-            "secondary": (t.surface_variant, t.foreground, t.border),
-            "outline": (t.surface, t.primary, t.primary),
+            "tonal": (t.secondary_soft, t.secondary, None),
+            "filled_tonal": (t.secondary_soft, t.secondary, None),
+            "secondary": (t.surface_container_high, t.on_surface, None),
+            "outline": (t.surface, t.primary, t.outline),
             "ghost": (None, t.primary, None),
+            "text": (None, t.primary, None),
             "danger": (t.danger, t.on_danger, None),
             "success": (t.success, t.on_success, None),
         }
         background, foreground, border = palettes[self.variant]
         if self.disabled:
             background, foreground, border = t.disabled_surface, t.disabled_text, None
-        pads = {
-            "small": Insets.symmetric(vertical=6, horizontal=10),
-            "medium": Insets.symmetric(vertical=9, horizontal=14),
-            "large": Insets.symmetric(vertical=12, horizontal=18),
+
+        heights = {
+            "small": t.control_height_small,
+            "medium": t.control_height_medium,
+            "large": t.control_height_large,
         }
-        sizes = {"small": 13, "medium": 14, "large": 16}
-        return LayoutNode(
-            "text", text=self.label, text_color=foreground, font_size=sizes[self.size],
-            font_weight="semibold", padding=pads[self.size],
-            background=background, radius=t.radius_medium,
-            border_color=border, border_width=1 if border is not None else 0,
-            accessibility_role="button", accessibility_label=self.label,
-            accessibility_disabled=self.disabled, accessibility_hint=self.accessibility_hint,
+        horizontal_padding = {
+            "small": t.space_3,
+            "medium": t.space_4,
+            "large": t.space_6,
+        }
+        text_sizes = {
+            "small": t.type_label_medium,
+            "medium": t.type_label_large,
+            "large": t.type_title_medium,
+        }
+        radius = t.radius_pill if self.variant in {"ghost", "text"} else t.radius_large
+        base_background = background
+        state = {"hover": False, "pressed": False, "focused": False}
+        node = LayoutNode(
+            "text",
+            text=self.label,
+            text_color=foreground,
+            font_size=text_sizes[self.size],
+            font_weight="semibold",
+            padding=Insets.symmetric(vertical=0, horizontal=horizontal_padding[self.size]),
+            min_height=heights[self.size],
+            background=background,
+            radius=radius,
+            border_color=border,
+            border_width=1 if border is not None else 0,
+            accessibility_role="button",
+            accessibility_label=self.label,
+            accessibility_disabled=self.disabled,
+            accessibility_hint=self.accessibility_hint,
             on_click=None if self.disabled else self.on_click,
             accessibility_actions=("activate",),
+        )
+
+        def sync_state(_event=None):
+            if self.disabled:
+                return
+            if state["pressed"]:
+                node.background = (
+                    _blend_argb(base_background, foreground, 0.14)
+                    if base_background is not None else t.surface_container_high
+                )
+            elif state["hover"]:
+                node.background = (
+                    _blend_argb(base_background, foreground, 0.08)
+                    if base_background is not None else t.surface_container_low
+                )
+            else:
+                node.background = base_background
+            node.border_color = t.focus if state["focused"] else border
+            node.border_width = 2 if state["focused"] else (1 if border is not None else 0)
+
+        if not self.disabled:
+            def enter(event):
+                state["hover"] = True
+                sync_state(event)
+
+            def leave(event):
+                state["hover"] = False
+                state["pressed"] = False
+                sync_state(event)
+
+            def down(event):
+                state["pressed"] = True
+                sync_state(event)
+
+            def up(event):
+                state["pressed"] = False
+                sync_state(event)
+
+            def focus(event):
+                state["focused"] = True
+                sync_state(event)
+
+            def blur(event):
+                state["focused"] = False
+                state["pressed"] = False
+                sync_state(event)
+
+            node.on_pointer_enter = enter
+            node.on_pointer_leave = leave
+            node.on_pointer_down = down
+            node.on_pointer_up = up
+            node.on_focus = focus
+            node.on_blur = blur
+        self._built_node = node
+        return node
+
+
+@dataclass
+class IconButton:
+    """Compact icon action with a required accessible text label."""
+    icon: str
+    label: str
+    on_click: Callable | None = None
+    variant: str = "standard"
+    size: str = "medium"
+    disabled: bool = False
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"standard", "filled", "tonal", "outlined"})
+    SIZES = frozenset({"small", "medium", "large"})
+
+    def __post_init__(self):
+        if not isinstance(self.icon, str) or not self.icon.strip():
+            raise ValueError("IconButton icon must be a non-empty string")
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("IconButton label must be a non-empty accessible name")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported icon button variant: {self.variant}")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported icon button size: {self.size}")
+
+    def build(self) -> LayoutNode:
+        variant = {
+            "standard": "text",
+            "filled": "primary",
+            "tonal": "tonal",
+            "outlined": "outline",
+        }[self.variant]
+        node = Button(
+            self.icon,
+            on_click=self.on_click,
+            variant=variant,
+            size=self.size,
+            disabled=self.disabled,
+            theme=self.theme,
+            accessibility_hint=self.label,
+        ).build()
+        node.width = node.min_height
+        node.min_width = node.min_height
+        node.padding = Insets.all(0)
+        node.align = Alignment.CENTER
+        node.accessibility_label = self.label
+        node.accessibility_hint = self.label
+        node.accessibility_identifier = f"icon-button:{self.label}"
+        return node
+
+
+@dataclass
+class Surface:
+    """A semantic container surface using the shared elevation/surface scale."""
+    children: Sequence[object] = ()
+    variant: str = "base"
+    padding: float | Insets = 16
+    spacing: float = 8
+    radius: float | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"lowest", "low", "base", "high", "highest", "outlined"})
+
+    def __post_init__(self):
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported surface variant: {self.variant}")
+        if isinstance(self.padding, (int, float)) and self.padding < 0:
+            raise ValueError("Surface padding must be non-negative")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        backgrounds = {
+            "lowest": t.surface_container_lowest,
+            "low": t.surface_container_low,
+            "base": t.surface_container,
+            "high": t.surface_container_high,
+            "highest": t.surface_container_highest,
+            "outlined": t.surface,
+        }
+        outlined = self.variant == "outlined"
+        insets = self.padding if isinstance(self.padding, Insets) else Insets.all(self.padding)
+        return LayoutNode.column(
+            *[_node(child) for child in self.children],
+            spacing=self.spacing,
+            padding=insets,
+            background=backgrounds[self.variant],
+            radius=self.radius if self.radius is not None else t.radius_extra_large,
+            border_color=t.outline_variant if outlined else None,
+            border_width=1 if outlined else 0,
+            cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+
+
+@dataclass
+class FloatingActionButton:
+    """Prominent circular action; extended mode adds a readable text label."""
+    label: str
+    icon: str = "+"
+    on_click: Callable | None = None
+    size: str = "regular"
+    extended: bool = False
+    disabled: bool = False
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    SIZES = frozenset({"small", "regular", "large"})
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("FloatingActionButton requires an accessible label")
+        if not isinstance(self.icon, str) or not self.icon.strip():
+            raise ValueError("FloatingActionButton icon must be a non-empty string")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported floating action button size: {self.size}")
+        if not isinstance(self.extended, bool) or not isinstance(self.disabled, bool):
+            raise TypeError("extended and disabled must be booleans")
+        if self.on_click is not None and not callable(self.on_click):
+            raise TypeError("on_click must be callable")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        dimensions = {
+            "small": 48.0,
+            "regular": 56.0,
+            "large": 96.0,
+        }
+        dimension = dimensions[self.size]
+        visual = f"{self.icon}  {self.label}" if self.extended else self.icon
+        node = Button(
+            visual,
+            on_click=self.on_click,
+            variant="primary",
+            size="large" if self.size == "large" else "medium",
+            disabled=self.disabled,
+            theme=t,
+            accessibility_hint=self.label,
+        ).build()
+        node.accessibility_label = self.label
+        node.accessibility_role = "button"
+        node.radius = t.radius_extra_large if self.extended else t.radius_pill
+        node.height = dimension
+        node.min_height = dimension
+        if self.extended:
+            node.min_width = dimension
+            node.padding = Insets.symmetric(horizontal=t.space_6, vertical=0)
+        else:
+            node.width = dimension
+            node.min_width = dimension
+            node.max_width = dimension
+            node.height = dimension
+            node.padding = Insets.all(0)
+            node.text_align = "center"
+        return node
+
+
+@dataclass
+class Chip:
+    """Compact label or selectable action with semantic state and variants."""
+    label: str
+    variant: str = "neutral"
+    selected: bool = False
+    disabled: bool = False
+    on_click: Callable | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"neutral", "primary", "success", "warning", "danger", "info"})
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("Chip label must be a non-empty string")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported chip variant: {self.variant}")
+        if not isinstance(self.selected, bool) or not isinstance(self.disabled, bool):
+            raise TypeError("selected and disabled must be booleans")
+        if self.on_click is not None and not callable(self.on_click):
+            raise TypeError("on_click must be callable")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        palettes = {
+            "neutral": (t.surface_container_high, t.on_surface, t.outline_variant),
+            "primary": (t.primary_soft, t.primary, t.primary_soft),
+            "success": (t.success_soft, t.success, t.success_soft),
+            "warning": (t.warning_soft, t.warning_text, t.warning_soft),
+            "danger": (t.danger_soft, t.danger, t.danger_soft),
+            "info": (t.info_soft, t.info, t.info_soft),
+        }
+        background, foreground, border = palettes[self.variant]
+        if self.selected and self.variant == "neutral":
+            background, foreground, border = t.secondary_soft, t.secondary, t.secondary
+        if self.disabled:
+            background, foreground, border = t.disabled_surface, t.disabled_text, None
+        clickable = self.on_click is not None
+        return LayoutNode(
+            "text",
+            text=self.label,
+            text_color=foreground,
+            font_size=t.type_label_medium,
+            font_weight="semibold",
+            padding=Insets.symmetric(horizontal=t.space_3, vertical=t.space_2),
+            min_height=32,
+            background=background,
+            radius=t.radius_pill,
+            border_color=border,
+            border_width=1 if border is not None else 0,
+            accessibility_role="button" if clickable else "text",
+            accessibility_label=self.label,
+            accessibility_selected=self.selected,
+            accessibility_disabled=self.disabled,
+            on_click=None if self.disabled else self.on_click,
+        )
+
+
+@dataclass
+class Avatar:
+    """Initials or glyph avatar with semantic image labeling."""
+    label: str
+    initials: str | None = None
+    size: str = "medium"
+    variant: str = "primary"
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    SIZES = frozenset({"small", "medium", "large", "xlarge"})
+    VARIANTS = frozenset({"primary", "secondary", "tertiary", "neutral", "success"})
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("Avatar requires an accessible label")
+        if self.initials is not None and (not isinstance(self.initials, str) or not self.initials.strip()):
+            raise ValueError("Avatar initials must be a non-empty string when provided")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported avatar size: {self.size}")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported avatar variant: {self.variant}")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        sizes = {"small": 28.0, "medium": 40.0, "large": 56.0, "xlarge": 80.0}
+        fonts = {"small": 11.0, "medium": 14.0, "large": 18.0, "xlarge": 24.0}
+        colors = {
+            "primary": (t.primary_soft, t.primary),
+            "secondary": (t.secondary_soft, t.secondary),
+            "tertiary": (t.tertiary_soft, t.tertiary),
+            "neutral": (t.surface_container_high, t.on_surface),
+            "success": (t.success_soft, t.success),
+        }
+        background, foreground = colors[self.variant]
+        dimension = sizes[self.size]
+        initials = self.initials or self.label[:1].upper()
+        node = LayoutNode(
+            "text",
+            text=initials[:2],
+            width=dimension,
+            height=dimension,
+            min_width=dimension,
+            min_height=dimension,
+            background=background,
+            radius=t.radius_pill,
+            text_color=foreground,
+            font_size=fonts[self.size],
+            font_weight="semibold",
+            text_align="center",
+            align=Alignment.CENTER,
+            cross_align=Alignment.CENTER,
+            accessibility_role="image",
+            accessibility_label=self.label,
+        )
+        return node
+
+
+@dataclass
+class ListTile:
+    """Single-row list item with leading, title, subtitle and trailing content."""
+    title: str
+    subtitle: str | None = None
+    leading: object | None = None
+    trailing: object | None = None
+    selected: bool = False
+    disabled: bool = False
+    dense: bool = False
+    on_click: Callable | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    def __post_init__(self):
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("ListTile title must be a non-empty string")
+        if self.subtitle is not None and not isinstance(self.subtitle, str):
+            raise TypeError("ListTile subtitle must be a string or None")
+        if any(not isinstance(value, bool) for value in (self.selected, self.disabled, self.dense)):
+            raise TypeError("selected, disabled and dense must be booleans")
+        if self.on_click is not None and not callable(self.on_click):
+            raise TypeError("on_click must be callable")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        title = _text_node(
+            self.title,
+            color=t.disabled_text if self.disabled else t.primary if self.selected else t.on_surface,
+            size=t.type_body_medium if self.dense else t.type_body_large,
+            weight="semibold" if self.selected else "medium",
+            role="text",
+            label=self.title,
+        )
+        text_children = [title]
+        if self.subtitle is not None:
+            subtitle = _text_node(
+                self.subtitle,
+                color=t.disabled_text if self.disabled else t.muted,
+                size=t.type_body_small,
+                role="text",
+                label=self.subtitle,
+            )
+            text_children.append(subtitle)
+        text_block = LayoutNode.column(
+            *text_children,
+            spacing=t.space_1,
+            cross_align=Alignment.START,
+        )
+        children = []
+        if self.leading is not None:
+            children.append(_node(self.leading))
+        children.append(text_block)
+        if self.trailing is not None:
+            children.append(_node(self.trailing))
+        row = LayoutNode.row(
+            *children,
+            spacing=t.space_3,
+            padding=Insets.symmetric(
+                horizontal=t.space_4,
+                vertical=t.space_2 if self.dense else t.space_3,
+            ),
+            background=t.primary_soft if self.selected else t.surface,
+            radius=t.radius_medium,
+            cross_align=Alignment.CENTER,
+            accessibility_role="button" if self.on_click is not None else "listitem",
+            accessibility_label=self.title,
+            accessibility_value=self.subtitle,
+            accessibility_selected=self.selected,
+            accessibility_disabled=self.disabled,
+        )
+        if self.on_click is not None and not self.disabled:
+            # Hit testing resolves to the deepest text/icon node. Install the
+            # same action on non-interactive descendants so every row region
+            # activates the list item exactly once.
+            def attach(node):
+                if (node is not row and node.on_click is None
+                        and node.on_pointer_up is None and node.on_key_down is None):
+                    node.on_pointer_up = self.on_click
+                for child in node.children:
+                    attach(child)
+            attach(row)
+            row.on_click = self.on_click
+            row.on_key_down = lambda event: (
+                self.on_click(event)
+                if getattr(getattr(event, "key", None), "keycode", None) in (13, 32)
+                else False
+            )
+        if self.disabled:
+            row.accessibility_disabled = True
+        return row
+
+
+@dataclass
+class AppBar:
+    """A shared application toolbar with optional leading and trailing actions."""
+    title: str
+    subtitle: str | None = None
+    leading: object | None = None
+    actions: Sequence[object] = ()
+    variant: str = "surface"
+    size: str = "regular"
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"surface", "flat", "outlined"})
+    SIZES = frozenset({"compact", "regular", "prominent"})
+
+    def __post_init__(self):
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("AppBar title must be a non-empty string")
+        if self.subtitle is not None and not isinstance(self.subtitle, str):
+            raise TypeError("AppBar subtitle must be a string or None")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported AppBar variant: {self.variant}")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported AppBar size: {self.size}")
+        if not isinstance(self.actions, Sequence) or isinstance(self.actions, (str, bytes)):
+            raise TypeError("AppBar actions must be a sequence of widgets")
+        if any(action is None for action in self.actions):
+            raise ValueError("AppBar actions cannot contain None")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        heights = {"compact": 56.0, "regular": 64.0, "prominent": 88.0}
+        title_sizes = {
+            "compact": t.type_title_medium,
+            "regular": t.type_title_large,
+            "prominent": t.type_headline_medium,
+        }
+        background = {
+            "surface": t.surface_container_low,
+            "flat": t.background,
+            "outlined": t.surface,
+        }[self.variant]
+        children = []
+        if self.leading is not None:
+            children.append(_node(self.leading))
+        title_children = [
+            _text_node(
+                self.title, color=t.on_surface, size=title_sizes[self.size],
+                weight="semibold", role="heading", label=self.title,
+            )
+        ]
+        if self.subtitle is not None:
+            title_children.append(_text_node(
+                self.subtitle, color=t.muted, size=t.type_body_small,
+                role="text", label=self.subtitle,
+            ))
+        title_block = LayoutNode.column(
+            *title_children,
+            spacing=t.space_1,
+            cross_align=Alignment.START,
+        )
+        title_block.weight = 1.0
+        children.append(title_block)
+        children.extend(_node(action) for action in self.actions)
+        return LayoutNode.row(
+            *children,
+            height=heights[self.size],
+            spacing=t.space_2,
+            padding=Insets.symmetric(horizontal=t.space_4, vertical=t.space_2),
+            background=background,
+            border_color=t.outline_variant if self.variant == "outlined" else None,
+            border_width=1 if self.variant == "outlined" else 0,
+            cross_align=Alignment.CENTER,
+            accessibility_role="toolbar",
+            accessibility_label=self.title,
         )
 
 
 @dataclass
 class Card:
+    """Content container with tokenized outlined, filled, flat and elevated roles."""
     children: Sequence[object] = ()
     padding: float | Insets = 16
     spacing: float = 10
@@ -184,18 +719,48 @@ class Card:
     radius: float | None = None
     bordered: bool = True
     theme: NativeTheme = field(default_factory=NativeTheme)
+    variant: str | None = None
+
+    VARIANTS = frozenset({"outlined", "filled", "flat", "elevated"})
+
+    def __post_init__(self):
+        if self.variant is not None and self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported card variant: {self.variant}")
+        if not isinstance(self.bordered, bool):
+            raise TypeError("Card bordered must be a boolean")
+        if not isfinite(float(self.spacing)) or self.spacing < 0:
+            raise ValueError("Card spacing must be finite and non-negative")
+        if self.radius is not None and (
+            not isfinite(float(self.radius)) or self.radius < 0
+        ):
+            raise ValueError("Card radius must be finite and non-negative")
+        if isinstance(self.padding, (int, float)):
+            if isinstance(self.padding, bool) or not isfinite(float(self.padding)) or self.padding < 0:
+                raise ValueError("Card padding must be finite and non-negative")
+        elif not isinstance(self.padding, Insets):
+            raise TypeError("Card padding must be a non-negative number or Insets")
 
     def build(self) -> LayoutNode:
+        t = self.theme
+        variant = self.variant or ("outlined" if self.bordered else "flat")
+        backgrounds = {
+            "outlined": t.surface,
+            "filled": t.surface_container_low,
+            "flat": t.surface,
+            "elevated": t.surface_container_low,
+        }
+        has_border = variant == "outlined" if self.variant is not None else self.bordered
+        border_color = t.outline_variant if self.variant is not None else t.border
         insets = self.padding if isinstance(self.padding, Insets) else Insets.all(self.padding)
-        if isinstance(self.padding, (int, float)) and self.padding < 0:
-            raise ValueError("Card padding must be non-negative")
         children = [_node(child) for child in self.children]
         return LayoutNode.column(
-            *children, spacing=self.spacing, padding=insets,
-            background=self.background if self.background is not None else self.theme.surface,
-            radius=self.radius if self.radius is not None else self.theme.radius_large,
-            border_color=self.theme.border if self.bordered else None,
-            border_width=1 if self.bordered else 0,
+            *children,
+            spacing=self.spacing,
+            padding=insets,
+            background=self.background if self.background is not None else backgrounds[variant],
+            radius=self.radius if self.radius is not None else t.radius_large,
+            border_color=border_color if has_border else None,
+            border_width=1 if has_border else 0,
             cross_align=Alignment.STRETCH,
             accessibility_role="group",
         )
@@ -222,8 +787,8 @@ class Badge:
             "info": (t.info_soft, t.info),
         }
         bg, fg = colors[self.variant]
-        return _text_node(self.text, color=fg, size=12, weight="semibold",
-                          padding=Insets.symmetric(vertical=4, horizontal=8),
+        return _text_node(self.text, color=fg, size=t.type_label_small, weight="semibold",
+                          padding=Insets.symmetric(vertical=t.space_1, horizontal=t.space_2),
                           background=bg, radius=t.radius_pill,
                           role="status", label=self.text)
 
@@ -338,12 +903,13 @@ class Switch:
         t = self.theme
         track_color = t.disabled_surface if self.disabled else (t.primary if self.checked else t.border)
         knob = LayoutNode.box(
-            width=16, height=16, background=0xFFFFFFFF, radius=8,
+            width=18, height=18, background=t.surface_container_lowest,
+            radius=t.radius_pill,
             on_click=None if self.disabled else self._toggle,
         )
         track = LayoutNode.box(
-            knob, width=38, height=22, padding=Insets.all(3),
-            background=track_color, radius=11,
+            knob, width=42, height=26, padding=Insets.all(t.space_1),
+            background=track_color, radius=t.radius_pill,
             align=Alignment.END if self.checked else Alignment.START,
             on_click=None if self.disabled else self._toggle,
             accessibility_role="switch", accessibility_label=self.label,
@@ -356,7 +922,7 @@ class Switch:
             on_click=None if self.disabled else self._toggle,
         )
         self._track_node = track
-        return LayoutNode.row(track, caption, spacing=8,
+        return LayoutNode.row(track, caption, spacing=t.space_2,
                               cross_align=Alignment.CENTER,
                               accessibility_role="group", accessibility_label=self.label)
 
@@ -404,7 +970,7 @@ class TextField:
     value: str = ""
     placeholder: str = ""
     width: float = 240
-    height: float = 40
+    height: float = 44
     on_change: Callable[[str], None] | None = None
     on_submit: Callable[[str], None] | None = None
     max_length: int | None = None
@@ -556,11 +1122,11 @@ class TextField:
     def build(self) -> LayoutNode:
         node = LayoutNode(
             "text", text=self._display_text(), width=self.width, height=self.height,
-            padding=Insets.symmetric(horizontal=11, vertical=8),
-            background=self.theme.disabled_surface if self.disabled else self.theme.surface,
+            padding=Insets.symmetric(horizontal=self.theme.space_3, vertical=self.theme.space_2),
+            background=self.theme.disabled_surface if self.disabled else self.theme.surface_container_lowest,
             radius=self.theme.radius_medium,
-            border_color=self.theme.focus if self._focused else self.theme.border,
-            border_width=1,
+            border_color=self.theme.focus if self._focused else self.theme.outline_variant,
+            border_width=2 if self._focused else 1,
             text_color=(self.theme.disabled_text if self.disabled else
                         self.theme.muted if not self.value else self.theme.foreground),
             font_size=self.font_size,
@@ -602,6 +1168,7 @@ class TextField:
         self._sync_node()
         if self._built_node is not None:
             self._built_node.border_color = self.theme.focus
+            self._built_node.border_width = 2
 
     def _blur(self, _event=None):
         self._clear_composition(restore_selection=True)
@@ -617,7 +1184,8 @@ class TextField:
         self.anchor = self.cursor
         self._sync_node()
         if self._built_node is not None:
-            self._built_node.border_color = self.theme.border
+            self._built_node.border_color = self.theme.outline_variant
+            self._built_node.border_width = 1
 
     def _offset_from_pointer(self, event):
         pointer = getattr(event, "pointer", None)
@@ -1239,10 +1807,16 @@ class TabItem:
     content: object | None = None
     disabled: bool = False
 
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("TabItem label must be a non-empty string")
+        if not isinstance(self.disabled, bool):
+            raise TypeError("TabItem disabled must be a boolean")
+
 
 @dataclass
 class Tabs:
-    """Horizontal tab navigation with optional panel content."""
+    """Accessible horizontal tabs with arrow, Home and End keyboard navigation."""
     tabs: Sequence[TabItem | str]
     value: str | None = None
     on_change: Callable[[str], None] | None = None
@@ -1253,15 +1827,25 @@ class Tabs:
         labels = [item.label for item in self.tabs]
         if not labels or len(set(labels)) != len(labels):
             raise ValueError("Tabs require unique labels")
+        enabled = [item.label for item in self.tabs if not item.disabled]
+        if not enabled:
+            raise ValueError("Tabs require at least one enabled tab")
         if self.value is None:
-            self.value = labels[0]
+            self.value = enabled[0]
         if self.value not in labels:
             raise ValueError("Tabs value must match a tab label")
+        if self._item(self.value).disabled:
+            raise ValueError("Tabs value cannot refer to a disabled tab")
+        if self.on_change is not None and not callable(self.on_change):
+            raise TypeError("Tabs on_change must be callable")
         self._root: LayoutNode | None = None
         self._tab_nodes: dict[str, LayoutNode] = {}
 
+    def _item(self, label):
+        return next(tab for tab in self.tabs if tab.label == label)
+
     def _select(self, label):
-        item = next(tab for tab in self.tabs if tab.label == label)
+        item = self._item(label)
         if item.disabled or label == self.value:
             return
         self.value = label
@@ -1269,32 +1853,45 @@ class Tabs:
         if self.on_change is not None:
             self.on_change(label)
 
-    def _move(self, index, direction):
-        enabled = [tab for tab in self.tabs if not tab.disabled]
-        if not enabled:
-            return
-        current = next((i for i, tab in enumerate(enabled) if tab.label == self.value), 0)
-        self._select(enabled[(current + direction) % len(enabled)].label)
+    def _move(self, direction):
+        enabled = [tab.label for tab in self.tabs if not tab.disabled]
+        current = enabled.index(self.value)
+        self._select(enabled[(current + direction) % len(enabled)])
 
     def _tab_key(self, event, _index=None):
         key = getattr(event, "key", None)
         if key is None:
             return False
-        if key.keycode == _KEY_LEFT:
-            self._move(0, -1)
-            return True
-        if key.keycode == _KEY_RIGHT:
-            self._move(0, 1)
-            return True
-        return False
+        keycode = getattr(key, "keycode", None)
+        if keycode == _KEY_LEFT:
+            self._move(-1)
+        elif keycode == _KEY_RIGHT:
+            self._move(1)
+        elif keycode == _KEY_HOME:
+            enabled = [tab.label for tab in self.tabs if not tab.disabled]
+            self._select(enabled[0])
+        elif keycode == _KEY_END:
+            enabled = [tab.label for tab in self.tabs if not tab.disabled]
+            self._select(enabled[-1])
+        else:
+            return False
+        return True
 
     def _content_node(self):
-        current = next(tab for tab in self.tabs if tab.label == self.value)
+        current = self._item(self.value)
         if current.content is None:
-            return LayoutNode.box(height=1, intrinsic_size=Size(1, 1))
+            return LayoutNode.box(
+                height=1, intrinsic_size=Size(1, 1),
+                accessibility_role="tabpanel",
+                accessibility_label=f"{current.label} panel",
+            )
         if isinstance(current.content, str):
-            return Label(current.content, theme=self.theme).build()
-        return _node(current.content)
+            panel = Label(current.content, theme=self.theme).build()
+        else:
+            panel = _node(current.content)
+        panel.accessibility_role = "tabpanel"
+        panel.accessibility_label = f"{current.label} panel"
+        return panel
 
     def _sync(self):
         for item in self.tabs:
@@ -1311,24 +1908,45 @@ class Tabs:
     def build(self):
         self._tab_nodes = {}
         nodes = []
-        for index, item in enumerate(self.tabs):
+        for item in self.tabs:
             selected = item.label == self.value
             node = _text_node(
-                item.label, color=self.theme.primary if selected else self.theme.muted,
-                size=14, weight="semibold" if selected else "medium",
-                padding=Insets.symmetric(horizontal=14, vertical=9),
+                item.label,
+                color=self.theme.primary if selected else (
+                    self.theme.disabled_text if item.disabled else self.theme.muted
+                ),
+                size=self.theme.type_label_large,
+                weight="semibold" if selected else "medium",
+                padding=Insets.symmetric(
+                    horizontal=self.theme.space_4, vertical=self.theme.space_3
+                ),
                 background=self.theme.primary_soft if selected else None,
-                radius=self.theme.radius_small, role="tab", label=item.label,
-                selected=selected, disabled=item.disabled,
-                on_click=None if item.disabled else lambda event, label=item.label: self._select(label),
+                radius=self.theme.radius_small,
+                role="tab",
+                label=item.label,
+                selected=selected,
+                disabled=item.disabled,
+                on_click=None if item.disabled else (
+                    lambda event, label=item.label: self._select(label)
+                ),
             )
-            node.on_key_down = self._tab_key
+            node.on_key_down = None if item.disabled else self._tab_key
             self._tab_nodes[item.label] = node
             nodes.append(node)
-        tablist = LayoutNode.row(*nodes, spacing=3, cross_align=Alignment.CENTER,
-                                 accessibility_role="tablist")
-        self._root = LayoutNode.column(tablist, self._content_node(), spacing=10,
-                                       accessibility_role="group")
+        tablist = LayoutNode.row(
+            *nodes,
+            spacing=self.theme.space_1,
+            cross_align=Alignment.CENTER,
+            accessibility_role="tablist",
+            accessibility_label="Tabs",
+            accessibility_orientation="horizontal",
+        )
+        self._root = LayoutNode.column(
+            tablist, self._content_node(),
+            spacing=self.theme.space_3,
+            accessibility_role="group",
+            accessibility_label="Tabbed content",
+        )
         return self._root
 
 

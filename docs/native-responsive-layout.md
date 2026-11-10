@@ -166,13 +166,135 @@ screen = AdaptiveLayout(
 )
 ```
 
-The first variant is the fallback; later variants override earlier matches.
-This supports independent width-only and height-only conditions. Threshold
-pairs must be unique. Resizing
-or changing the available window height switches the retained child without
-rebuilding the component. As with `Responsive`, thresholds use logical UI
-units, not framebuffer pixels.
+The first variant is the fallback; later variants override earlier matches
+when both of their minimum dimensions fit. Use a zero threshold on one axis
+for a width-only or height-only condition. Threshold pairs must be unique.
+Resizing switches the retained child without rebuilding the component.
+Thresholds use logical UI units, not framebuffer pixels.
 
 Use `Responsive` for width-only breakpoints and `AdaptiveLayout` when both
 axes materially affect information hierarchy. Avoid using the latter merely
 to scale controls; use fluid constraints, wrapping and scrolling for that.
+
+## Adaptive navigation scaffold
+
+`NavigationScaffold` supplies a common navigation pattern that changes
+presentation as the window grows: a bottom bar on compact windows, a
+navigation rail on medium windows, and a full drawer on spacious desktop
+windows. It keeps one content node and one selected destination model across
+these compositions.
+
+```python
+from novaui.native import NavigationItem, NavigationScaffold, Label
+
+navigation = NavigationScaffold(
+    items=(
+        NavigationItem("Home", icon="⌂", key="home"),
+        NavigationItem("Projects", icon="▦", key="projects"),
+        NavigationItem("Settings", icon="⚙", key="settings"),
+    ),
+    content=Label("Your current page"),
+    selected="home",
+    on_select=lambda destination: print(destination.key),
+)
+```
+
+The default transitions are bottom navigation below 600 logical units,
+navigation rail from 600, and full drawer from 1100 logical units when height
+is at least 640. These are configurable through `min_rail_width`,
+`min_drawer_width` and `min_drawer_height`. Selection callbacks receive the
+selected `NavigationItem`; disabled destinations cannot be selected.
+The scaffold provides navigation chrome and selection state, while the
+application remains responsible for switching page content in response to
+the callback.
+
+## Responsive list-detail panes
+
+Use `ListDetailPane` for mailboxes, project lists, settings categories and
+other master-detail interfaces. Compact windows show one surface at a time:
+select an item to open its detail and use the built-in back action to return
+to the list. Wider windows keep the list and detail visible side by side.
+
+```python
+from novaui.native import Label, ListDetailItem, ListDetailPane
+
+screen = ListDetailPane(
+    items=(
+        ListDetailItem("Overview", Label("Project overview"), key="overview"),
+        ListDetailItem("Activity", Label("Recent project activity"), key="activity"),
+    ),
+    on_select=lambda item: print("Selected:", item.key),
+)
+```
+
+The default two-pane breakpoint is 840 logical units and can be changed with
+`min_expanded_width`. The selected item and its retained detail node remain
+active when the window crosses the breakpoint. The application owns the
+actual detail widgets and can bind their own state to application models.
+
+## Adaptive multi-pane workspace
+
+Use `AdaptiveWorkspace` for editors, dashboards and productivity tools that
+need a sidebar and an optional inspector. Compact windows prioritize the main
+content; medium windows add the sidebar; spacious windows show all three panes.
+Pane nodes are retained across these transitions.
+
+```python
+from novaui.native import AdaptiveWorkspace, Label
+
+workspace = AdaptiveWorkspace(
+    sidebar=Label("Files and tools"),
+    content=Label("Editor canvas"),
+    inspector=Label("Properties"),
+)
+```
+
+Defaults are 760 logical units for the sidebar layout and 1280 logical units
+plus 700 logical units of height for the inspector layout. Configure these
+with `min_two_pane_width`, `min_three_pane_width` and
+`min_three_pane_height`. The sidebar and inspector can be omitted. The
+application owns the content and any stateful models used by those panes.
+
+
+## Multi-viewport adaptive preview harness
+
+Use `AdaptivePreviewHarness` to exercise the production layout engine at
+several logical viewport sizes without opening an SDL window or creating a
+Skia surface. Each profile has a unique name, logical width and height, and
+optional display scale:
+
+```python
+from novaui.native import (
+    AdaptiveLayout, AdaptivePreviewHarness, AdaptiveVariant,
+    ViewportProfile, column, row,
+)
+
+screen = AdaptiveLayout((
+    AdaptiveVariant(0, 0, column(sidebar, content)),
+    AdaptiveVariant(840, 0, row(sidebar, content, spacing=16)),
+)).build()
+
+profiles = (
+    ViewportProfile("phone", 390, 844),
+    ViewportProfile("tablet", 900, 1200, scale=2),
+    ViewportProfile("desktop", 1440, 900, scale=1.5),
+)
+for preview in AdaptivePreviewHarness(screen, profiles).run():
+    print(preview.profile.name, preview.active_variant_index)
+    print("Backing pixels:", preview.backing_pixel_size)
+    for node in preview.nodes:
+        print(node.path, node.kind, node.bounds)
+```
+
+The harness uses logical dimensions for layout and uses `scale` only to
+report the expected backing-pixel size. Results include active adaptive
+variant indices, visible-tree node bounds, accessibility labels and grid
+column counts. The same retained tree is re-laid out at each profile, matching
+the resize behavior of the runtime. It is a deterministic layout regression
+tool, not a substitute for SDL/Skia rendering or physical display testing.
+
+Run its regression suite with:
+
+```bash
+pytest tests/native/test_adaptive_preview.py
+```

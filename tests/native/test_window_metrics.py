@@ -321,7 +321,10 @@ def test_run_runtime_coalesces_resize_and_pixel_size_events(monkeypatch):
     monkeypatch.setattr(SDL3Window, "open", lambda self: self)
     monkeypatch.setattr(SDL3Window, "close", lambda self: None)
     monkeypatch.setattr(SDL3Window, "poll_input_events", lambda self: events)
-    monkeypatch.setattr(SDL3Window, "sync_runtime_size", lambda self, runtime: sync_calls.append(runtime))
+    monkeypatch.setattr(
+        SDL3Window, "sync_runtime_size",
+        lambda self, runtime: sync_calls.append(runtime) if runtime.started else None,
+    )
     monkeypatch.setattr(SDL3Window, "present", lambda self, frame: None)
 
     class Runtime:
@@ -356,6 +359,7 @@ def test_run_runtime_coalesces_resize_and_pixel_size_events(monkeypatch):
         max_frames=1,
     )
 
+    # Count only synchronizations after start: both resize events must coalesce to one.
     assert sync_calls == [runtime]
     assert runtime.handled == []
     assert runtime.started and runtime.stopped
