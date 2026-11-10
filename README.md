@@ -139,7 +139,7 @@ python -m compileall -q novaui
 ```
 
 The `CI` workflow runs the native tests, compilation and wheel checks across
-Windows, macOS and Linux on Python 3.10, 3.11, 3.12 and 3.13. An additional manual workflow
+Windows, macOS and Linux on Python 3.10 through 3.15. An additional manual workflow
 (`Native desktop integration`) builds/provisions SDL3 and opens a real SDL3 +
 Skia window under a virtual X11 display.
 
