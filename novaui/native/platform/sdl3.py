@@ -522,9 +522,10 @@ class SDL3Window:
                 "SDL_GetWindowSizeInPixels", ctypes.c_bool,
                 [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
             )
-            if not get_pixel_size(
+            result = get_pixel_size(
                 self._window, ctypes.byref(pixel_w), ctypes.byref(pixel_h)
-            ):
+            )
+            if result is False:
                 pixel_w.value, pixel_h.value = window_size
         except AttributeError:
             # Older SDL test doubles/custom hosts may expose logical size only.
