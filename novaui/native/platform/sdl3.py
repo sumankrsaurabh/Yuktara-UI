@@ -838,6 +838,11 @@ class SDL3Window:
             decoded.append(event)
         return decoded
 
+    def _idle_if_unsynchronized(self) -> None:
+        """Yield only when VSync is unavailable; a synced present is the frame clock."""
+        if self.actual_vsync in (None, SDL_RENDERER_VSYNC_DISABLED):
+            self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+
     def run(self, draw_frame: Callable[[], PixelFrame], *, on_event=None) -> None:
         """Run a raw SDL event/presentation loop until SDL_QUIT."""
         self.open()
@@ -922,7 +927,7 @@ class SDL3Window:
                 if max_frames is not None and frame_count >= max_frames:
                     break
                 if not events:
-                    self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+                    self._idle_if_unsynchronized()
         finally:
             try:
                 if runtime_started:
