@@ -3,8 +3,8 @@ from __future__ import annotations
 import ctypes
 from types import SimpleNamespace
 
-from novaui.native import TextField
-from novaui.native.platform.events import EventType, InputEvent
+from novaui.native import NativeRuntime, TextField
+from novaui.native.platform.events import EventType, InputEvent, PointerEvent
 from novaui.native.platform.sdl3_events import (
     SDL3EventDecoder,
     SDL_EVENT_TEXT_EDITING,
@@ -147,3 +147,42 @@ def test_text_field_updates_native_ime_area_from_measured_caret():
     field._update_text_input_area(node)
 
     assert clipboard.area == (10, 23, 180, 18, 42)
+
+
+
+def test_native_runtime_routes_text_editing_event_to_focused_text_field():
+    class RecordingRenderer:
+        size = SimpleNamespace(scale=1.0, scale_y=None)
+
+        def clear(self, *_args, **_kwargs):
+            pass
+
+        def draw_rect(self, *_args, **_kwargs):
+            pass
+
+        def draw_stroke_rect(self, *_args, **_kwargs):
+            pass
+
+        def draw_text(self, *_args, **_kwargs):
+            pass
+
+    field = TextField("start")
+    runtime = NativeRuntime(lambda: field, RecordingRenderer(), 320, 120)
+    runtime.start()
+    try:
+        runtime.dispatcher._set_focus(runtime.root)
+        runtime.handle_event(
+            InputEvent(
+                EventType.TEXT_EDITING,
+                text="かな",
+                text_start=1,
+                text_length=1,
+            )
+        )
+
+        assert field.value == "start"
+        assert runtime.root.text == "startかな"
+        assert runtime.root.text_composition == (5, 7)
+        assert runtime.frame_count >= 2
+    finally:
+        runtime.stop()
