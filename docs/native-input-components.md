@@ -53,14 +53,15 @@ period = Dropdown(
 )
 ```
 
-The trigger toggles an inline option list. Enter/Space opens it; Up/Down
-changes the active option; Enter selects; Escape closes. The 2.4 overlay manager
-is available for application-built floating surfaces, but Dropdown has not yet
-been migrated from its inline option-list implementation.
+The trigger toggles the option list. Enter/Space opens it; Up/Down changes the
+active option; Enter selects; Escape closes. Without an attached runtime
+manager, the options remain inline for standalone layout compatibility.
 
 
 To render the options in the floating overlay layer, attach the runtime manager
-before the runtime is started:
+before the runtime is started. The menu is anchored to the trigger, clamps to
+the viewport, supports bounded scrolling and moves the active keyboard option
+into view:
 
 ```python
 dropdown.attach_overlay_manager(runtime.overlays)

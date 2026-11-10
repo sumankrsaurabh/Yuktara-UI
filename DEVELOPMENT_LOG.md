@@ -355,6 +355,19 @@ The dropdown overlay integration completed verification on 2026-11-10:
 
 Workflow records: [CI — run 42794293051](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42794293051) · [Native desktop integration — run 42794292988](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42794292988).
 
+### Latest 3.4 development verification — dropdown keyboard scrolling, commit `de8db52632052d3a5c18c10302ab1329386cd4c1`
+
+The keyboard auto-scroll refinement completed verification on 2026-11-10:
+
+- 328 tests passed.
+- All 18 Windows/macOS/Ubuntu and Python 3.10–3.15 matrix jobs passed.
+- The coverage job reported 84% statement coverage (6,521 statements; 1,046 missed).
+- Wheel build, installation and installed-distribution import passed.
+- The independent Linux/Xvfb SDL3 + Skia workflow passed dependency provisioning, real window creation and Skia frame presentation.
+
+Workflow records: [CI — run 42794962644](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42794962644) · [Native desktop integration — run 42794962881](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42794962881).
+
+
 
 
 The automated tests primarily validate Python-side behavior using backend-injected services, normalized events and recording renderers. They are not a substitute for testing actual desktop hardware, drivers, system dialogs, input methods, high-DPI displays or accessibility tools.
@@ -382,7 +395,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 - Corrected SDL3 focus-gained/focus-lost event identifiers and added display-change/display-scale-change decoding.
 - Added public `Responsive` and `ResponsiveVariant` components. The layout engine selects width variants during measure, so the active tree changes at a breakpoint without a component rebuild.
 - Runtime and SDL3 window dimension entry points now reject non-finite, non-integral or boolean dimensions as appropriate; runtime resize validates all logical and backing dimensions before mutating state.
-- `Dropdown.attach_overlay_manager(runtime.overlays)` opts into a floating popover menu with bounded option scrolling, viewport-aware anchor placement, outside/Escape dismissal and keyboard selection. The standalone inline mode remains available when no manager is attached.
+- `Dropdown.attach_overlay_manager(runtime.overlays)` opts into a floating popover menu with bounded option scrolling, viewport-aware anchor placement, outside/Escape dismissal and keyboard selection. Arrow-key navigation scrolls the active option into view. The standalone inline mode remains available when no manager is attached.
 - Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
 - All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
 - Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.
@@ -404,7 +417,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 The following items are **not** to be treated as completed features in the 3.3 baseline:
 
 - End-to-end IME behavior with physical keyboards and real input methods has not yet been validated on Windows, macOS and Linux. The 3.4 development code now decodes SDL3 text-editing events, routes them through the runtime, displays temporary pre-edit text with an underline without mutating committed text, handles commit and Escape/blur cancellation, and positions SDL's candidate area from measured caret geometry. See the regression tests in `tests/native/test_ime_composition.py`.
-- The dropdown supports the overlay manager when attached to `runtime.overlays`; a legacy inline presentation is retained for unattached standalone widgets. Its menu integration is covered by selection, keyboard, outside-dismissal and attach/detach regression tests.
+- The dropdown supports the overlay manager when attached to `runtime.overlays`; a legacy inline presentation is retained for unattached standalone widgets. Its menu integration is covered by selection, keyboard, active-option scrolling, outside-dismissal and attach/detach regression tests.
 - Full Unicode Standard Annex #29 segmentation and complete Unicode line breaking.
 - Complete bidirectional text, Arabic joining, Indic shaping, ligature-aware caret geometry and complex-script shaping across all platforms. Optional HarfBuzz support is available, but it does not make the entire text pipeline fully certified.
 - Native accessibility provider bridges for Windows UI Automation, macOS NSAccessibility and Linux AT-SPI; screen-reader behavior is not certified.
