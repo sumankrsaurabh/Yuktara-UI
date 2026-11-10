@@ -5,9 +5,10 @@ It uses SDL3 for the desktop window/input layer and Skia for CPU raster renderin
 The historical Python import namespace is currently `novaui` and will be migrated
 only through a planned compatibility release.
 
-> **Status:** experimental native framework foundation (3.3.0.dev0). The
-> layout, retained-tree, scheduler and runtime lifecycle have backend-injected
-> regression coverage; real SDL3/Skia integration still needs validation on each target OS.
+> **Status:** experimental native desktop UI framework (3.3.0.dev0; 3.4 development).
+> Automated CI passes across Windows, macOS and Linux on Python 3.10–3.15. A
+> Linux/Xvfb SDL3 + Skia live-window smoke test also passes; physical-device,
+> mixed-DPI monitor and platform-specific IME/accessibility validation remains ongoing.
 
 For a cumulative inventory of implemented features, development milestones, examples and known limitations, see [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md).
 
@@ -21,7 +22,7 @@ For a cumulative inventory of implemented features, development milestones, exam
   SDL3-backed system clipboard access, paragraph-aware Unicode line wrapping
   and source-indexed rich inline text styling. Optional HarfBuzz shaping is
   available through the `shaping` extra and explicit font-file configuration.
-- **Native component library** — labels, buttons, containers, cards, badges,
+- **Native component library** — responsive `Responsive`/`ResponsiveVariant` layouts, labels, buttons, containers, cards, badges,
   dividers, progress bars, checkboxes, switches, radio groups, text inputs,
   dropdowns, sliders, tabs, segmented controls, responsive grids, scroll views,
   images, tables, navigation drawers, calendars, date pickers, tree views and

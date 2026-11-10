@@ -33,7 +33,8 @@ The repository does not implement an HTML/CSS/JavaScript renderer, browser runti
 
 - `box`, `row`, `column`, `stack`, `scroll`, `grid` and `text` layout nodes.
 - High-level `row(...)`, `column(...)` and `stack(...)` composition helpers.
-- `Container`, `Card`, `Spacer`, `Divider`, `Grid`, `ScrollView` and `Positioned` components.
+- `responsive` layout nodes with ordered minimum-width variants, plus public `Responsive` and `ResponsiveVariant` components for breakpoint-driven hierarchy changes.
+- `Container`, `Card`, `Spacer`, `Divider`, `Grid`, `ScrollView`, `Positioned`, `Responsive` and `ResponsiveVariant` components.
 - Intrinsic sizing, padding, spacing, weighted children and main-/cross-axis alignment.
 - Fixed and percentage dimensions; per-node minimum and maximum width/height constraints.
 - Flex wrapping for rows and columns, per-line spacing, weighted allocation, flex basis and per-child cross-axis alignment.
@@ -295,7 +296,7 @@ This timeline records the documented source milestones retained in the repositor
 | 3.1 — general-purpose component library | Responsive Grid, Container, ScrollView, Image, Table, NavigationDrawer, Calendar, DatePicker, TreeView and SDL3-backed FilePicker. |
 | 3.2 — runtime stabilization | Retained-tree reconciliation, UI-thread scheduling, runtime/window lifecycle, logical/backing-pixel sizing, touch-coordinate conversion and integrated SDL3 host loop. |
 | 3.3 — advanced layout | Percentage dimensions and constraints, row/column flex wrapping, flex basis, baseline alignment, absolute positioning, GridItem placement and spans. |
-| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops and responsive galleries. Regression tests and the permanent cross-platform CI matrix are passing; native SDL3/Skia live-window validation remains in progress. Package metadata remains at 3.3.0.dev0 until a release decision. Package metadata remains at 3.3.0.dev0 until a release decision. |
+| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops, responsive galleries and defensive dimension validation for runtime/window resize entry points. Regression tests, the permanent cross-platform CI matrix and the Linux/Xvfb SDL3/Skia live-window smoke test are passing. Package metadata remains at 3.3.0.dev0 until a release decision. |
 
 ## 11. Verification record
 
@@ -324,7 +325,9 @@ The permanent cross-platform CI workflow completed successfully on 2026-11-10 fo
 
 Workflow record: [CI — 2026-11-10, run 42786741828](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42786741828).
 
-The separate Linux/Xvfb SDL3 + Skia live-window integration job is still in progress at this review. It has passed installation of system build prerequisites (including XTest) and project installation; SDL3/Skia provisioning and the actual window/presentation smoke test have not yet completed. Do not treat the native desktop integration as certified until that job passes.
+The separate Linux/Xvfb SDL3 + Skia live-window integration job also completed successfully. It installed the system build prerequisites (including XTest), provisioned SDL3 and Skia, opened a real SDL3 window and presented Skia frames. This verifies the integrated desktop path in the virtual X11 environment; it does not certify physical displays, drivers or every supported operating system.
+
+Workflow record: [Native desktop integration — 2026-11-10, run 42786336871](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42786336871).
 
 The automated tests primarily validate Python-side behavior using backend-injected services, normalized events and recording renderers. They are not a substitute for testing actual desktop hardware, drivers, system dialogs, input methods, high-DPI displays or accessibility tools.
 
@@ -338,7 +341,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 - The workflow also builds and installs the wheel, verifies the installed package outside the source checkout, and measures package coverage.
 - `.github/workflows/native-integration.yml` runs on main-branch changes to platform, runtime, rendering, layout, dependency or smoke-test code, and can also be dispatched manually. Its Linux/Xvfb job installs SDL3 build prerequisites, provisions Skia/SDL3 through `python -m novaui setup`, opens a real SDL3 window and presents Skia frames.
 - `scripts/native_runtime_smoke.py` is the bounded three-frame desktop smoke application.
-- The ordinary test matrix is backend-neutral by design. The SDL3 + Skia live-window workflow is separate and is not considered passed until its window-open/frame-presentation step completes.
+- The ordinary test matrix is backend-neutral by design. The separate Linux/Xvfb SDL3 + Skia live-window workflow has passed its window-open and frame-presentation steps; this is a smoke test, not cross-platform hardware certification.
 
 ### Window resizing, high DPI and responsive layout
 
@@ -350,6 +353,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 - SDL3 texture presentation uses a centered aspect-fit destination rectangle and letterboxing instead of stretching a mismatched frame across the output surface.
 - Corrected SDL3 focus-gained/focus-lost event identifiers and added display-change/display-scale-change decoding.
 - Added public `Responsive` and `ResponsiveVariant` components. The layout engine selects width variants during measure, so the active tree changes at a breakpoint without a component rebuild.
+- Runtime and SDL3 window dimension entry points now reject non-finite, non-integral or boolean dimensions as appropriate; runtime resize validates all logical and backing dimensions before mutating state.
 - Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
 - All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
 - Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.

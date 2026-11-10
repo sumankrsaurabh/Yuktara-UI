@@ -1,3 +1,5 @@
+import pytest
+
 from novaui.native.layout import LayoutNode, Size
 from novaui.native.reactivity import Component, Scheduler, State
 from novaui.native.runtime import NativeRuntime
@@ -282,3 +284,47 @@ def test_runtime_restart_clears_quit_state_and_restores_window_focus():
     assert runtime.quit_requested is False
     assert runtime.window_focused is True
     runtime.stop()
+
+
+@pytest.mark.parametrize(
+    "width,height,error",
+    [
+        (0, 100, ValueError),
+        (-1, 100, ValueError),
+        (float("nan"), 100, ValueError),
+        (float("inf"), 100, ValueError),
+        (True, 100, TypeError),
+        ("400", 100, TypeError),
+    ],
+)
+def test_runtime_rejects_invalid_resize_dimensions_without_mutating_state(
+    width, height, error
+):
+    runtime = NativeRuntime(lambda: LayoutNode("box"), FakeRenderer(), 320, 200)
+
+    with pytest.raises(error):
+        runtime.resize(width, height)
+
+    assert (runtime.width, runtime.height) == (320.0, 200.0)
+    assert (runtime.pixel_width, runtime.pixel_height) == (320, 200)
+
+
+@pytest.mark.parametrize(
+    "pixel_width,pixel_height,error",
+    [
+        (0, 800, ValueError),
+        (1200, -1, ValueError),
+        (1200.5, 800, TypeError),
+        (1200, True, TypeError),
+    ],
+)
+def test_runtime_validates_backing_pixel_dimensions_atomically(
+    pixel_width, pixel_height, error
+):
+    runtime = NativeRuntime(lambda: LayoutNode("box"), FakeRenderer(), 320, 200)
+
+    with pytest.raises(error):
+        runtime.resize(640, 400, pixel_width=pixel_width, pixel_height=pixel_height)
+
+    assert (runtime.width, runtime.height) == (320.0, 200.0)
+    assert (runtime.pixel_width, runtime.pixel_height) == (320, 200)

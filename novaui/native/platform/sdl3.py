@@ -117,10 +117,16 @@ class SDL3Window:
         preserve_aspect: bool = True,
         library_path: str | None = None,
     ) -> None:
+        for name, value in (("width", width), ("height", height),
+                            ("min_width", min_width), ("min_height", min_height)):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"{name} must be an integer")
         if width <= 0 or height <= 0:
             raise ValueError("Window dimensions must be positive.")
         if min_width < 0 or min_height < 0 or (min_width == 0) != (min_height == 0):
             raise ValueError("minimum window dimensions must both be zero or positive")
+        if not isinstance(resizable, bool):
+            raise TypeError("resizable must be a boolean")
         if not isinstance(high_dpi, bool) or not isinstance(preserve_aspect, bool):
             raise TypeError("high_dpi and preserve_aspect must be booleans")
         self.title = title

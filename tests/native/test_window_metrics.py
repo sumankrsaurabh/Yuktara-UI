@@ -234,3 +234,20 @@ def test_open_treats_initial_window_size_as_ui_units_on_high_dpi_windows():
         assert pixels == (2200, 1440)
     finally:
         window.close()
+
+
+@pytest.mark.parametrize(
+    "kwargs,error",
+    [
+        ({"width": 0}, ValueError),
+        ({"height": -1}, ValueError),
+        ({"width": True}, TypeError),
+        ({"height": 720.5}, TypeError),
+        ({"min_width": True}, TypeError),
+        ({"min_height": -1}, ValueError),
+        ({"resizable": 1}, TypeError),
+    ],
+)
+def test_sdl3_window_rejects_invalid_dimension_and_flag_types(kwargs, error):
+    with pytest.raises(error):
+        SDL3Window(**kwargs)

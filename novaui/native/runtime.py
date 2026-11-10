@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from math import isfinite
 from threading import get_ident
 
 from .layout import LayoutEngine, Rect
@@ -13,6 +14,23 @@ from .renderer import RenderSize, SkiaRenderer
 from .platform.events import EventType
 from .overlays import OverlayManager
 from .animations import AnimationManager, AnimationHandle
+
+
+def _positive_finite_dimension(value, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise TypeError(f"{name} must be a finite positive number")
+    number = float(value)
+    if not isfinite(number) or number <= 0:
+        raise ValueError(f"{name} must be a finite positive number")
+    return number
+
+
+def _positive_integer_dimension(value, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} must be a positive integer")
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
 
 
 class NativeRuntime:
@@ -28,10 +46,10 @@ class NativeRuntime:
                  scheduler: Scheduler | None = None, clear_color="#FFFFFF",
                  text_measurer: TextMeasurer | None = None,
                  reduced_motion: bool = False):
-        if width <= 0 or height <= 0:
-            raise ValueError("runtime dimensions must be positive")
-        self.width = float(width)
-        self.height = float(height)
+        width = _positive_finite_dimension(width, "runtime width")
+        height = _positive_finite_dimension(height, "runtime height")
+        self.width = width
+        self.height = height
         self.renderer = renderer
         self.clear_color = clear_color
         renderer_size = getattr(renderer, "size", None)
@@ -281,26 +299,34 @@ class NativeRuntime:
     def resize(self, width: float, height: float, *,
                pixel_width: int | None = None,
                pixel_height: int | None = None):
-        """Resize logical layout and optionally update the backing pixel size."""
+        """Resize logical layout and optionally update the backing pixel size.
+
+        Dimensions are validated before mutating runtime state. A failed resize
+        therefore leaves the previous logical and backing sizes intact.
+        """
         self._assert_owner_thread()
-        if width <= 0 or height <= 0:
-            raise ValueError("runtime dimensions must be positive")
-        self.width = float(width)
-        self.height = float(height)
-        if pixel_width is not None or pixel_height is not None:
-            if pixel_width is None:
-                pixel_width = int(round(self.width * self.scale_x))
-            if pixel_height is None:
-                pixel_height = int(round(self.height * self.scale_y))
-            if pixel_width <= 0 or pixel_height <= 0:
-                raise ValueError("pixel dimensions must be positive")
-            self.pixel_width = int(pixel_width)
-            self.pixel_height = int(pixel_height)
-            self.scale_x = self.pixel_width / self.width
-            self.scale_y = self.pixel_height / self.height
+        width = _positive_finite_dimension(width, "runtime width")
+        height = _positive_finite_dimension(height, "runtime height")
+
+        if pixel_width is None:
+            pixel_width = max(1, int(round(width * self.scale_x)))
         else:
-            self.pixel_width = int(round(self.width * self.scale_x))
-            self.pixel_height = int(round(self.height * self.scale_y))
+            pixel_width = _positive_integer_dimension(pixel_width, "pixel width")
+        if pixel_height is None:
+            pixel_height = max(1, int(round(height * self.scale_y)))
+        else:
+            pixel_height = _positive_integer_dimension(pixel_height, "pixel height")
+        pixel_width = _positive_integer_dimension(pixel_width, "pixel width")
+        pixel_height = _positive_integer_dimension(pixel_height, "pixel height")
+
+        scale_x = pixel_width / width
+        scale_y = pixel_height / height
+        self.width = width
+        self.height = height
+        self.pixel_width = pixel_width
+        self.pixel_height = pixel_height
+        self.scale_x = scale_x
+        self.scale_y = scale_y
         if isinstance(self.renderer, SkiaRenderer):
             self.renderer.resize(RenderSize(
                 max(1, int(round(self.width))),
