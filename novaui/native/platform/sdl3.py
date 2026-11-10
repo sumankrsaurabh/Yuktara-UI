@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import platform
+from math import isfinite
 import threading
 from time import perf_counter
 from collections import deque
@@ -235,14 +236,18 @@ class SDL3Window:
             self.close()
             raise SDL3Error(f"SDL_CreateWindow failed: {self._error()}")
         if self.min_width and self.min_height:
-            pixel_density = float(self._bind(
-                "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
-            )(self._window))
-            display_scale = float(self._bind(
-                "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
-            )(self._window))
-            if pixel_density > 0 and display_scale > 0:
-                self._coordinate_scale = display_scale / pixel_density
+            try:
+                pixel_density = float(self._bind(
+                    "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
+                )(self._window))
+                display_scale = float(self._bind(
+                    "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
+                )(self._window))
+                if (isfinite(pixel_density) and pixel_density > 0
+                        and isfinite(display_scale) and display_scale > 0):
+                    self._coordinate_scale = display_scale / pixel_density
+            except AttributeError:
+                pass
             set_minimum = self._bind(
                 "SDL_SetWindowMinimumSize", ctypes.c_bool,
                 [ctypes.c_void_p, ctypes.c_int, ctypes.c_int],
@@ -512,28 +517,42 @@ class SDL3Window:
 
         pixel_w = ctypes.c_int(window_size[0])
         pixel_h = ctypes.c_int(window_size[1])
-        self._bind(
-            "SDL_GetWindowSizeInPixels", ctypes.c_bool,
-            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
-        )(self._window, ctypes.byref(pixel_w), ctypes.byref(pixel_h))
+        try:
+            get_pixel_size = self._bind(
+                "SDL_GetWindowSizeInPixels", ctypes.c_bool,
+                [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+            )
+            if not get_pixel_size(
+                self._window, ctypes.byref(pixel_w), ctypes.byref(pixel_h)
+            ):
+                pixel_w.value, pixel_h.value = window_size
+        except AttributeError:
+            # Older SDL test doubles/custom hosts may expose logical size only.
+            pixel_w.value, pixel_h.value = window_size
         pixel_size = (int(pixel_w.value), int(pixel_h.value))
         if min(*window_size, *pixel_size) <= 0:
             raise SDL3Error("SDL returned an invalid window or pixel size.")
 
-        get_pixel_density = self._bind(
-            "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
-        )
-        get_display_scale = self._bind(
-            "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
-        )
-        pixel_density = float(get_pixel_density(self._window))
-        display_scale = float(get_display_scale(self._window))
-        if pixel_density <= 0:
+        try:
+            get_pixel_density = self._bind(
+                "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
+            )
+            pixel_density = float(get_pixel_density(self._window))
+        except AttributeError:
             pixel_density = pixel_size[0] / window_size[0]
-        if display_scale <= 0:
+        try:
+            get_display_scale = self._bind(
+                "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
+            )
+            display_scale = float(get_display_scale(self._window))
+        except AttributeError:
+            display_scale = pixel_density
+        if not isfinite(pixel_density) or pixel_density <= 0:
+            pixel_density = pixel_size[0] / window_size[0]
+        if not isfinite(display_scale) or display_scale <= 0:
             display_scale = pixel_density
         coordinate_scale = display_scale / pixel_density
-        if coordinate_scale <= 0:
+        if not isfinite(coordinate_scale) or coordinate_scale <= 0:
             coordinate_scale = 1.0
 
         self._pixel_density = pixel_density
