@@ -87,3 +87,9 @@ python examples/native/responsive_layout.py
 The breakpoint tests are in `tests/native/test_responsive_layout.py`; high-DPI metrics and aspect-fit tests are in `tests/native/test_window_metrics.py`.
 
 The live SDL3/Skia integration workflow should also be run on real supported desktop platforms. A virtual X11 window smoke test does not replace Windows/macOS/Linux hardware and mixed-DPI monitor validation.
+
+
+Moving a window between monitors is handled by SDL's window-display-changed
+and window-display-scale-changed events. The host re-reads window size,
+pixel density and display scale, then synchronizes the layout and Skia
+backing surface again.
