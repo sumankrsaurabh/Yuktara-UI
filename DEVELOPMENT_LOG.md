@@ -295,7 +295,7 @@ This timeline records the documented source milestones retained in the repositor
 | 3.1 — general-purpose component library | Responsive Grid, Container, ScrollView, Image, Table, NavigationDrawer, Calendar, DatePicker, TreeView and SDL3-backed FilePicker. |
 | 3.2 — runtime stabilization | Retained-tree reconciliation, UI-thread scheduling, runtime/window lifecycle, logical/backing-pixel sizing, touch-coordinate conversion and integrated SDL3 host loop. |
 | 3.3 — advanced layout | Percentage dimensions and constraints, row/column flex wrapping, flex basis, baseline alignment, absolute positioning, GridItem placement and spans. |
-| 3.4 — development in progress (not released) | Permanent cross-platform CI, opt-in SDL3/Skia desktop smoke workflow, SDL3 IME text-editing event decoding and routing, TextField/TextArea pre-edit preview/underline, commit/cancel handling, measured candidate-window positioning, and dedicated regression tests. Package metadata remains at 3.3.0.dev0 until a release decision. |
+| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops and responsive galleries. Regression tests are committed but CI verification is pending. Package metadata remains at 3.3.0.dev0 until a release decision. |
 
 ## 11. Verification record
 
