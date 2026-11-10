@@ -37,14 +37,14 @@ def grapheme_spans(text: str) -> tuple[tuple[int, int], ...]:
     """Return extended grapheme spans, using ``regex`` when installed.
 
     The optional ``regex`` package implements Unicode extended grapheme
-    clusters via ``\\X``. Without it, a dependency-free fallback covers common
+    clusters via ``\X``. Without it, a dependency-free fallback covers common
     combining marks, variation selectors, emoji modifiers, ZWJ sequences,
     regional-indicator pairs and Indic virama conjuncts.
     """
     if not isinstance(text, str):
         raise TypeError("text must be a string")
 
-    # Prefer the maintained ``regex`` package's Unicode \\X implementation
+    # Prefer the maintained ``regex`` package's Unicode \X implementation
     # (extended grapheme clusters, UAX #29). Keep the local segmenter as a
     # dependency-free fallback so the base installation remains lightweight.
     try:
@@ -54,7 +54,7 @@ def grapheme_spans(text: str) -> tuple[tuple[int, int], ...]:
     if unicode_regex is not None:
         return tuple(
             (match.start(), match.end())
-            for match in unicode_regex.finditer(r"\\X", text)
+            for match in unicode_regex.finditer(r"\X", text)
         )
 
     spans: list[tuple[int, int]] = []
