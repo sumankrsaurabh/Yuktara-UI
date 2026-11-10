@@ -229,3 +229,41 @@ def test_sdl3_window_sets_candidate_area_using_window_coordinates():
         "rect": (12, 34, 200, 24),
         "cursor": 56,
     }
+
+
+
+def test_text_input_service_is_independent_from_clipboard_service():
+    class Clipboard:
+        def get_text(self):
+            return "from clipboard"
+
+        def set_text(self, _value):
+            return True
+
+    class TextInputService:
+        def __init__(self):
+            self.started = 0
+            self.stopped = 0
+            self.cleared = 0
+
+        def start_text_input(self):
+            self.started += 1
+
+        def stop_text_input(self):
+            self.stopped += 1
+
+        def clear_composition(self):
+            self.cleared += 1
+
+    clipboard = Clipboard()
+    text_input = TextInputService()
+    field = TextField("value", clipboard=clipboard, text_input=text_input)
+    field.build()
+
+    field._focus()
+    field._blur()
+
+    assert text_input.started == 1
+    assert text_input.stopped == 1
+    assert text_input.cleared == 1
+    assert field._clipboard_get() == "from clipboard"
