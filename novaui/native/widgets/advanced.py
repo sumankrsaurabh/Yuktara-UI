@@ -852,7 +852,7 @@ class ListDetailPane:
             list_items.append(node)
 
         self._list_pane = LayoutNode.column(
-            *list_items, spacing=4, width=self.list_width,
+            *list_items, spacing=4,
             padding=Insets.all(10), background=t.surface,
             border_color=t.border, border_width=1,
             accessibility_role="list", accessibility_label="Items",
@@ -913,8 +913,12 @@ class ListDetailPane:
             cross_align=Alignment.STRETCH,
             accessibility_role="group",
         )
+        wide_list = LayoutNode.box(
+            self._list_pane, width=self.list_width,
+            accessibility_role="group", accessibility_label="Master list",
+        )
         wide = LayoutNode.row(
-            self._list_pane, wide_detail,
+            wide_list, wide_detail,
             cross_align=Alignment.STRETCH,
             accessibility_role="group",
         )
