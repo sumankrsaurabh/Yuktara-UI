@@ -22,7 +22,8 @@ def main() -> None:
     from novaui.native import (
         Badge, Button, Calendar, Card, Container, DatePicker, FilePicker,
         Grid, Image, Label, NavigationDrawer, NavigationItem, NativeRuntime,
-        NativeTheme, ScrollView, Table, TreeItem, TreeView, column, row,
+        NativeTheme, Responsive, ResponsiveVariant, ScrollView, Table,
+        TreeItem, TreeView, column, row,
     )
         from novaui.native.platform import SDL3Window
     from novaui.native.platform.skia_bridge import renderer_frame
@@ -33,14 +34,17 @@ def main() -> None:
     date_label = Label("No date selected", color=theme.muted, size=12)
     file_label = Label("No file selected", color=theme.muted, size=12)
 
+    navigation_items = [
+        NavigationItem("Overview", icon="⌂", key="overview"),
+        NavigationItem("Components", icon="▦", key="components"),
+        NavigationItem("Documents", icon="▤", badge="3", key="documents"),
+        NavigationItem("Settings", icon="⚙", key="settings"),
+    ]
     navigation = NavigationDrawer(
-        [
-            NavigationItem("Overview", icon="⌂", key="overview"),
-            NavigationItem("Components", icon="▦", key="components"),
-            NavigationItem("Documents", icon="▤", badge="3", key="documents"),
-            NavigationItem("Settings", icon="⚙", key="settings"),
-        ],
-        selected="overview", width=210, theme=theme,
+        navigation_items, selected="overview", width=210, theme=theme,
+    )
+    compact_navigation = NavigationDrawer(
+        navigation_items, selected="overview", width=72, compact=True, theme=theme,
     )
 
     summary_cards = Grid(
@@ -146,8 +150,40 @@ def main() -> None:
         axis="vertical", width=900, height=780,
         accessibility_label="Advanced component gallery",
     )
-    root = row(navigation, content, spacing=14, padding=16,
-               background=theme.background)
+    root = Responsive(
+        variants=(
+            ResponsiveVariant(
+                0,
+                column(
+                    compact_navigation,
+                    content,
+                    spacing=8,
+                    padding=8,
+                    background=theme.background,
+                ),
+            ),
+            ResponsiveVariant(
+                640,
+                row(
+                    compact_navigation,
+                    content,
+                    spacing=10,
+                    padding=10,
+                    background=theme.background,
+                ),
+            ),
+            ResponsiveVariant(
+                1040,
+                row(
+                    navigation,
+                    content,
+                    spacing=14,
+                    padding=16,
+                    background=theme.background,
+                ),
+            ),
+        )
+    )
 
     renderer = SkiaRenderer(RenderSize(1160, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1160, 820,
