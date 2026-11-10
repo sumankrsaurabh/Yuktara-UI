@@ -46,6 +46,8 @@ class LayoutNode:
     font_family: str = "Inter"
     font_weight: str = "normal"
     text_selection: Optional[tuple[int, int]] = None
+    text_composition: Optional[tuple[int, int]] = None
+    text_composition_color: object = 0xFF2563EB
     text_style_spans: tuple = ()
     text_paragraph_styles: tuple = ()
     text_cursor: Optional[int] = None
@@ -76,6 +78,7 @@ class LayoutNode:
     on_wheel: Optional[Callable] = None
     on_key_down: Optional[Callable] = None
     on_text_input: Optional[Callable] = None
+    on_text_editing: Optional[Callable] = None
     on_focus: Optional[Callable] = None
     on_blur: Optional[Callable] = None
     paint_callback: Optional[Callable] = field(default=None, repr=False)
@@ -152,6 +155,10 @@ class LayoutNode:
         if self.text_selection is not None:
             if len(self.text_selection) != 2 or min(self.text_selection) < 0:
                 raise ValueError("text_selection must be a non-negative (start, end) pair")
+        if self.text_composition is not None:
+            if (len(self.text_composition) != 2 or min(self.text_composition) < 0
+                    or self.text_composition[1] < self.text_composition[0]):
+                raise ValueError("text_composition must be an ordered non-negative (start, end) pair")
         if self.text_style_spans or self.text_paragraph_styles:
             from ..text.measure import TextMeasurer
             TextMeasurer._normalize_style_spans(self.text or "", self.text_style_spans)
