@@ -526,3 +526,12 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added regression tests for scaffold mode changes, selection synchronization, list-detail transitions, disabled entries and retained content identity.
 - Documented both patterns and their application-owned navigation/content responsibilities.
 - These primitives are not yet a complete navigation framework: route stacks, deep links, restoration across process restarts, multi-pane inspector workflows and OS accessibility integration remain open.
+
+
+## CI feedback and regression-test corrections
+
+- The first CI run for PR #2 executed the native suite and exposed five failures in newly added test fixtures/assertions and the resize-host test's startup-sync expectation.
+- Corrected the adaptive grid fixture to construct a supported `LayoutNode("grid", ...)` node.
+- Corrected compact list-detail and navigation test tree paths and changed the disabled-navigation assertion to verify that no click callback is installed.
+- Corrected the resize test to expect the one initial runtime-size synchronization plus one synchronization for the coalesced resize event batch.
+- These corrections are committed after the failing CI head. A CI run for the corrected latest commit has not yet been reported; do not treat this as a green test suite.
