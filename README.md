@@ -1,7 +1,7 @@
 # Yuktara UI
 
 **Yuktara UI** is a Python-first native UI framework by **Yuktara Technologies**.
-It uses SDL3 for the desktop window/input layer and Skia for CPU raster rendering.
+It uses SDL3 for the desktop window/input layer and Skia for rendering, with CPU raster as the default and an experimental OpenGL GPU surface for hosts that supply a current GL context.
 The historical Python import namespace is currently `novaui` and will be migrated
 only through a planned compatibility release.
 
@@ -15,7 +15,7 @@ For a cumulative inventory of implemented features, development milestones, exam
 ## Native stack
 
 - **SDL3 3.4.20** — native desktop window and event host.
-- **Skia Python 144.1** — CPU raster rendering and text metrics.
+- **Skia Python 144.1** — CPU raster rendering and text metrics by default; optional off-screen OpenGL GPU rendering through the `gpu` extra.
 - **Python** — layout, retained tree, reactivity, normalized input and runtime.
 - **Native typography and editing** — Inter-first glyph fallback runs,
   cluster-aware text metrics, selection/caret painting, text scrolling,
@@ -192,8 +192,10 @@ SDL3 window creation, display scaling, GPU/driver behavior, audio/video backend
 availability, IME composition, clipboard integration and installed font fallback
 coverage on each supported OS. SDL3 clipboard APIs are implemented, but their
 end-to-end desktop behavior is not yet certified on each target OS.
-The current Skia renderer uses CPU raster surfaces; direct GPU surface integration
-is future work. Mobile backends are not included.
+The integrated SDL3 presenter still uploads CPU `PixelFrame` buffers. The optional
+`SkiaGpuRenderer` currently provides an experimental off-screen OpenGL render target;
+direct zero-copy presentation into SDL3 and Vulkan/Metal/Direct3D integration remain
+future work. Mobile backends are not included.
 
 ## License
 
