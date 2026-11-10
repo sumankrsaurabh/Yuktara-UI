@@ -102,9 +102,9 @@ class AdaptiveVariant:
 class AdaptiveLayout:
     """Choose a retained layout variant using available width AND height.
 
-    Variants must be ordered by non-decreasing minimum width and height.
-    The first variant is the fallback. Thresholds use logical window units,
-    so display scaling and backing resolution do not change composition.
+    The first variant is the fallback. Later matching variants take
+    precedence, allowing explicit height-only and width-only alternatives.
+    Thresholds use logical window units, independent of display scaling.
     """
 
     variants: Sequence[AdaptiveVariant | tuple[float, float, object]]
@@ -116,7 +116,7 @@ class AdaptiveLayout:
         if not self.variants:
             raise ValueError("AdaptiveLayout requires at least one variant")
         normalized = []
-        previous = (-1.0, -1.0)
+        seen_thresholds = set()
         for variant in self.variants:
             if isinstance(variant, AdaptiveVariant):
                 minimum_width, minimum_height, child = (
@@ -133,14 +133,12 @@ class AdaptiveLayout:
                    or value < 0 for value in values):
                 raise ValueError("adaptive variant minimum dimensions must be non-negative")
             current = (float(minimum_width), float(minimum_height))
-            if current[0] < previous[0] or current[1] < previous[1] or current == previous:
-                raise ValueError(
-                    "adaptive variant thresholds must be ordered by non-decreasing width and height"
-                )
+            if current in seen_thresholds:
+                raise ValueError("adaptive variant thresholds must be unique")
             if child is None:
                 raise ValueError("adaptive variant children cannot be None")
             normalized.append((current[0], current[1], _node(child)))
-            previous = current
+            seen_thresholds.add(current)
         return LayoutNode(
             "adaptive", adaptive_variants=tuple(normalized),
             padding=_insets(self.padding, "padding"), align=self.align,
