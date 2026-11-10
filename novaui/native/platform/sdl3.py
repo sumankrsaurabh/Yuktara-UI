@@ -315,12 +315,16 @@ class SDL3Window:
             raise TypeError("text input area coordinates and cursor must be integers")
         if width <= 0 or height <= 0 or cursor < 0:
             raise ValueError("text input area must have positive dimensions and a non-negative cursor")
-        rect = _SDLRect(int(x), int(y), int(width), int(height))
+        scale = self._coordinate_scale
+        rect = _SDLRect(
+            round(x * scale), round(y * scale),
+            max(1, round(width * scale)), max(1, round(height * scale)),
+        )
         set_area = self._bind(
             "SDL_SetTextInputArea", ctypes.c_bool,
             [ctypes.c_void_p, ctypes.POINTER(_SDLRect), ctypes.c_int],
         )
-        if not set_area(self._window, ctypes.byref(rect), int(cursor)):
+        if not set_area(self._window, ctypes.byref(rect), round(cursor * scale)):
             raise SDL3Error(f"SDL_SetTextInputArea failed: {self._error()}")
 
     def clear_composition(self) -> None:
