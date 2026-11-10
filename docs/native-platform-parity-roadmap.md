@@ -104,6 +104,18 @@ classifies logical window width and height, exposes compact/medium/expanded/
 large/extra-large width classes, and updates `NativeRuntime.adaptive_info`
 after a resize. The SDL runtime host coalesces resize and DPI events per event
 batch and skips identical runtime resizes. This closes the initial window-size
-classification gap, but adaptive navigation scaffolds, state-preserving
-navigation transitions, multi-pane layouts and physical-device validation are
-still open work.
+classification gap, and the first adaptive navigation scaffold now switches
+between bottom bar, rail and drawer while retaining its selection model and
+content node. Advanced list-detail/workspace panes, page-state restoration,
+native preview tooling and physical-device validation remain open work.
+
+
+## Progress update: adaptive navigation scaffold
+
+The native widget library now includes `NavigationScaffold`. It selects a
+bottom navigation bar, navigation rail or full drawer from logical window
+width and height. The same content node is shared across all three retained
+compositions; selected destination state is synchronized across every
+navigation presentation. This is a first navigation scaffold, not yet a full
+multi-pane navigation framework or a substitute for platform navigation
+patterns and accessibility-provider integration.
