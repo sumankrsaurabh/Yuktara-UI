@@ -585,6 +585,8 @@ class NavigationScaffold:
             raise ValueError("min_drawer_width must exceed min_rail_width")
         if self.content is None:
             raise ValueError("NavigationScaffold content cannot be None")
+        if self.on_select is not None and not callable(self.on_select):
+            raise TypeError("on_select must be callable")
         self._item_nodes: dict[str, list[LayoutNode]] = {}
         self._content_node: LayoutNode | None = None
         self._root: LayoutNode | None = None
@@ -708,8 +710,10 @@ class ListDetailItem:
     disabled: bool = False
 
     def __post_init__(self):
-        if not self.label:
-            raise ValueError("ListDetailItem label must not be empty")
+        if not isinstance(self.label, str) or not self.label:
+            raise ValueError("ListDetailItem label must be a non-empty string")
+        if self.subtitle is not None and not isinstance(self.subtitle, str):
+            raise TypeError("ListDetailItem subtitle must be a string or None")
         if self.content is None:
             raise ValueError("ListDetailItem content cannot be None")
 
@@ -734,6 +738,8 @@ class ListDetailPane:
     def __post_init__(self):
         if not self.items:
             raise ValueError("ListDetailPane needs at least one item")
+        if self.on_select is not None and not callable(self.on_select):
+            raise TypeError("on_select must be callable")
         if any(not isinstance(item, ListDetailItem) for item in self.items):
             raise TypeError("items must contain ListDetailItem instances")
         keys = [item.key or item.label for item in self.items]
