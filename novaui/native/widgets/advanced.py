@@ -805,6 +805,8 @@ class ListDetailItem:
             raise ValueError("ListDetailItem label must be a non-empty string")
         if self.subtitle is not None and not isinstance(self.subtitle, str):
             raise TypeError("ListDetailItem subtitle must be a string or None")
+        if isinstance(self.disabled, bool) is False:
+            raise TypeError("ListDetailItem disabled must be a bool")
         if self.content is None:
             raise ValueError("ListDetailItem content cannot be None")
 
