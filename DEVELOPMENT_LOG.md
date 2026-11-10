@@ -295,13 +295,13 @@ This timeline records the documented source milestones retained in the repositor
 | 3.1 — general-purpose component library | Responsive Grid, Container, ScrollView, Image, Table, NavigationDrawer, Calendar, DatePicker, TreeView and SDL3-backed FilePicker. |
 | 3.2 — runtime stabilization | Retained-tree reconciliation, UI-thread scheduling, runtime/window lifecycle, logical/backing-pixel sizing, touch-coordinate conversion and integrated SDL3 host loop. |
 | 3.3 — advanced layout | Percentage dimensions and constraints, row/column flex wrapping, flex basis, baseline alignment, absolute positioning, GridItem placement and spans. |
-| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops and responsive galleries. Regression tests are committed but CI verification is pending. Package metadata remains at 3.3.0.dev0 until a release decision. |
+| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops and responsive galleries. Regression tests and the permanent cross-platform CI matrix are passing; native SDL3/Skia live-window validation remains in progress. Package metadata remains at 3.3.0.dev0 until a release decision. Package metadata remains at 3.3.0.dev0 until a release decision. |
 
 ## 11. Verification record
 
-### Recorded 3.3.0.dev0 baseline checks
+### 3.3.0.dev0 source-import baseline
 
-The source-import CI run recorded on 2026-11-10 completed successfully and reported:
+The original source-import workflow recorded on 2026-11-10 completed successfully and reported:
 
 - 283 tests passed.
 - Python compilation check passed.
@@ -311,11 +311,26 @@ The source-import CI run recorded on 2026-11-10 completed successfully and repor
 
 Workflow record: [Import verified Yuktara UI Native 3.3.0.dev0](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42777562642).
 
+### 3.4 development verification (unreleased)
+
+The permanent cross-platform CI workflow completed successfully on 2026-11-10 for commit
+`4a4f8cc45dd37d2d2172d6ee0c27bff5d7e48127`:
+
+- 306 tests passed.
+- All 18 operating-system/Python combinations passed: Windows, macOS and Ubuntu with Python 3.10–3.15.
+- Package compilation and public import checks passed on all matrix jobs.
+- Native package statement coverage: 84%.
+- Wheel build, wheel installation and installed-distribution import passed.
+
+Workflow record: [CI — 2026-11-10, run 42786741828](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42786741828).
+
+The separate Linux/Xvfb SDL3 + Skia live-window integration job is still in progress at this review. It has passed installation of system build prerequisites (including XTest) and project installation; SDL3/Skia provisioning and the actual window/presentation smoke test have not yet completed. Do not treat the native desktop integration as certified until that job passes.
+
 The automated tests primarily validate Python-side behavior using backend-injected services, normalized events and recording renderers. They are not a substitute for testing actual desktop hardware, drivers, system dialogs, input methods, high-DPI displays or accessibility tools.
 
 ## 11A. Current 3.4 development work (not yet a release)
 
-The package version remains `3.3.0.dev0`; the following work is on `main` as development code and must pass the new CI before being treated as verified:
+The package version remains `3.3.0.dev0`; the following work is on `main` as unreleased development code. Automated CI verification is recorded below, while native OS/device validation remains separate:
 
 ### Continuous integration
 
@@ -323,7 +338,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 - The workflow also builds and installs the wheel, verifies the installed package outside the source checkout, and measures package coverage.
 - `.github/workflows/native-integration.yml` runs on main-branch changes to platform, runtime, rendering, layout, dependency or smoke-test code, and can also be dispatched manually. Its Linux/Xvfb job installs SDL3 build prerequisites, provisions Skia/SDL3 through `python -m novaui setup`, opens a real SDL3 window and presents Skia frames.
 - `scripts/native_runtime_smoke.py` is the bounded three-frame desktop smoke application.
-- The ordinary test matrix is backend-neutral by design; the opt-in job is the first actual SDL3 + Skia window smoke check. The new workflows must be observed completing successfully before their results are recorded as passing.
+- The ordinary test matrix is backend-neutral by design. The SDL3 + Skia live-window workflow is separate and is not considered passed until its window-open/frame-presentation step completes.
 
 ### Window resizing, high DPI and responsive layout
 
@@ -338,7 +353,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 - Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
 - All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
 - Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.
-- Added breakpoint/reflow tests in `tests/native/test_responsive_layout.py`, high-DPI/window-coordinate/letterbox/monitor-event tests in `tests/native/test_window_metrics.py`, and scaled IME candidate-window tests in `tests/native/test_ime_composition.py`; results are pending CI execution.
+- Added breakpoint/reflow tests in `tests/native/test_responsive_layout.py`, high-DPI/window-coordinate/letterbox/monitor-event tests in `tests/native/test_window_metrics.py`, and scaled IME candidate-window tests in `tests/native/test_ime_composition.py`; all are included in the successful 306-test CI run.
 
 ### IME composition path
 
@@ -349,7 +364,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 - Text input/IME operations are injectable through a dedicated `text_input` service; the existing `clipboard` adapter remains a backward-compatible fallback. OS clipboard access stays separately injectable.
 - SDL3 `SDL_SetTextInputArea` and `SDL_ClearComposition` are exposed through `SDL3Window`; the candidate area is updated from measured caret geometry after layout.
 - Committed `TEXT_INPUT` replaces the original selected range; Escape/blur cancels the pre-edit state.
-- Added eight targeted tests in `tests/native/test_ime_composition.py`, covering SDL event decode, preview, commit, cancellation, runtime routing, candidate-area binding and independent input/clipboard services. They are new regression tests; do not count them as passing until the CI test job reports success.
+- Added eight targeted tests in `tests/native/test_ime_composition.py`, covering SDL event decode, preview, commit, cancellation, runtime routing, candidate-area binding and independent input/clipboard services; they pass in the verified 306-test CI run.
 
 ## 12. Known limitations and unfinished integration
 
