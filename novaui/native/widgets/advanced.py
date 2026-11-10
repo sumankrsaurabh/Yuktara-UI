@@ -541,6 +541,161 @@ class NavigationDrawer:
 
 
 @dataclass
+class NavigationScaffold:
+    """Window-adaptive navigation chrome around a persistent content view.
+
+    Compact windows use a bottom bar, medium windows use a navigation rail,
+    and spacious desktop windows use a full drawer. The same content node and
+    selection model are retained across all three compositions.
+    """
+
+    items: Sequence[NavigationItem]
+    content: object
+    selected: str | None = None
+    on_select: Callable[[NavigationItem], None] | None = None
+    min_rail_width: float = 600
+    min_drawer_width: float = 1100
+    min_drawer_height: float = 640
+    drawer_width: float = 248
+    rail_width: float = 76
+    bottom_height: float = 68
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    def __post_init__(self):
+        if not self.items:
+            raise ValueError("NavigationScaffold needs at least one item")
+        if any(not isinstance(item, NavigationItem) for item in self.items):
+            raise TypeError("items must contain NavigationItem instances")
+        keys = [item.key or item.label for item in self.items]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Navigation item keys must be unique")
+        if self.selected is not None and self.selected not in keys and self.selected not in {
+            item.label for item in self.items
+        }:
+            raise ValueError("selected must match an item key or label")
+        dimensions = (
+            self.min_rail_width, self.min_drawer_width, self.min_drawer_height,
+            self.drawer_width, self.rail_width, self.bottom_height,
+        )
+        if any(isinstance(value, bool) or not isinstance(value, (int, float))
+               or not isfinite(float(value)) or value <= 0 for value in dimensions):
+            raise ValueError("navigation scaffold dimensions must be finite and positive")
+        if self.min_drawer_width <= self.min_rail_width:
+            raise ValueError("min_drawer_width must exceed min_rail_width")
+        if self.content is None:
+            raise ValueError("NavigationScaffold content cannot be None")
+        self._item_nodes: list[LayoutNode] = []
+        self._content_node: LayoutNode | None = None
+        self._root: LayoutNode | None = None
+
+    def _key(self, item: NavigationItem) -> str:
+        return item.key or item.label
+
+    def _select(self, item: NavigationItem):
+        if item.disabled:
+            return
+        self.selected = self._key(item)
+        self._sync_selection()
+        if self.on_select is not None:
+            self.on_select(item)
+
+    def _sync_selection(self):
+        t = self.theme
+        for node, item in zip(self._item_nodes, self._all_items):
+            selected = self.selected in {self._key(item), item.label}
+            node.background = t.primary_soft if selected else None
+            node.text_color = (
+                t.disabled_text if item.disabled else
+                t.primary if selected else t.foreground
+            )
+            node.accessibility_selected = selected
+
+    def _navigation_item_node(self, item: NavigationItem, mode: str) -> LayoutNode:
+        t = self.theme
+        selected = self.selected in {self._key(item), item.label}
+        if mode == "rail":
+            label = item.icon or item.label[:1]
+            padding = Insets.symmetric(vertical=13, horizontal=10)
+        elif mode == "bottom":
+            label = ((item.icon + "\\n") if item.icon else "") + item.label
+            padding = Insets.symmetric(vertical=8, horizontal=4)
+        else:
+            prefix = (item.icon + "  ") if item.icon else ""
+            suffix = ("   " + item.badge) if item.badge else ""
+            label = prefix + item.label + suffix
+            padding = Insets.symmetric(vertical=11, horizontal=12)
+        node = LayoutNode(
+            "text", text=label, font_size=13,
+            text_color=t.disabled_text if item.disabled else (t.primary if selected else t.foreground),
+            padding=padding, background=t.primary_soft if selected else None,
+            radius=t.radius_small,
+            weight=1 if mode == "bottom" else 0,
+            accessibility_role="navigationitem",
+            accessibility_label=item.label,
+            accessibility_disabled=item.disabled,
+            accessibility_selected=selected,
+            on_click=None if item.disabled else (lambda _event=None, value=item: self._select(value)),
+        )
+        self._item_nodes.append(node)
+        return node
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        self._item_nodes = []
+        self._all_items = tuple(self.items)
+        content_node = _node(self.content)
+        self._content_node = LayoutNode.box(
+            content_node, weight=1, padding=Insets.all(16),
+            accessibility_role="main", accessibility_label="Main content",
+        )
+
+        bottom_items = [self._navigation_item_node(item, "bottom") for item in self.items]
+        bottom_bar = LayoutNode.row(
+            *bottom_items, spacing=2, height=self.bottom_height,
+            padding=Insets.symmetric(horizontal=8, vertical=4),
+            background=t.surface, border_color=t.border, border_width=1,
+            cross_align=Alignment.CENTER,
+            accessibility_role="navigation", accessibility_label="Bottom navigation",
+        )
+        compact = LayoutNode.column(
+            self._content_node, bottom_bar, cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+
+        rail_items = [self._navigation_item_node(item, "rail") for item in self.items]
+        rail = LayoutNode.column(
+            *rail_items, spacing=6, width=self.rail_width,
+            padding=Insets.symmetric(horizontal=6, vertical=12),
+            background=t.surface, border_color=t.border, border_width=1,
+            accessibility_role="navigation", accessibility_label="Navigation rail",
+        )
+        medium = LayoutNode.row(
+            rail, self._content_node, cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+
+        drawer_items = [self._navigation_item_node(item, "drawer") for item in self.items]
+        drawer = LayoutNode.column(
+            *drawer_items, spacing=6, width=self.drawer_width,
+            padding=Insets.all(10), background=t.surface,
+            border_color=t.border, border_width=1,
+            accessibility_role="navigation", accessibility_label="Main navigation",
+        )
+        expanded = LayoutNode.row(
+            drawer, self._content_node, cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+        self._root = AdaptiveLayout(
+            variants=(
+                AdaptiveVariant(0, 0, compact),
+                AdaptiveVariant(self.min_rail_width, 0, medium),
+                AdaptiveVariant(self.min_drawer_width, self.min_drawer_height, expanded),
+            )
+        ).build()
+        return self._root
+
+
+@dataclass
 class Calendar:
     """Month calendar with date constraints and native day selection."""
     value: date | None = None
@@ -898,6 +1053,6 @@ class TreeView:
 __all__ = [
     "AdaptiveLayout", "AdaptiveVariant", "Calendar", "Container", "DatePicker",
     "Grid", "GridItem", "Image", "Responsive", "ResponsiveVariant",
-    "NavigationDrawer", "NavigationItem", "Positioned", "ScrollView", "Table",
+    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "Positioned", "ScrollView", "Table",
     "TreeItem", "TreeView", "FilePicker",
 ]
