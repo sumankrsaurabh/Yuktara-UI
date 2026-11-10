@@ -14,6 +14,7 @@ dependencies = []
 
 [project.optional-dependencies]
 native = ["skia-python==144.1"]
+gpu = ["skia-python==144.1"]
 unicode = ["regex>=2023.12.25"]
 syntax = ["Pygments>=2.17"]
 markdown = ["mistune>=3.0,<4"]
