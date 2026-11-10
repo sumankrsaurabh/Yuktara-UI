@@ -1,6 +1,6 @@
 """Yuktara UI's built-in native component library."""
 from .core import (
-    Badge, Button, Card, Checkbox, Divider, Dropdown, Label, ProgressBar,
+    Badge, Button, Card, Checkbox, Divider, Dropdown, IconButton, Label, ProgressBar, Surface,
     RadioGroup, RichText, SegmentedControl, Slider, Spacer, Switch, TabItem, Tabs,
     TextArea, TextField, column, row, stack,
 )
@@ -10,7 +10,7 @@ from .advanced import (AdaptiveLayout, AdaptiveVariant, Calendar, Container, Dat
                        Table, TreeItem, TreeView, FilePicker, Responsive, ResponsiveVariant)
 
 __all__ = [
-    "Badge", "Button", "Card", "Checkbox", "Divider", "Dropdown", "Label",
+    "Badge", "Button", "Card", "Checkbox", "Divider", "Dropdown", "IconButton", "Label", "Surface",
     "ProgressBar", "RadioGroup", "RichText", "SegmentedControl", "Slider", "Spacer",
     "Switch", "TabItem", "Tabs", "TextArea", "TextField", "column", "row",
     "stack", "ContextMenu", "Dialog", "MenuItem", "Popover", "Toast",
