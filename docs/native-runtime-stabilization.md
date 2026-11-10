@@ -114,3 +114,9 @@ On Windows/X11-style physical window coordinate systems, the host multiplies
 the initial native window size by its UI coordinate scale. On macOS/Wayland
 logical point systems the scale factor is normally 1. Moving the window to
 another monitor causes a fresh size/pixel-density/display-scale query.
+
+
+On Debian/Ubuntu systems, the automatic SDL3 source-build prerequisites include
+`libxtst-dev` (XTest headers) in addition to the X11/Wayland, audio, graphics,
+CMake and compiler development packages. Equivalent package names are included
+for the supported Fedora, Arch, openSUSE and Alpine bootstrap paths.
