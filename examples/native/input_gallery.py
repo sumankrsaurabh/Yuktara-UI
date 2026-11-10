@@ -7,7 +7,7 @@ import skia
 from novaui.native import (
     Alignment,
     Badge, Card, Dropdown, Label, NativeRuntime, NativeTheme, SegmentedControl,
-    Slider, TabItem, Tabs, TextArea, TextField, column, row,
+    Responsive, ResponsiveVariant, Slider, TabItem, Tabs, TextArea, TextField, column, row,
 )
 from novaui.native.platform import SDL3Window
 from novaui.native.platform.skia_bridge import renderer_frame
@@ -45,18 +45,36 @@ def main():
             notes,
             Label("Profile name: " + name.value, color=theme.muted, size=12, theme=theme),
         ), theme=theme),
-        row(
-            Card((
-                Label("Dropdown", size=17, weight="semibold", theme=theme),
-                period,
-                Label("Choose a reporting interval", color=theme.muted, size=12, theme=theme),
-            ), theme=theme),
-            Card((
-                Label("Slider", size=17, weight="semibold", theme=theme),
-                zoom,
-                Label("Zoom level is adjusted with arrows or drag", color=theme.muted, size=12, theme=theme),
-            ), theme=theme),
-            spacing=14,
+        Responsive(
+            variants=(
+                ResponsiveVariant(0, column(
+                    Card((
+                        Label("Dropdown", size=17, weight="semibold", theme=theme),
+                        period,
+                        Label("Choose a reporting interval", color=theme.muted, size=12, theme=theme),
+                    ), theme=theme),
+                    Card((
+                        Label("Slider", size=17, weight="semibold", theme=theme),
+                        zoom,
+                        Label("Zoom level is adjusted with arrows or drag", color=theme.muted, size=12, theme=theme),
+                    ), theme=theme),
+                    spacing=12,
+                )),
+                ResponsiveVariant(720, row(
+                    Card((
+                        Label("Dropdown", size=17, weight="semibold", theme=theme),
+                        period,
+                        Label("Choose a reporting interval", color=theme.muted, size=12, theme=theme),
+                    ), theme=theme),
+                    Card((
+                        Label("Slider", size=17, weight="semibold", theme=theme),
+                        zoom,
+                        Label("Zoom level is adjusted with arrows or drag", color=theme.muted, size=12, theme=theme),
+                    ), theme=theme),
+                    spacing=14,
+                    wrap=True,
+                )),
+            )
         ),
         Card((
             Label("Segmented control", size=17, weight="semibold", theme=theme),
