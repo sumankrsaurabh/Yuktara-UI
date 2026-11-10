@@ -235,11 +235,23 @@ class SDL3Window:
             self.close()
             raise SDL3Error(f"SDL_CreateWindow failed: {self._error()}")
         if self.min_width and self.min_height:
+            pixel_density = float(self._bind(
+                "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
+            )(self._window))
+            display_scale = float(self._bind(
+                "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
+            )(self._window))
+            if pixel_density > 0 and display_scale > 0:
+                self._coordinate_scale = display_scale / pixel_density
             set_minimum = self._bind(
                 "SDL_SetWindowMinimumSize", ctypes.c_bool,
                 [ctypes.c_void_p, ctypes.c_int, ctypes.c_int],
             )
-            if not set_minimum(self._window, self.min_width, self.min_height):
+            if not set_minimum(
+                self._window,
+                round(self.min_width * self._coordinate_scale),
+                round(self.min_height * self._coordinate_scale),
+            ):
                 self.close()
                 raise SDL3Error(f"SDL_SetWindowMinimumSize failed: {self._error()}")
 
