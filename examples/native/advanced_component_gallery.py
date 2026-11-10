@@ -25,7 +25,7 @@ def main() -> None:
         NativeTheme, Responsive, ResponsiveVariant, ScrollView, Table,
         TreeItem, TreeView, column, row,
     )
-        from novaui.native.platform import SDL3Window
+    from novaui.native.platform import SDL3Window
     from novaui.native.platform.skia_bridge import renderer_frame
     from novaui.native.renderer import RenderSize, SkiaRenderer
 
