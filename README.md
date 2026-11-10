@@ -15,7 +15,7 @@ For a cumulative inventory of implemented features, development milestones, exam
 ## Native stack
 
 - **SDL3 3.4.20** — native desktop window and event host.
-- **Skia Python 144.1** — CPU raster rendering and text metrics by default; optional off-screen OpenGL GPU rendering through the `gpu` extra.
+- **Skia Python 144.1** — CPU raster rendering by default; optional direct SDL3/OpenGL framebuffer rendering and off-screen GPU surfaces through the `gpu` extra.
 - **Python** — layout, retained tree, reactivity, normalized input and runtime.
 - **Native typography and editing** — Inter-first glyph fallback runs,
   cluster-aware text metrics, selection/caret painting, text scrolling,
@@ -192,10 +192,11 @@ SDL3 window creation, display scaling, GPU/driver behavior, audio/video backend
 availability, IME composition, clipboard integration and installed font fallback
 coverage on each supported OS. SDL3 clipboard APIs are implemented, but their
 end-to-end desktop behavior is not yet certified on each target OS.
-The integrated SDL3 presenter still uploads CPU `PixelFrame` buffers. The optional
-`SkiaGpuRenderer` currently provides an experimental off-screen OpenGL render target;
-direct zero-copy presentation into SDL3 and Vulkan/Metal/Direct3D integration remain
-future work. Mobile backends are not included.
+The default SDL3 presenter still uploads CPU `PixelFrame` buffers. The optional
+`graphics_backend="opengl"` path wraps SDL3's default RGBA8 framebuffer with Skia
+for direct GPU rendering; run `python examples/native/gpu_window.py` to try it.
+This experimental path still needs physical GPU/driver validation. Vulkan, Metal,
+Direct3D and mobile backends are not included.
 
 ## License
 

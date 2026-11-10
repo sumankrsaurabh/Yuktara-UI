@@ -2,28 +2,36 @@
 
 ## GPU renderer
 
-Yuktara keeps `SkiaRenderer` as the default CPU-raster backend. An experimental
-`SkiaGpuRenderer` is available for hosts that already own a current OpenGL
-context:
+Yuktara keeps `SkiaRenderer` as the default CPU-raster backend. The optional
+`SkiaGpuRenderer` can wrap SDL3's default OpenGL framebuffer for direct GPU
+drawing, without a GPU-to-CPU readback or SDL streaming-texture upload:
 
 ```python
-from novaui.native import RenderSize, SkiaGpuRenderer
+from math import sin
+from time import perf_counter
+from novaui.native.platform.sdl3 import SDL3Window
 
-# Create an OpenGL 3.x context with your platform/window host first.
-# It must be current on this thread before this line.
-renderer = SkiaGpuRenderer(RenderSize(1280, 800, scale=1.0))
-
-# Use the same draw API as SkiaRenderer:
-renderer.clear(0xFF101820)
-renderer.draw_rect(24, 24, 240, 120, 0xFF2878D0, radius=16)
-renderer.flush()  # submit Skia's queued GPU work
-
-# Optional diagnostic/export path; PNG encoding may read pixels back to CPU.
-png_bytes = renderer.to_png_bytes()
-
-# Release Skia surfaces before the host destroys its OpenGL context.
-renderer.close()
+with SDL3Window(
+    title="Yuktara GPU demo", width=1100, height=720,
+    graphics_backend="opengl", vsync=1,
+) as window:
+    renderer = window.create_gpu_renderer()
+    started = perf_counter()
+    try:
+        while True:
+            if any(event.quit_requested for event in window.poll_events()):
+                break
+            elapsed = perf_counter() - started
+            x = 420 + sin(elapsed * 1.4) * 260
+            renderer.clear(0xFF101820)
+            renderer.draw_rect(x, 300, 180, 100, 0xFF2878D0, radius=20)
+            window.present_gpu(renderer)
+    finally:
+        renderer.close()
 ```
+
+For a host that already owns an OpenGL context, off-screen rendering remains
+available with `SkiaGpuRenderer(RenderSize(...))`.
 
 Install the native Skia wheel with:
 
@@ -31,18 +39,18 @@ Install the native Skia wheel with:
 python -m pip install -e ".[gpu]"
 ```
 
-The renderer calls Skia's prebuilt Python binding GPU API
-(`GrDirectContexts.MakeGL` and `Surfaces.MakeRenderTarget`). The host remains
-responsible for creating, making current, swapping and destroying the OpenGL
-context. All renderer calls must stay on that context's owning thread.
+The renderer uses the prebuilt Skia Python binding GPU APIs
+(`GrDirectContexts.MakeGL`, `GrBackendRenderTarget` and
+`Surfaces.MakeFromBackendRenderTarget`). The host remains responsible for
+creating, making current, swapping and destroying the OpenGL context. All
+renderer calls must stay on that context's owning thread.
 
-This first GPU milestone is an **off-screen OpenGL render target**, not yet a
-drop-in replacement for the SDL3 window presenter. The existing integrated
-SDL3 loop still presents CPU `PixelFrame` buffers. Directly sharing the Skia
-render target with SDL3's presentation surface requires a platform-specific
-texture/framebuffer interop path and is intentionally not simulated with a
-costly readback. If no compatible OpenGL context or GPU-enabled Skia wheel is
-available, use `SkiaRenderer` and the normal SDL3 presentation path.
+For SDL3, set `graphics_backend="opengl"` when creating the window. Yuktara
+requests an OpenGL 3.3 core context and configures the swap interval through
+SDL3. `create_gpu_renderer()` wraps the window's default RGBA8 framebuffer;
+`present_gpu(renderer)` submits Skia work and swaps the SDL window. The
+existing `graphics_backend="sdl"` path and `present(PixelFrame)` remain the
+default CPU fallback. Recreate the GPU renderer after a drawable-size change.
 
 The backend is experimental. Driver support, context loss, high-DPI behavior,
 resource lifetime and real-device performance must be validated on each target
