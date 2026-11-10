@@ -9,8 +9,6 @@ from .geometry import Alignment, Insets, MainAxisAlignment, Rect, Size
 class LayoutNode:
     kind: str = "box"
     children: list["LayoutNode"] = field(default_factory=list)
-    responsive_variants: tuple[tuple[float, "LayoutNode"], ...] = ()
-    responsive_active_index: int = field(default=-1, init=False)
     width: Optional[float | str] = None
     height: Optional[float | str] = None
     min_width: Optional[float | str] = None
@@ -112,6 +110,8 @@ class LayoutNode:
     flex_lines: list = field(default_factory=list, init=False, repr=False)
     grid_placements: list = field(default_factory=list, init=False, repr=False)
     first_baseline: Optional[float] = field(default=None, init=False, repr=False)
+    responsive_variants: tuple[tuple[float, "LayoutNode"], ...] = ()
+    responsive_active_index: int = field(default=-1, init=False)
 
     def __post_init__(self):
         self.kind = self.kind.lower()
