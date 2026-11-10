@@ -267,9 +267,7 @@ class SDL3Window:
                 sync_window = self._bind(
                     "SDL_SyncWindow", ctypes.c_bool, [ctypes.c_void_p]
                 )
-                if not sync_window(self._window):
-                    self.close()
-                    raise SDL3Error(f"SDL_SyncWindow failed: {self._error()}")
+                sync_window(self._window)
             except AttributeError:
                 pass
 
