@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import ctypes
+from threading import get_ident
 from types import SimpleNamespace
 
 from novaui.native import NativeRuntime, TextField
 from novaui.native.platform.events import EventType, InputEvent, PointerEvent
+from novaui.native.platform.sdl3 import SDL3Window
 from novaui.native.platform.sdl3_events import (
     SDL3EventDecoder,
     SDL_EVENT_TEXT_EDITING,
@@ -186,3 +188,44 @@ def test_native_runtime_routes_text_editing_event_to_focused_text_field():
         assert runtime.frame_count >= 2
     finally:
         runtime.stop()
+
+
+
+def test_sdl3_window_sets_candidate_area_using_window_coordinates():
+    captured = {}
+
+    class SDLFunction:
+        restype = None
+        argtypes = None
+
+        def __call__(self, window, rect_pointer, cursor):
+            class Rect(ctypes.Structure):
+                _fields_ = [
+                    ("x", ctypes.c_int),
+                    ("y", ctypes.c_int),
+                    ("w", ctypes.c_int),
+                    ("h", ctypes.c_int),
+                ]
+
+            rect = ctypes.cast(rect_pointer, ctypes.POINTER(Rect)).contents
+            captured.update(
+                window=window,
+                rect=(rect.x, rect.y, rect.w, rect.h),
+                cursor=cursor,
+            )
+            return True
+
+    window = SDL3Window()
+    window._lib = SimpleNamespace(SDL_SetTextInputArea=SDLFunction())
+    window._window = 77
+    window._opened = True
+    window._closed = False
+    window._thread_id = get_ident()
+
+    window.set_text_input_area(12, 34, 200, 24, 56)
+
+    assert captured == {
+        "window": 77,
+        "rect": (12, 34, 200, 24),
+        "cursor": 56,
+    }
