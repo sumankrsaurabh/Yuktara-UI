@@ -201,12 +201,12 @@ def main() -> None:
         ),
         axis="vertical",
     ).build()
-    renderer = SkiaRenderer(RenderSize(1120, 820), skia_module=skia)
-    runtime = NativeRuntime(lambda: root, renderer, 1120, 820, clear_color=theme.background)
+    renderer = SkiaRenderer(RenderSize(960, 680), skia_module=skia)
+    runtime = NativeRuntime(lambda: root, renderer, 960, 680, clear_color=theme.background)
     window = SDL3Window(
         "Yuktara — Design System",
-        1120,
-        820,
+        960,
+        680,
         high_dpi=True,
         min_width=360,
         min_height=480,
