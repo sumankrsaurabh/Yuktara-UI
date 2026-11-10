@@ -327,17 +327,17 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 
 ### Window resizing, high DPI and responsive layout
 
-- SDL3 windows now request `SDL_WINDOW_HIGH_PIXEL_DENSITY` by default and enforce a configurable minimum client size (defaults to 320×240 UI units).
+- SDL3 windows now request `SDL_WINDOW_HIGH_PIXEL_DENSITY` by default, translate requested initial UI dimensions into native window coordinates, and enforce a configurable minimum client size (defaults to 320×240 UI units).
 - Window size, backing pixel size, SDL window display scale and pixel density are read separately and normalized into device-independent UI coordinates.
 - Mouse positions/deltas and IME candidate-window rectangles are converted using the same UI coordinate scale; touch coordinates remain normalized and are mapped by the runtime.
-- SDL window display-scale changes trigger a fresh runtime/renderer size synchronization.
+- SDL window display-scale and monitor-move changes trigger a fresh runtime/renderer size synchronization; the event decoder now recognizes `SDL_EVENT_WINDOW_DISPLAY_CHANGED` and `SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED`.
 - SDL3 texture presentation uses a centered aspect-fit destination rectangle and letterboxing instead of stretching a mismatched frame across the output surface.
-- Corrected SDL3 focus-gained/focus-lost event identifiers and added display-scale-change decoding.
+- Corrected SDL3 focus-gained/focus-lost event identifiers and added display-change/display-scale-change decoding.
 - Added public `Responsive` and `ResponsiveVariant` components. The layout engine selects width variants during measure, so the active tree changes at a breakpoint without a component rebuild.
 - Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
 - All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
 - Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.
-- Added tests in `tests/native/test_responsive_layout.py` and `tests/native/test_window_metrics.py`; results are pending CI execution.
+- Added breakpoint/reflow tests in `tests/native/test_responsive_layout.py`, high-DPI/window-coordinate/letterbox/monitor-event tests in `tests/native/test_window_metrics.py`, and scaled IME candidate-window tests in `tests/native/test_ime_composition.py`; results are pending CI execution.
 
 ### IME composition path
 
