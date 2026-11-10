@@ -68,33 +68,6 @@ class Label:
         if self.max_lines is not None and self.max_lines < 1:
             raise ValueError("max_lines must be at least 1")
 
-    def _update_text_input_area(self, _node=None):
-        """Keep SDL's native IME candidate window aligned with the laid-out caret."""
-        node = self._built_node
-        set_input_area = getattr(self._ime_service(), "set_text_input_area", None)
-        if not self._focused or node is None or not callable(set_input_area):
-            return
-        layout = node.text_layout
-        if layout is None or not callable(getattr(layout, "caret_position", None)):
-            return
-        visual_cursor = min(len(node.text or ""), self._visual_cursor())
-        caret_x, caret_y, line_index = layout.caret_position(visual_cursor)
-        line_height = layout.lines[line_index].height or layout.line_height
-        area = node.content_bounds
-        if area.width <= 0 or area.height <= 0:
-            return
-        geometry = (
-            round(area.x),
-            round(area.y + caret_y - node.text_scroll_y),
-            max(1, round(area.width)),
-            max(1, round(line_height)),
-            min(max(0, round(caret_x - node.text_scroll_x)), max(1, round(area.width))),
-        )
-        if geometry == getattr(self, "_last_text_input_area", None):
-            return
-        set_input_area(*geometry)
-        self._last_text_input_area = geometry
-
     def build(self) -> LayoutNode:
         node = _text_node(self.text, color=self.color or self.theme.foreground,
                           size=self.size, weight=self.weight, align=self.align,
@@ -547,6 +520,33 @@ class TextField:
                     node.text_scroll_y = max(0.0, caret_y + line_height - visible_height)
                 elif caret_y < node.text_scroll_y:
                     node.text_scroll_y = caret_y
+
+    def _update_text_input_area(self, _node=None):
+        """Keep SDL's native IME candidate window aligned with the laid-out caret."""
+        node = self._built_node
+        set_input_area = getattr(self._ime_service(), "set_text_input_area", None)
+        if not self._focused or node is None or not callable(set_input_area):
+            return
+        layout = node.text_layout
+        if layout is None or not callable(getattr(layout, "caret_position", None)):
+            return
+        visual_cursor = min(len(node.text or ""), self._visual_cursor())
+        caret_x, caret_y, line_index = layout.caret_position(visual_cursor)
+        line_height = layout.lines[line_index].height or layout.line_height
+        area = node.content_bounds
+        if area.width <= 0 or area.height <= 0:
+            return
+        geometry = (
+            round(area.x),
+            round(area.y + caret_y - node.text_scroll_y),
+            max(1, round(area.width)),
+            max(1, round(line_height)),
+            min(max(0, round(caret_x - node.text_scroll_x)), max(1, round(area.width))),
+        )
+        if geometry == getattr(self, "_last_text_input_area", None):
+            return
+        set_input_area(*geometry)
+        self._last_text_input_area = geometry
 
     def build(self) -> LayoutNode:
         node = LayoutNode(
