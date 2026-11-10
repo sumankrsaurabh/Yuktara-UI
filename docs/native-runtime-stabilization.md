@@ -107,3 +107,10 @@ pointer and keyboard events. Prefer the standard host loop; if a custom host is
 required, call `window.get_sizes()` / `window.sync_runtime_size(runtime)`
 when window metrics change, pass events through `runtime.handle_event(event)`,
 and advance time and process pending work on the UI thread.
+
+
+The initial `SDL3Window(width, height)` request is interpreted in UI units.
+On Windows/X11-style physical window coordinate systems, the host multiplies
+the initial native window size by its UI coordinate scale. On macOS/Wayland
+logical point systems the scale factor is normally 1. Moving the window to
+another monitor causes a fresh size/pixel-density/display-scale query.
