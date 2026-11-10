@@ -87,7 +87,7 @@ def parse_markdown(
 
     parser = mistune.create_markdown(
         renderer="ast",
-        plugins=["table", "strikethrough", "task_lists"],
+        plugins=["table", "task_lists"],
     )
     ast = parser(source)
     blocks: list[tuple[str, ParagraphStyle, tuple[tuple[int, int, dict], ...], tuple[tuple[int, int, str, str | None], ...]]] = []
