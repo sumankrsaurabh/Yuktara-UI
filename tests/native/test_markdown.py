@@ -64,3 +64,10 @@ def test_markdown_document_can_be_converted_without_losing_link_ranges():
     link = document.links[0]
     assert document.text[link.start:link.end] == "docs"
     assert link.url == "https://example.org/docs"
+
+
+def test_markdown_soft_breaks_keep_paragraph_style_indices_aligned():
+    from novaui.native import parse_markdown
+
+    document = parse_markdown("first line\\nsecond line\\n\\nnext paragraph")
+    assert document.text.count("\\n") + 1 == len(document.paragraph_styles)
