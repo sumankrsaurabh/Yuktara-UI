@@ -7,6 +7,7 @@ native drawing protocol.
 from __future__ import annotations
 
 import calendar as _calendar
+from math import isfinite
 from dataclasses import dataclass, field
 from datetime import date
 from os import PathLike
@@ -584,7 +585,7 @@ class NavigationScaffold:
             raise ValueError("min_drawer_width must exceed min_rail_width")
         if self.content is None:
             raise ValueError("NavigationScaffold content cannot be None")
-        self._item_nodes: list[LayoutNode] = []
+        self._item_nodes: dict[str, list[LayoutNode]] = {}
         self._content_node: LayoutNode | None = None
         self._root: LayoutNode | None = None
 
@@ -601,14 +602,16 @@ class NavigationScaffold:
 
     def _sync_selection(self):
         t = self.theme
-        for node, item in zip(self._item_nodes, self._all_items):
-            selected = self.selected in {self._key(item), item.label}
-            node.background = t.primary_soft if selected else None
-            node.text_color = (
-                t.disabled_text if item.disabled else
-                t.primary if selected else t.foreground
-            )
-            node.accessibility_selected = selected
+        for item in self.items:
+            key = self._key(item)
+            selected = self.selected in {key, item.label}
+            for node in self._item_nodes.get(key, ()):
+                node.background = t.primary_soft if selected else None
+                node.text_color = (
+                    t.disabled_text if item.disabled else
+                    t.primary if selected else t.foreground
+                )
+                node.accessibility_selected = selected
 
     def _navigation_item_node(self, item: NavigationItem, mode: str) -> LayoutNode:
         t = self.theme
@@ -636,13 +639,12 @@ class NavigationScaffold:
             accessibility_selected=selected,
             on_click=None if item.disabled else (lambda _event=None, value=item: self._select(value)),
         )
-        self._item_nodes.append(node)
+        self._item_nodes.setdefault(self._key(item), []).append(node)
         return node
 
     def build(self) -> LayoutNode:
         t = self.theme
-        self._item_nodes = []
-        self._all_items = tuple(self.items)
+        self._item_nodes = {}
         content_node = _node(self.content)
         self._content_node = LayoutNode.box(
             content_node, weight=1, padding=Insets.all(16),
