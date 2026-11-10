@@ -1880,18 +1880,18 @@ class Tabs:
     def _content_node(self):
         current = self._item(self.value)
         if current.content is None:
-            return LayoutNode.box(
-                height=1, intrinsic_size=Size(1, 1),
-                accessibility_role="tabpanel",
-                accessibility_label=f"{current.label} panel",
-            )
-        if isinstance(current.content, str):
+            panel = LayoutNode.box(height=1, intrinsic_size=Size(1, 1))
+        elif isinstance(current.content, str):
             panel = Label(current.content, theme=self.theme).build()
         else:
             panel = _node(current.content)
-        panel.accessibility_role = "tabpanel"
-        panel.accessibility_label = f"{current.label} panel"
-        return panel
+        # Keep the tabpanel semantics on a wrapper so a nested widget retains
+        # its own role (for example, a TextField remains a textbox).
+        return LayoutNode.box(
+            panel,
+            accessibility_role="tabpanel",
+            accessibility_label=f"{current.label} panel",
+        )
 
     def _sync(self):
         for item in self.tabs:
