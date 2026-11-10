@@ -53,6 +53,29 @@ uses simple whitespace and hyphen break opportunities; full Unicode line
 breaking, soft hyphen handling, ellipsis, rich inline spans and paragraph style
 runs are not included.
 
+## Syntax highlighting
+
+Install the optional Pygments adapter:
+
+```bash
+python -m pip install 'yuktara-ui[syntax]'
+```
+
+Pygments tokenizes source code; Yuktara maps tokens to grapheme-safe
+`TextStyleSpan` ranges and keeps all painting in Skia:
+
+```python
+from novaui.native import RichText, highlight_code
+
+source = "def greet(name):\\n    return 'hello'\\n"
+editor_preview = RichText(source, spans=highlight_code(source, "python"))
+```
+
+The lexer alias is supplied by Pygments (for example, `python`, `json`,
+`javascript` or `bash`). The package is loaded lazily, so applications that
+do not use syntax highlighting do not need it installed. The default palette
+can be replaced with `SyntaxPalette`.
+
 ## Text input, selection and clipboard
 
 `TextField` and `TextArea` now paint the caret and selection separately from the
