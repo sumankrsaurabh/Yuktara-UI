@@ -166,8 +166,9 @@ screen = AdaptiveLayout(
 )
 ```
 
-Variant thresholds must be ordered by non-decreasing width and height. The
-engine selects the highest qualifying variant on each measure pass. Resizing
+The first variant is the fallback; later variants override earlier matches.
+This supports independent width-only and height-only conditions. Threshold
+pairs must be unique. Resizing
 or changing the available window height switches the retained child without
 rebuilding the component. As with `Responsive`, thresholds use logical UI
 units, not framebuffer pixels.
