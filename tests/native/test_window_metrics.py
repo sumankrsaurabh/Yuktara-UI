@@ -356,6 +356,7 @@ def test_run_runtime_coalesces_resize_and_pixel_size_events(monkeypatch):
         max_frames=1,
     )
 
-    assert sync_calls == [runtime]
+    # One initial size synchronization plus exactly one coalesced resize-batch sync.
+    assert sync_calls == [runtime, runtime]
     assert runtime.handled == []
     assert runtime.started and runtime.stopped
