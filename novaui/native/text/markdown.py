@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .measure import ParagraphStyle, TextStyleSpan
+from .measure import ParagraphStyle, TextStyleSpan, grapheme_spans
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,10 +265,11 @@ def parse_markdown(
 
     # Inline emphasis/link ranges can overlap. Merge their attributes into a
     # disjoint interval set before passing spans to the strict RichText model.
-    boundaries = sorted({point for span in output_spans for point in (span.start, span.end)})
+    boundaries = [0]
+    boundaries.extend(end for _start, end in grapheme_spans("".join(text_parts)))
     merged: list[TextStyleSpan] = []
     for start, end in zip(boundaries, boundaries[1:]):
-        active = [span for span in output_spans if span.start <= start and span.end >= end]
+        active = [span for span in output_spans if span.start < end and span.end > start]
         if not active:
             continue
         values = {}
