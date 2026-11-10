@@ -37,7 +37,7 @@ from .widgets import (Badge, Button, Card, Checkbox, Divider, Dropdown, Label,
                       Switch, TabItem, Tabs, TextArea, TextField, column, row, stack,
                       ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip,
                       Calendar, Container, DatePicker, Grid, GridItem, Image, NavigationDrawer,
-                      NavigationItem, NavigationScaffold, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
+                      NavigationItem, NavigationScaffold, ListDetailItem, ListDetailPane, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
                       Responsive, ResponsiveVariant, AdaptiveLayout, AdaptiveVariant)
 __all__ += [
     "SemanticNode", "build_accessibility_tree", "Badge", "Button", "Card",
@@ -46,7 +46,7 @@ __all__ += [
     "TextArea", "TextField", "column", "row", "stack", "ContextMenu",
     "Dialog", "MenuItem", "Popover", "Toast", "Tooltip", "Calendar",
     "Container", "DatePicker", "Grid", "GridItem", "Image", "NavigationDrawer",
-    "NavigationItem", "NavigationScaffold", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
+    "NavigationItem", "NavigationScaffold", "ListDetailItem", "ListDetailPane", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
     "Responsive", "ResponsiveVariant", "AdaptiveLayout", "AdaptiveVariant",
 ]
 
