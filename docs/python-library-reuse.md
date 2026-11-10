@@ -32,7 +32,6 @@ regex is absent, Yuktara uses its dependency-free grapheme fallback.
 
 | Python package | Potential use | Decision |
 |---|---|---|
-| python-bidi | Unicode Bidirectional Algorithm for mixed RTL/LTR paragraphs | Evaluate for source-index-preserving visual ordering before adopting |
 | fonttools | Font metadata, cmap coverage, variable-font inspection and subsetting | Evaluate for typography tooling and font diagnostics |
 | mistune | Markdown parsing into a structured Python AST | Adopt for a future Markdown/document import adapter if the AST maps cleanly to Yuktara RichText |
 | python-bidi | Unicode Bidirectional Algorithm for mixed RTL/LTR paragraphs | Evaluate for source-index-preserving visual ordering before adopting |
