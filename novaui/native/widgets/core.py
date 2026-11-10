@@ -633,6 +633,83 @@ class ListTile:
 
 
 @dataclass
+class AppBar:
+    """A shared application toolbar with optional leading and trailing actions."""
+    title: str
+    subtitle: str | None = None
+    leading: object | None = None
+    actions: Sequence[object] = ()
+    variant: str = "surface"
+    size: str = "regular"
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"surface", "flat", "outlined"})
+    SIZES = frozenset({"compact", "regular", "prominent"})
+
+    def __post_init__(self):
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("AppBar title must be a non-empty string")
+        if self.subtitle is not None and not isinstance(self.subtitle, str):
+            raise TypeError("AppBar subtitle must be a string or None")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported AppBar variant: {self.variant}")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported AppBar size: {self.size}")
+        if not isinstance(self.actions, Sequence) or isinstance(self.actions, (str, bytes)):
+            raise TypeError("AppBar actions must be a sequence of widgets")
+        if any(action is None for action in self.actions):
+            raise ValueError("AppBar actions cannot contain None")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        heights = {"compact": 56.0, "regular": 64.0, "prominent": 88.0}
+        title_sizes = {
+            "compact": t.type_title_medium,
+            "regular": t.type_title_large,
+            "prominent": t.type_headline_medium,
+        }
+        background = {
+            "surface": t.surface_container_low,
+            "flat": t.background,
+            "outlined": t.surface,
+        }[self.variant]
+        children = []
+        if self.leading is not None:
+            children.append(_node(self.leading))
+        title_children = [
+            _text_node(
+                self.title, color=t.on_surface, size=title_sizes[self.size],
+                weight="semibold", role="heading", label=self.title,
+            )
+        ]
+        if self.subtitle is not None:
+            title_children.append(_text_node(
+                self.subtitle, color=t.muted, size=t.type_body_small,
+                role="text", label=self.subtitle,
+            ))
+        title_block = LayoutNode.column(
+            *title_children,
+            spacing=t.space_1,
+            cross_align=Alignment.START,
+        )
+        title_block.weight = 1.0
+        children.append(title_block)
+        children.extend(_node(action) for action in self.actions)
+        return LayoutNode.row(
+            *children,
+            height=heights[self.size],
+            spacing=t.space_2,
+            padding=Insets.symmetric(horizontal=t.space_4, vertical=t.space_2),
+            background=background,
+            border_color=t.outline_variant if self.variant == "outlined" else None,
+            border_width=1 if self.variant == "outlined" else 0,
+            cross_align=Alignment.CENTER,
+            accessibility_role="toolbar",
+            accessibility_label=self.title,
+        )
+
+
+@dataclass
 class Card:
     children: Sequence[object] = ()
     padding: float | Insets = 16
