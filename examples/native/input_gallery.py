@@ -9,7 +9,7 @@ from novaui.native import (
     Badge, Card, Dropdown, Label, NativeRuntime, NativeTheme, SegmentedControl,
     Slider, TabItem, Tabs, TextArea, TextField, column, row,
 )
-from novaui.native.platform import EventType, SDL3Window
+from novaui.native.platform import SDL3Window
 from novaui.native.platform.skia_bridge import renderer_frame
 from novaui.native.renderer import RenderSize, SkiaRenderer
 
@@ -71,22 +71,10 @@ def main():
 
     renderer = SkiaRenderer(RenderSize(1000, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1000, 820, clear_color=theme.background)
-    window.open()
-    runtime.start()
-    running = True
-    try:
-        while running:
-            for event in window.poll_input_events():
-                if event.type is EventType.QUIT:
-                    running = False
-                    break
-                runtime.dispatch(event)
-            if running:
-                runtime.render()
-                window.present(renderer_frame(renderer, skia_module=skia))
-    finally:
-        runtime.stop()
-        window.close()
+    window.run_runtime(
+        runtime,
+        lambda _runtime: renderer_frame(renderer, skia_module=skia),
+    )
 
 
 if __name__ == "__main__":
