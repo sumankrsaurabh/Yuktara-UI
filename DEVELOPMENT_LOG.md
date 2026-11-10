@@ -281,7 +281,11 @@ This timeline records the documented source milestones retained in the repositor
 | Milestone | Implemented development |
 |---|---|
 | Native foundation | Python-native retained UI, SDL3 window/input host, Skia CPU raster rendering, layout/runtime structure, themes, core components and dependency setup. |
+| 2.1 — dependency baseline | SDL3 3.4.20 and Skia Python 144.1 baselines, verified SDL3 downloads, Linux source-build provisioning, automatic dependency bootstrap and removal of the unused NumPy dependency. |
+| 2.2 — first component library | Labels, buttons, cards, badges, dividers, spacers, progress bars, checkboxes, switches, radio groups, light/dark semantic theme tokens, border rendering and backend-neutral accessibility semantics. |
 | 2.3 — input components | TextField, TextArea, Dropdown, Slider, Tabs/TabItem, SegmentedControl; focus tracking, keyboard routing, Tab traversal, pointer capture and repaint after input. |
+| 2.7 — optional text shaping | Optional HarfBuzz adapter, explicit font-file mapping, positioned glyph rendering through Skia TextBlob, source-cluster geometry and heuristic directional-run segmentation. Full UAX #9 bidi and IME composition remain incomplete. |
+| 2.8 — rich text and line breaking | TextStyleSpan, TextPaintRun, TextParagraph, RichText widget, UAX #14-informed dependency-free line-break policy and discontiguous visual selection geometry. |
 | 2.4 — overlays | Dialog, Popover, Tooltip, ContextMenu/MenuItem, Toast, OverlayManager/OverlayHandle; placement, modal input/focus handling and host-driven expiry. |
 | 2.5 — animation/accessibility refinements | Animation manager/handles, easing, property animation, opacity compositing, reduced motion, focus rings, menu keyboard navigation, focus restoration and modal semantic scopes. |
 | 2.6 — typography/text editing | Font fallback runs, shared text measurement, cluster/line/layout geometry, grapheme-aware editing, selection/caret painting, text scrolling and SDL3 clipboard integration. |
