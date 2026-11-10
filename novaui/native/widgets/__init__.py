@@ -7,7 +7,7 @@ from .core import (
 from .overlays import ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip
 from .advanced import (Calendar, Container, DatePicker, Grid, GridItem, Image,
                        NavigationDrawer, NavigationItem, Positioned, ScrollView,
-                       Table, TreeItem, TreeView, FilePicker)
+                       Table, TreeItem, TreeView, FilePicker, Responsive, ResponsiveVariant)
 
 __all__ = [
     "Badge", "Button", "Card", "Checkbox", "Divider", "Dropdown", "Label",
@@ -17,5 +17,5 @@ __all__ = [
     "Tooltip", "Calendar", "Container", "DatePicker", "Grid", "Image",
     "NavigationDrawer", "NavigationItem", "Positioned", "GridItem", "ScrollView",
     "Table", "TreeItem",
-    "TreeView", "FilePicker",
+    "TreeView", "FilePicker", "Responsive", "ResponsiveVariant",
 ]
