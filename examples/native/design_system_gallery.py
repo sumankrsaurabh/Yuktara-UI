@@ -13,6 +13,8 @@ ensure_skia_python()
 import skia
 
 from novaui.native import (
+    Alert,
+    AppBar,
     Avatar,
     Badge,
     Button,
@@ -90,6 +92,42 @@ def main() -> None:
         theme=theme,
     )
 
+    navigation = Surface(
+        variant="base",
+        children=(
+            Label("Application bars", size=18, weight="semibold", theme=theme),
+            AppBar(
+                "Yuktara Workspace",
+                subtitle="Design system preview",
+                leading=IconButton("☰", "Open navigation", theme=theme),
+                actions=(
+                    IconButton("⌕", "Search", variant="tonal", theme=theme),
+                    IconButton("⋯", "More options", variant="tonal", theme=theme),
+                ),
+                theme=theme,
+            ),
+            AppBar(
+                "Compact toolbar",
+                size="compact",
+                variant="outlined",
+                actions=(IconButton("＋", "Create", theme=theme),),
+                theme=theme,
+            ),
+        ),
+        theme=theme,
+    )
+
+    feedback = Surface(
+        variant="low",
+        children=(
+            Label("Feedback and status", size=18, weight="semibold", theme=theme),
+            Alert("Your workspace is ready to use.", title="All set", variant="success", theme=theme),
+            Alert("A network connection is required to sync changes.", title="Sync paused", variant="warning", theme=theme),
+            Alert("The document could not be saved.", title="Save failed", variant="danger", theme=theme),
+        ),
+        theme=theme,
+    )
+
     inputs = Surface(
         variant="outlined",
         children=(
@@ -151,10 +189,12 @@ def main() -> None:
             heading,
             intro,
             actions,
+            navigation,
             surfaces,
             inputs,
             content,
             floating_actions,
+            feedback,
             spacing=theme.space_4,
             padding=theme.space_6,
             background=theme.background,
