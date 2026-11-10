@@ -9,6 +9,8 @@ from .geometry import Alignment, Insets, MainAxisAlignment, Rect, Size
 class LayoutNode:
     kind: str = "box"
     children: list["LayoutNode"] = field(default_factory=list)
+    responsive_variants: tuple[tuple[float, "LayoutNode"], ...] = ()
+    responsive_active_index: int = field(default=-1, init=False)
     width: Optional[float | str] = None
     height: Optional[float | str] = None
     min_width: Optional[float | str] = None
@@ -113,7 +115,25 @@ class LayoutNode:
 
     def __post_init__(self):
         self.kind = self.kind.lower()
-        if self.kind not in {"box", "row", "column", "stack", "text", "scroll", "grid"}:
+        if self.kind == "responsive":
+            if not self.responsive_variants:
+                raise ValueError("responsive nodes require at least one width variant")
+            previous_width = -1.0
+            for minimum_width, child in self.responsive_variants:
+                if (not isinstance(minimum_width, (int, float))
+                        or isinstance(minimum_width, bool)
+                        or not isfinite(float(minimum_width)) or minimum_width < 0):
+                    raise ValueError("responsive variant minimum widths must be finite and non-negative")
+                if minimum_width <= previous_width:
+                    raise ValueError("responsive variants must have strictly increasing minimum widths")
+                if not isinstance(child, LayoutNode):
+                    raise TypeError("responsive variant children must be LayoutNode instances")
+                previous_width = float(minimum_width)
+            if self.children:
+                raise ValueError("responsive node children are selected from responsive_variants")
+        elif self.responsive_variants:
+            raise ValueError("responsive_variants are only valid on responsive nodes")
+        if self.kind not in {"box", "row", "column", "stack", "text", "scroll", "grid", "responsive"}:
             raise ValueError(f"unsupported layout node kind: {self.kind}")
         self.align = Alignment(self.align)
         self.cross_align = Alignment(self.cross_align)
