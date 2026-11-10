@@ -284,9 +284,10 @@ class InputDispatcher:
                 return DispatchResult(target=self.focused, handled=handled)
             return DispatchResult()
 
-        if event.type == EventType.TEXT_INPUT:
+        if event.type in (EventType.TEXT_INPUT, EventType.TEXT_EDITING):
             self._normalize_focus()
-            handled = self._invoke(self.focused, "on_text_input", event)
+            callback = "on_text_input" if event.type == EventType.TEXT_INPUT else "on_text_editing"
+            handled = self._invoke(self.focused, callback, event)
             return DispatchResult(target=self.focused, handled=handled)
 
         if event.pointer is None:
