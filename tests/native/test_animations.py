@@ -196,3 +196,28 @@ def test_layout_node_rejects_opacity_outside_zero_to_one():
         LayoutNode.box(opacity=-0.1)
     with pytest.raises(ValueError):
         LayoutNode.box(opacity=1.1)
+
+def test_extended_and_custom_easing_functions_are_supported():
+    class Target:
+        value = 0.0
+
+    target = Target()
+    manager = AnimationManager()
+    manager.animate(target, "value", 1.0, duration_ms=100, easing="ease_out_bounce")
+    manager.advance_time(50)
+    assert target.value > 0.5
+    manager.cancel_all()
+
+    target.value = 0.0
+    manager.animate(target, "value", 1.0, duration_ms=100,
+                    easing=lambda progress: progress * progress)
+    manager.advance_time(50)
+    assert target.value == pytest.approx(0.25)
+
+
+def test_custom_easing_must_be_callable_or_registered_name():
+    class Target:
+        value = 0.0
+
+    with pytest.raises(TypeError):
+        AnimationManager().animate(Target(), "value", 1, easing=object())
