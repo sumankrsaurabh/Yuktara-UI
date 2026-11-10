@@ -81,7 +81,7 @@ def test_responsive_variants_must_be_ordered_and_unique():
             variants=(
                 (0, LayoutNode.column()),
                 (600, LayoutNode.row()),
-                (600, LayoutNode.grid()),
+                (600, LayoutNode("grid")),
             )
         ).build()
 
