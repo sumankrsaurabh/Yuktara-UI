@@ -555,3 +555,17 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added validation and regression tests for adaptive transitions, nested responsive variants, logical-to-backing-pixel calculations, repeated preview determinism and invalid profiles.
 - Added `examples/native/adaptive_preview.py` and documented how to run the preview suite.
 - Validation status: tests were authored and reviewed through repository source, but were not executed locally in this environment. No CI workflow run is attached to the latest PR head yet. Rendering, SDL integration and physical mixed-DPI/high-refresh validation remain outstanding.
+
+
+## 3.9 — Yuktara semantic design system and consistent component states
+
+- Expanded immutable `NativeTheme` with semantic secondary/tertiary roles, on-surface roles, surface-container levels, outline/inverse roles, shape and spacing scales, typography roles, control metrics and semantic elevation values.
+- Added a complete dark semantic palette while preserving existing token names and defaults for source compatibility.
+- Added shared `Button` variants (primary, tonal, secondary, outline, text, danger and success), three tokenized sizes, minimum control heights and hover/pressed/focus/disabled state styling.
+- Added `IconButton` with a required accessible label and standard/filled/tonal/outlined variants.
+- Added `Surface` with semantic container roles from lowest through highest and outlined.
+- Aligned text-field focus/outline styling, switch geometry and badge typography/spacing with the shared tokens.
+- Added `tests/native/test_design_system.py` for token roles, variants, state transitions, disabled behavior and accessibility names.
+- Added the interactive `examples/native/design_system_gallery.py` and documented the Yuktara design direction and component conventions in `docs/native-component-library.md`.
+- Design boundary: semantic elevation values are available, but complete shadow rendering is not implemented by the current CPU-raster renderer. Platform-native accessibility bridges and device-specific acceptance tests remain outstanding.
+- Validation status: tests were authored but not executed locally in this environment. CI status must be checked on the latest commit before merging.
