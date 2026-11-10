@@ -235,19 +235,45 @@ class SDL3Window:
         if not self._window:
             self.close()
             raise SDL3Error(f"SDL_CreateWindow failed: {self._error()}")
-        if self.min_width and self.min_height:
+        try:
+            pixel_density = float(self._bind(
+                "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
+            )(self._window))
+            display_scale = float(self._bind(
+                "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
+            )(self._window))
+            if (isfinite(pixel_density) and pixel_density > 0
+                    and isfinite(display_scale) and display_scale > 0):
+                self._coordinate_scale = display_scale / pixel_density
+        except AttributeError:
+            pass
+
+        # Width/height are public UI-unit dimensions. SDL window coordinates
+        # are physical pixels on Windows/X11 but logical points on macOS/
+        # Wayland, so convert the initial request using the same display scale.
+        if self.high_dpi and self._coordinate_scale != 1.0:
+            set_size = self._bind(
+                "SDL_SetWindowSize", ctypes.c_bool,
+                [ctypes.c_void_p, ctypes.c_int, ctypes.c_int],
+            )
+            if not set_size(
+                self._window,
+                round(self.width * self._coordinate_scale),
+                round(self.height * self._coordinate_scale),
+            ):
+                self.close()
+                raise SDL3Error(f"SDL_SetWindowSize failed: {self._error()}")
             try:
-                pixel_density = float(self._bind(
-                    "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
-                )(self._window))
-                display_scale = float(self._bind(
-                    "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
-                )(self._window))
-                if (isfinite(pixel_density) and pixel_density > 0
-                        and isfinite(display_scale) and display_scale > 0):
-                    self._coordinate_scale = display_scale / pixel_density
+                sync_window = self._bind(
+                    "SDL_SyncWindow", ctypes.c_bool, [ctypes.c_void_p]
+                )
+                if not sync_window(self._window):
+                    self.close()
+                    raise SDL3Error(f"SDL_SyncWindow failed: {self._error()}")
             except AttributeError:
                 pass
+
+        if self.min_width and self.min_height:
             set_minimum = self._bind(
                 "SDL_SetWindowMinimumSize", ctypes.c_bool,
                 [ctypes.c_void_p, ctypes.c_int, ctypes.c_int],
@@ -614,7 +640,8 @@ class SDL3Window:
         render_texture = self._bind(
             "SDL_RenderTexture",
             ctypes.c_bool,
-            [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p],
+            [ctypes.c_void_p, ctypes.c_void_p,
+             ctypes.POINTER(_SDLFRect), ctypes.POINTER(_SDLFRect)],
         )
         present = self._bind("SDL_RenderPresent", None, [ctypes.c_void_p])
         if not set_color(self._renderer, *self.letterbox_color):
@@ -678,6 +705,7 @@ class SDL3Window:
             event = decoder.decode(raw_event.raw)
             if event.type in {
                 EventType.WINDOW_PIXEL_SIZE_CHANGED,
+                EventType.WINDOW_DISPLAY_CHANGED,
                 EventType.WINDOW_DISPLAY_SCALE_CHANGED,
             }:
                 self.get_sizes()
