@@ -71,7 +71,7 @@ class Label:
     def _update_text_input_area(self, _node=None):
         """Keep SDL's native IME candidate window aligned with the laid-out caret."""
         node = self._built_node
-        set_input_area = getattr(self.clipboard, "set_text_input_area", None)
+        set_input_area = getattr(self._ime_service(), "set_text_input_area", None)
         if not self._focused or node is None or not callable(set_input_area):
             return
         layout = node.text_layout
@@ -437,6 +437,7 @@ class TextField:
     theme: NativeTheme = field(default_factory=NativeTheme)
     multiline: bool = False
     clipboard: object | None = field(default=None, repr=False, compare=False)
+    text_input: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self):
         if not isinstance(self.value, str) or not isinstance(self.placeholder, str):
@@ -455,6 +456,10 @@ class TextField:
         self._composition_cursor = 0
         self._composition_selection_length = 0
         self._built_node: LayoutNode | None = None
+
+    def _ime_service(self):
+        """Return the dedicated text-input service, or the legacy clipboard adapter."""
+        return self.text_input if self.text_input is not None else self.clipboard
 
     @property
     def selection(self) -> tuple[int, int]:
@@ -584,7 +589,8 @@ class TextField:
     def _focus(self, _event=None):
         self._focused = True
         self._last_text_input_area = None
-        start_text_input = getattr(self.clipboard, "start_text_input", None)
+        service = self._ime_service()
+        start_text_input = getattr(service, "start_text_input", None)
         if callable(start_text_input) and not self.disabled and not self.read_only:
             start_text_input()
         self._sync_node()
@@ -595,10 +601,11 @@ class TextField:
         self._clear_composition(restore_selection=True)
         self._focused = False
         self._last_text_input_area = None
-        stop_text_input = getattr(self.clipboard, "stop_text_input", None)
+        service = self._ime_service()
+        stop_text_input = getattr(service, "stop_text_input", None)
         if callable(stop_text_input):
             stop_text_input()
-        clear_composition = getattr(self.clipboard, "clear_composition", None)
+        clear_composition = getattr(service, "clear_composition", None)
         if callable(clear_composition):
             clear_composition()
         self.anchor = self.cursor
@@ -744,7 +751,7 @@ class TextField:
         if self._composition_text:
             if code == _KEY_ESCAPE:
                 self._clear_composition(restore_selection=True)
-                clear_composition = getattr(self.clipboard, "clear_composition", None)
+                clear_composition = getattr(self._ime_service(), "clear_composition", None)
                 if callable(clear_composition):
                     clear_composition()
                 self._sync_node()
