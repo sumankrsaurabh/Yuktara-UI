@@ -21,6 +21,7 @@ SDL_INIT_VIDEO = 0x00000020
 SDL_WINDOW_RESIZABLE = 0x00000020
 SDL_TEXTUREACCESS_STREAMING = 1
 SDL_EVENT_QUIT = 0x100
+SDL_HINT_IME_IMPLEMENTED_UI = b"SDL_IME_IMPLEMENTED_UI"
 
 
 class _SDLDialogFileFilter(ctypes.Structure):
@@ -175,6 +176,19 @@ class SDL3Window:
             raise SDL3Error("A closed SDL3Window cannot be reopened.")
         self._lib = self._load_library()
         self._thread_id = __import__("threading").get_ident()
+
+        # The framework paints SDL text-editing pre-edit strings itself;
+        # keep candidate-list presentation native to the operating system.
+        try:
+            set_hint = self._bind(
+                "SDL_SetHint", ctypes.c_bool, [ctypes.c_char_p, ctypes.c_char_p]
+            )
+        except AttributeError:
+            set_hint = None
+        if set_hint is not None and not set_hint(
+            SDL_HINT_IME_IMPLEMENTED_UI, b"composition"
+        ):
+            raise SDL3Error(f"SDL_SetHint for IME composition failed: {self._error()}")
 
         init = self._bind("SDL_Init", ctypes.c_bool, [ctypes.c_uint])
         if not init(SDL_INIT_VIDEO):
