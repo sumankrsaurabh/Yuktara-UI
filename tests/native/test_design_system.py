@@ -106,3 +106,48 @@ def test_surface_rejects_invalid_variant_and_negative_padding():
         Surface(variant="glass")
     with pytest.raises(ValueError, match="padding"):
         Surface(padding=-1)
+
+
+@pytest.mark.parametrize("variant,background,bordered", [
+    ("outlined", "surface", True),
+    ("filled", "surface_container_low", False),
+    ("flat", "surface", False),
+    ("elevated", "surface_container_low", False),
+])
+def test_card_variants_use_shared_surface_and_shape_tokens(variant, background, bordered):
+    from novaui.native import Card
+
+    theme = NativeTheme()
+    node = Card(variant=variant, theme=theme).build()
+
+    assert node.background == getattr(theme, background)
+    assert node.radius == theme.radius_large
+    assert node.border_width == (1 if bordered else 0)
+    assert node.accessibility_role == "group"
+
+
+def test_card_legacy_bordered_flag_remains_compatible():
+    from novaui.native import Card
+
+    theme = NativeTheme()
+    outlined = Card(theme=theme).build()
+    flat = Card(bordered=False, theme=theme).build()
+
+    assert outlined.border_color == theme.border
+    assert outlined.border_width == 1
+    assert flat.border_color is None
+    assert flat.border_width == 0
+
+
+@pytest.mark.parametrize("kwargs,match", [
+    ({"variant": "glass"}, "variant"),
+    ({"spacing": -1}, "spacing"),
+    ({"padding": -1}, "padding"),
+    ({"radius": -1}, "radius"),
+    ({"bordered": "yes"}, "bordered"),
+])
+def test_card_rejects_invalid_configuration(kwargs, match):
+    from novaui.native import Card
+
+    with pytest.raises((ValueError, TypeError), match=match):
+        Card(**kwargs)
