@@ -39,12 +39,14 @@ Lines retain absolute source offsets. Layout helpers provide:
 - `offset_at(x, y)` — nearest insertion boundary for a pointer position.
 - `selection_rects(start, end)` — line-specific native selection rectangles.
 
-The dependency-free grapheme segmenter keeps common combining-mark sequences,
-emoji variation/modifier sequences, ZWJ emoji, regional-indicator flags and
-Indic virama conjuncts together during keyboard editing. It is a practical
-editing boundary implementation, not a complete Unicode Standard Annex #29
-implementation; uncommon scripts and sequences should be validated with the
-application's target fonts.
+Grapheme segmentation uses the optional `regex` package's Unicode `\\X`
+extended-grapheme implementation when installed. Add it with
+`python -m pip install 'yuktara-ui[unicode]'`. The base installation retains a
+dependency-free fallback for combining marks, emoji variation/modifier
+sequences, ZWJ emoji, regional-indicator flags and common Indic virama
+conjuncts. For production multilingual editing, install the `unicode` or
+`shaping` extra so keyboard movement, deletion and selection use a maintained
+Unicode grapheme segmenter.
 
 Word wrapping preserves source offsets and trailing empty lines. It currently
 uses simple whitespace and hyphen break opportunities; full Unicode line
