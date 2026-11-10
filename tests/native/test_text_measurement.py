@@ -79,3 +79,54 @@ def test_text_measurer_does_not_split_combining_marks_emoji_or_indic_conjuncts()
         spans = grapheme_spans(sample)
         assert len(spans) == 1
         assert sample[spans[0][0]:spans[0][1]] == sample
+
+
+def test_grapheme_spans_uses_unicode_regex_when_available(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from novaui.native.text import grapheme_spans
+
+    class Match:
+        def __init__(self, start, end):
+            self._start, self._end = start, end
+        def start(self):
+            return self._start
+        def end(self):
+            return self._end
+
+    calls = []
+    def finditer(pattern, text):
+        calls.append((pattern, text))
+        return iter((Match(0, 2), Match(2, 5)))
+
+    monkeypatch.setitem(sys.modules, "regex", SimpleNamespace(finditer=finditer))
+    assert grapheme_spans("a👨‍👩") == ((0, 2), (2, 5))
+    assert calls == [(r"\X", "a👨‍👩")]
+
+
+def test_grapheme_spans_falls_back_when_regex_is_unavailable(monkeypatch):
+    import sys
+    from novaui.native.text import grapheme_spans
+
+    monkeypatch.setitem(sys.modules, "regex", None)
+    sample = "e\u0301"
+    assert grapheme_spans(sample) == ((0, 2),)
+
+
+def test_grapheme_spans_properties_cover_source_text():
+    from hypothesis import given, strategies as st
+    from novaui.native.text import grapheme_spans
+
+    @given(st.text())
+    def check(source):
+        spans = grapheme_spans(source)
+        if not source:
+            assert spans == ()
+            return
+        assert spans[0][0] == 0
+        assert spans[-1][1] == len(source)
+        assert all(start < end for start, end in spans)
+        assert all(left[1] == right[0] for left, right in zip(spans, spans[1:]))
+        assert "".join(source[start:end] for start, end in spans) == source
+
+    check()
