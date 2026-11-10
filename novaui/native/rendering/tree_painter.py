@@ -59,6 +59,9 @@ class LayoutTreePainter:
             font = FontConfig(family=node.font_family, size=node.font_size, weight=node.font_weight)
             layout = node.text_layout
             area = node.content_bounds
+            on_text_layout = getattr(node, "on_text_layout", None)
+            if callable(on_text_layout):
+                on_text_layout(node)
             clip = bool(node.text_clip and callable(getattr(self.renderer, "save", None))
                         and callable(getattr(self.renderer, "clip_rect", None)))
             if clip:
