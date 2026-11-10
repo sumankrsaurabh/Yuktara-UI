@@ -101,7 +101,7 @@ def test_grapheme_spans_uses_unicode_regex_when_available(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "regex", SimpleNamespace(finditer=finditer))
     assert grapheme_spans("a👨‍👩") == ((0, 2), (2, 5))
-    assert calls == [(r"\\X", "a👨‍👩")]
+    assert calls == [(r"\X", "a👨‍👩")]
 
 
 def test_grapheme_spans_falls_back_when_regex_is_unavailable(monkeypatch):
@@ -109,5 +109,5 @@ def test_grapheme_spans_falls_back_when_regex_is_unavailable(monkeypatch):
     from novaui.native.text import grapheme_spans
 
     monkeypatch.setitem(sys.modules, "regex", None)
-    sample = "e\\u0301"
+    sample = "e\u0301"
     assert grapheme_spans(sample) == ((0, 2),)
