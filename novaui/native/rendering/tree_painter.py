@@ -272,7 +272,7 @@ class LayoutTreePainter:
             thumb_h=max(18.0,v.height*v.height/node.content_size.height)
             travel=max(0.0,v.height-thumb_h)
             y=v.y+(node.scroll_y/node.max_scroll_y)*travel
-            self.renderer.draw_rect(v.right-thickness,y,thickness,apply_opacity(thumb,opacity),radius=2)
+            self.renderer.draw_rect(v.right-thickness,y,thickness,thumb_h,apply_opacity(thumb,opacity),radius=2)
         if node.max_scroll_x>0 and v.width>0:
             thickness=4.0
             thumb_w=max(18.0,v.width*v.width/node.content_size.width)
