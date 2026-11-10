@@ -307,3 +307,55 @@ def test_unsynchronized_loop_yields_but_vsync_loop_does_not_sleep():
     window.actual_vsync = 0
     window._idle_if_unsynchronized()
     assert calls == [1]
+
+
+def test_run_runtime_coalesces_resize_and_pixel_size_events(monkeypatch):
+    from types import SimpleNamespace
+    from novaui.native.platform.sdl3 import PixelFrame
+
+    events = [
+        SimpleNamespace(type=EventType.WINDOW_RESIZED, window=SimpleNamespace(width=900, height=650)),
+        SimpleNamespace(type=EventType.WINDOW_PIXEL_SIZE_CHANGED, window=SimpleNamespace(width=1800, height=1300)),
+    ]
+    sync_calls = []
+    monkeypatch.setattr(SDL3Window, "open", lambda self: self)
+    monkeypatch.setattr(SDL3Window, "close", lambda self: None)
+    monkeypatch.setattr(SDL3Window, "poll_input_events", lambda self: events)
+    monkeypatch.setattr(SDL3Window, "sync_runtime_size", lambda self, runtime: sync_calls.append(runtime))
+    monkeypatch.setattr(SDL3Window, "present", lambda self, frame: None)
+
+    class Runtime:
+        quit_requested = False
+
+        def __init__(self):
+            self.handled = []
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def handle_event(self, event):
+            self.handled.append(event)
+            return True
+
+        def process_pending(self):
+            pass
+
+        def advance_time(self, _delta):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    runtime = Runtime()
+    window = SDL3Window()
+    window.run_runtime(
+        runtime,
+        lambda _runtime: PixelFrame(1, 1, bytes((0, 0, 0, 255))),
+        max_frames=1,
+    )
+
+    assert sync_calls == [runtime]
+    assert runtime.handled == []
+    assert runtime.started and runtime.stopped
