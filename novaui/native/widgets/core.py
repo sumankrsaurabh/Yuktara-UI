@@ -1807,10 +1807,16 @@ class TabItem:
     content: object | None = None
     disabled: bool = False
 
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("TabItem label must be a non-empty string")
+        if not isinstance(self.disabled, bool):
+            raise TypeError("TabItem disabled must be a boolean")
+
 
 @dataclass
 class Tabs:
-    """Horizontal tab navigation with optional panel content."""
+    """Accessible horizontal tabs with arrow, Home and End keyboard navigation."""
     tabs: Sequence[TabItem | str]
     value: str | None = None
     on_change: Callable[[str], None] | None = None
@@ -1821,15 +1827,25 @@ class Tabs:
         labels = [item.label for item in self.tabs]
         if not labels or len(set(labels)) != len(labels):
             raise ValueError("Tabs require unique labels")
+        enabled = [item.label for item in self.tabs if not item.disabled]
+        if not enabled:
+            raise ValueError("Tabs require at least one enabled tab")
         if self.value is None:
-            self.value = labels[0]
+            self.value = enabled[0]
         if self.value not in labels:
             raise ValueError("Tabs value must match a tab label")
+        if self._item(self.value).disabled:
+            raise ValueError("Tabs value cannot refer to a disabled tab")
+        if self.on_change is not None and not callable(self.on_change):
+            raise TypeError("Tabs on_change must be callable")
         self._root: LayoutNode | None = None
         self._tab_nodes: dict[str, LayoutNode] = {}
 
+    def _item(self, label):
+        return next(tab for tab in self.tabs if tab.label == label)
+
     def _select(self, label):
-        item = next(tab for tab in self.tabs if tab.label == label)
+        item = self._item(label)
         if item.disabled or label == self.value:
             return
         self.value = label
@@ -1837,32 +1853,45 @@ class Tabs:
         if self.on_change is not None:
             self.on_change(label)
 
-    def _move(self, index, direction):
-        enabled = [tab for tab in self.tabs if not tab.disabled]
-        if not enabled:
-            return
-        current = next((i for i, tab in enumerate(enabled) if tab.label == self.value), 0)
-        self._select(enabled[(current + direction) % len(enabled)].label)
+    def _move(self, direction):
+        enabled = [tab.label for tab in self.tabs if not tab.disabled]
+        current = enabled.index(self.value)
+        self._select(enabled[(current + direction) % len(enabled)])
 
     def _tab_key(self, event, _index=None):
         key = getattr(event, "key", None)
         if key is None:
             return False
-        if key.keycode == _KEY_LEFT:
-            self._move(0, -1)
-            return True
-        if key.keycode == _KEY_RIGHT:
-            self._move(0, 1)
-            return True
-        return False
+        keycode = getattr(key, "keycode", None)
+        if keycode == _KEY_LEFT:
+            self._move(-1)
+        elif keycode == _KEY_RIGHT:
+            self._move(1)
+        elif keycode == _KEY_HOME:
+            enabled = [tab.label for tab in self.tabs if not tab.disabled]
+            self._select(enabled[0])
+        elif keycode == _KEY_END:
+            enabled = [tab.label for tab in self.tabs if not tab.disabled]
+            self._select(enabled[-1])
+        else:
+            return False
+        return True
 
     def _content_node(self):
-        current = next(tab for tab in self.tabs if tab.label == self.value)
+        current = self._item(self.value)
         if current.content is None:
-            return LayoutNode.box(height=1, intrinsic_size=Size(1, 1))
+            return LayoutNode.box(
+                height=1, intrinsic_size=Size(1, 1),
+                accessibility_role="tabpanel",
+                accessibility_label=f"{current.label} panel",
+            )
         if isinstance(current.content, str):
-            return Label(current.content, theme=self.theme).build()
-        return _node(current.content)
+            panel = Label(current.content, theme=self.theme).build()
+        else:
+            panel = _node(current.content)
+        panel.accessibility_role = "tabpanel"
+        panel.accessibility_label = f"{current.label} panel"
+        return panel
 
     def _sync(self):
         for item in self.tabs:
@@ -1879,24 +1908,45 @@ class Tabs:
     def build(self):
         self._tab_nodes = {}
         nodes = []
-        for index, item in enumerate(self.tabs):
+        for item in self.tabs:
             selected = item.label == self.value
             node = _text_node(
-                item.label, color=self.theme.primary if selected else self.theme.muted,
-                size=14, weight="semibold" if selected else "medium",
-                padding=Insets.symmetric(horizontal=14, vertical=9),
+                item.label,
+                color=self.theme.primary if selected else (
+                    self.theme.disabled_text if item.disabled else self.theme.muted
+                ),
+                size=self.theme.type_label_large,
+                weight="semibold" if selected else "medium",
+                padding=Insets.symmetric(
+                    horizontal=self.theme.space_4, vertical=self.theme.space_3
+                ),
                 background=self.theme.primary_soft if selected else None,
-                radius=self.theme.radius_small, role="tab", label=item.label,
-                selected=selected, disabled=item.disabled,
-                on_click=None if item.disabled else lambda event, label=item.label: self._select(label),
+                radius=self.theme.radius_small,
+                role="tab",
+                label=item.label,
+                selected=selected,
+                disabled=item.disabled,
+                on_click=None if item.disabled else (
+                    lambda event, label=item.label: self._select(label)
+                ),
             )
-            node.on_key_down = self._tab_key
+            node.on_key_down = None if item.disabled else self._tab_key
             self._tab_nodes[item.label] = node
             nodes.append(node)
-        tablist = LayoutNode.row(*nodes, spacing=3, cross_align=Alignment.CENTER,
-                                 accessibility_role="tablist")
-        self._root = LayoutNode.column(tablist, self._content_node(), spacing=10,
-                                       accessibility_role="group")
+        tablist = LayoutNode.row(
+            *nodes,
+            spacing=self.theme.space_1,
+            cross_align=Alignment.CENTER,
+            accessibility_role="tablist",
+            accessibility_label="Tabs",
+            accessibility_orientation="horizontal",
+        )
+        self._root = LayoutNode.column(
+            tablist, self._content_node(),
+            spacing=self.theme.space_3,
+            accessibility_role="group",
+            accessibility_label="Tabbed content",
+        )
         return self._root
 
 
