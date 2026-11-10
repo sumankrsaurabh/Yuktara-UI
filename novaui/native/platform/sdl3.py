@@ -781,7 +781,10 @@ class SDL3Window:
                 for event in events:
                     if on_event is not None:
                         on_event(event)
-                    if event.type == EventType.WINDOW_DISPLAY_SCALE_CHANGED:
+                    if event.type in {
+                        EventType.WINDOW_DISPLAY_CHANGED,
+                        EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+                    }:
                         self.sync_runtime_size(runtime)
                         continue
                     if not runtime.handle_event(event):
