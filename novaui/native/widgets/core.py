@@ -615,8 +615,9 @@ class ListTile:
             # same action on non-interactive descendants so every row region
             # activates the list item exactly once.
             def attach(node):
-                if node.on_click is None and node.on_key_down is None:
-                    node.on_click = self.on_click
+                if (node is not row and node.on_click is None
+                        and node.on_pointer_up is None and node.on_key_down is None):
+                    node.on_pointer_up = self.on_click
                 for child in node.children:
                     attach(child)
             attach(row)
