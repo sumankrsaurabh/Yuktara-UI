@@ -80,7 +80,7 @@ The following catalog is the documented native component surface in the 3.3 sour
 - `Checkbox`.
 - `Switch`.
 - `RadioGroup`.
-- `Dropdown`.
+- `Dropdown` — selectable option list with keyboard navigation; optionally attach it to the runtime overlay manager for an anchored, viewport-clamped floating menu with bounded scrolling and outside/Escape dismissal.
 - `Slider`.
 - `Tabs` and `TabItem`.
 - `SegmentedControl`.
@@ -298,7 +298,7 @@ This timeline records the documented source milestones retained in the repositor
 | 3.1 — general-purpose component library | Responsive Grid, Container, ScrollView, Image, Table, NavigationDrawer, Calendar, DatePicker, TreeView and SDL3-backed FilePicker. |
 | 3.2 — runtime stabilization | Retained-tree reconciliation, UI-thread scheduling, runtime/window lifecycle, logical/backing-pixel sizing, touch-coordinate conversion and integrated SDL3 host loop. |
 | 3.3 — advanced layout | Percentage dimensions and constraints, row/column flex wrapping, flex basis, baseline alignment, absolute positioning, GridItem placement and spans. |
-| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops, responsive galleries and defensive dimension validation for runtime/window resize entry points. Regression tests, the permanent cross-platform CI matrix and the Linux/Xvfb SDL3/Skia live-window smoke test are passing. Package metadata remains at 3.3.0.dev0 until a release decision. |
+| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops, responsive galleries, defensive dimension validation for runtime/window resize entry points, and optional overlay-backed Dropdown menus. Regression tests, the permanent cross-platform CI matrix and the Linux/Xvfb SDL3/Skia live-window smoke test are passing. Package metadata remains at 3.3.0.dev0 until a release decision. |
 
 ## 11. Verification record
 
@@ -343,6 +343,19 @@ The next verification run completed successfully on 2026-11-10:
 
 Workflow records: [CI — run 42793002537](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42793002537) · [Native desktop integration — run 42793002651](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42793002651).
 
+### Latest 3.4 development verification — dropdown overlay integration, commit `f24ffbf83ede84fb9d4e9c828f2d29c4fc6aa278`
+
+The dropdown overlay integration completed verification on 2026-11-10:
+
+- 327 tests passed.
+- All 18 Windows/macOS/Ubuntu and Python 3.10–3.15 matrix jobs passed.
+- The coverage job reported 84% statement coverage (6,504 statements; 1,045 missed).
+- Wheel build, installation and installed-distribution import passed.
+- The independent Linux/Xvfb SDL3 + Skia workflow passed dependency provisioning, window creation and frame presentation.
+
+Workflow records: [CI — run 42794293051](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42794293051) · [Native desktop integration — run 42794292988](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42794292988).
+
+
 
 The automated tests primarily validate Python-side behavior using backend-injected services, normalized events and recording renderers. They are not a substitute for testing actual desktop hardware, drivers, system dialogs, input methods, high-DPI displays or accessibility tools.
 
@@ -369,6 +382,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 - Corrected SDL3 focus-gained/focus-lost event identifiers and added display-change/display-scale-change decoding.
 - Added public `Responsive` and `ResponsiveVariant` components. The layout engine selects width variants during measure, so the active tree changes at a breakpoint without a component rebuild.
 - Runtime and SDL3 window dimension entry points now reject non-finite, non-integral or boolean dimensions as appropriate; runtime resize validates all logical and backing dimensions before mutating state.
+- `Dropdown.attach_overlay_manager(runtime.overlays)` opts into a floating popover menu with bounded option scrolling, viewport-aware anchor placement, outside/Escape dismissal and keyboard selection. The standalone inline mode remains available when no manager is attached.
 - Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
 - All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
 - Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.
@@ -390,7 +404,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 The following items are **not** to be treated as completed features in the 3.3 baseline:
 
 - End-to-end IME behavior with physical keyboards and real input methods has not yet been validated on Windows, macOS and Linux. The 3.4 development code now decodes SDL3 text-editing events, routes them through the runtime, displays temporary pre-edit text with an underline without mutating committed text, handles commit and Escape/blur cancellation, and positions SDL's candidate area from measured caret geometry. See the regression tests in `tests/native/test_ime_composition.py`.
-- The dropdown now supports the overlay manager when attached to `runtime.overlays`; a legacy inline presentation is retained for unattached standalone widgets.
+- The dropdown supports the overlay manager when attached to `runtime.overlays`; a legacy inline presentation is retained for unattached standalone widgets. Its menu integration is covered by selection, keyboard, outside-dismissal and attach/detach regression tests.
 - Full Unicode Standard Annex #29 segmentation and complete Unicode line breaking.
 - Complete bidirectional text, Arabic joining, Indic shaping, ligature-aware caret geometry and complex-script shaping across all platforms. Optional HarfBuzz support is available, but it does not make the entire text pipeline fully certified.
 - Native accessibility provider bridges for Windows UI Automation, macOS NSAccessibility and Linux AT-SPI; screen-reader behavior is not certified.
