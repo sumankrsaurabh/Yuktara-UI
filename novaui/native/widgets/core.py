@@ -365,6 +365,273 @@ class Surface:
 
 
 @dataclass
+class FloatingActionButton:
+    """Prominent circular action; extended mode adds a readable text label."""
+    label: str
+    icon: str = "+"
+    on_click: Callable | None = None
+    size: str = "regular"
+    extended: bool = False
+    disabled: bool = False
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    SIZES = frozenset({"small", "regular", "large"})
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("FloatingActionButton requires an accessible label")
+        if not isinstance(self.icon, str) or not self.icon.strip():
+            raise ValueError("FloatingActionButton icon must be a non-empty string")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported floating action button size: {self.size}")
+        if not isinstance(self.extended, bool) or not isinstance(self.disabled, bool):
+            raise TypeError("extended and disabled must be booleans")
+        if self.on_click is not None and not callable(self.on_click):
+            raise TypeError("on_click must be callable")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        dimensions = {
+            "small": 40.0,
+            "regular": 56.0,
+            "large": 96.0,
+        }
+        dimension = dimensions[self.size]
+        visual = f"{self.icon}  {self.label}" if self.extended else self.icon
+        node = Button(
+            visual,
+            on_click=self.on_click,
+            variant="primary",
+            size="large" if self.size == "large" else "medium",
+            disabled=self.disabled,
+            theme=t,
+            accessibility_hint=self.label,
+        ).build()
+        node.accessibility_label = self.label
+        node.accessibility_role = "button"
+        node.radius = t.radius_extra_large if self.extended else t.radius_pill
+        node.height = dimension
+        node.min_height = dimension
+        if self.extended:
+            node.min_width = dimension
+            node.padding = Insets.symmetric(horizontal=t.space_6, vertical=0)
+        else:
+            node.width = dimension
+            node.min_width = dimension
+            node.max_width = dimension
+            node.height = dimension
+            node.padding = Insets.all(0)
+            node.text_align = "center"
+        return node
+
+
+@dataclass
+class Chip:
+    """Compact label or selectable action with semantic state and variants."""
+    label: str
+    variant: str = "neutral"
+    selected: bool = False
+    disabled: bool = False
+    on_click: Callable | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"neutral", "primary", "success", "warning", "danger", "info"})
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("Chip label must be a non-empty string")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported chip variant: {self.variant}")
+        if not isinstance(self.selected, bool) or not isinstance(self.disabled, bool):
+            raise TypeError("selected and disabled must be booleans")
+        if self.on_click is not None and not callable(self.on_click):
+            raise TypeError("on_click must be callable")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        palettes = {
+            "neutral": (t.surface_container_high, t.on_surface, t.outline_variant),
+            "primary": (t.primary_soft, t.primary, t.primary_soft),
+            "success": (t.success_soft, t.success, t.success_soft),
+            "warning": (t.warning_soft, t.warning_text, t.warning_soft),
+            "danger": (t.danger_soft, t.danger, t.danger_soft),
+            "info": (t.info_soft, t.info, t.info_soft),
+        }
+        background, foreground, border = palettes[self.variant]
+        if self.selected and self.variant == "neutral":
+            background, foreground, border = t.secondary_soft, t.secondary, t.secondary
+        if self.disabled:
+            background, foreground, border = t.disabled_surface, t.disabled_text, None
+        clickable = self.on_click is not None
+        return LayoutNode(
+            "text",
+            text=self.label,
+            text_color=foreground,
+            font_size=t.type_label_medium,
+            font_weight="semibold",
+            padding=Insets.symmetric(horizontal=t.space_3, vertical=t.space_2),
+            min_height=32,
+            background=background,
+            radius=t.radius_pill,
+            border_color=border,
+            border_width=1 if border is not None else 0,
+            accessibility_role="button" if clickable else "text",
+            accessibility_label=self.label,
+            accessibility_selected=self.selected,
+            accessibility_disabled=self.disabled,
+            on_click=None if self.disabled else self.on_click,
+        )
+
+
+@dataclass
+class Avatar:
+    """Initials or glyph avatar with semantic image labeling."""
+    label: str
+    initials: str | None = None
+    size: str = "medium"
+    variant: str = "primary"
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    SIZES = frozenset({"small", "medium", "large", "xlarge"})
+    VARIANTS = frozenset({"primary", "secondary", "tertiary", "neutral", "success"})
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("Avatar requires an accessible label")
+        if self.initials is not None and (not isinstance(self.initials, str) or not self.initials.strip()):
+            raise ValueError("Avatar initials must be a non-empty string when provided")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported avatar size: {self.size}")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported avatar variant: {self.variant}")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        sizes = {"small": 28.0, "medium": 40.0, "large": 56.0, "xlarge": 80.0}
+        fonts = {"small": 11.0, "medium": 14.0, "large": 18.0, "xlarge": 24.0}
+        colors = {
+            "primary": (t.primary_soft, t.primary),
+            "secondary": (t.secondary_soft, t.secondary),
+            "tertiary": (t.tertiary_soft, t.tertiary),
+            "neutral": (t.surface_container_high, t.on_surface),
+            "success": (t.success_soft, t.success),
+        }
+        background, foreground = colors[self.variant]
+        dimension = sizes[self.size]
+        initials = self.initials or self.label[:1].upper()
+        node = LayoutNode(
+            "text",
+            text=initials[:2],
+            width=dimension,
+            height=dimension,
+            min_width=dimension,
+            min_height=dimension,
+            background=background,
+            radius=t.radius_pill,
+            text_color=foreground,
+            font_size=fonts[self.size],
+            font_weight="semibold",
+            text_align="center",
+            align=Alignment.CENTER,
+            cross_align=Alignment.CENTER,
+            accessibility_role="image",
+            accessibility_label=self.label,
+        )
+        return node
+
+
+@dataclass
+class ListTile:
+    """Single-row list item with leading, title, subtitle and trailing content."""
+    title: str
+    subtitle: str | None = None
+    leading: object | None = None
+    trailing: object | None = None
+    selected: bool = False
+    disabled: bool = False
+    dense: bool = False
+    on_click: Callable | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    def __post_init__(self):
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("ListTile title must be a non-empty string")
+        if self.subtitle is not None and not isinstance(self.subtitle, str):
+            raise TypeError("ListTile subtitle must be a string or None")
+        if any(not isinstance(value, bool) for value in (self.selected, self.disabled, self.dense)):
+            raise TypeError("selected, disabled and dense must be booleans")
+        if self.on_click is not None and not callable(self.on_click):
+            raise TypeError("on_click must be callable")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        title = _text_node(
+            self.title,
+            color=t.disabled_text if self.disabled else t.primary if self.selected else t.on_surface,
+            size=t.type_body_medium if self.dense else t.type_body_large,
+            weight="semibold" if self.selected else "medium",
+            role="text",
+            label=self.title,
+        )
+        text_children = [title]
+        if self.subtitle is not None:
+            subtitle = _text_node(
+                self.subtitle,
+                color=t.disabled_text if self.disabled else t.muted,
+                size=t.type_body_small,
+                role="text",
+                label=self.subtitle,
+            )
+            text_children.append(subtitle)
+        text_block = LayoutNode.column(
+            *text_children,
+            spacing=t.space_1,
+            cross_align=Alignment.START,
+        )
+        children = []
+        if self.leading is not None:
+            children.append(_node(self.leading))
+        children.append(text_block)
+        if self.trailing is not None:
+            children.append(_node(self.trailing))
+        row = LayoutNode.row(
+            *children,
+            spacing=t.space_3,
+            padding=Insets.symmetric(
+                horizontal=t.space_4,
+                vertical=t.space_2 if self.dense else t.space_3,
+            ),
+            background=t.primary_soft if self.selected else t.surface,
+            radius=t.radius_medium,
+            cross_align=Alignment.CENTER,
+            accessibility_role="button" if self.on_click is not None else "listitem",
+            accessibility_label=self.title,
+            accessibility_value=self.subtitle,
+            accessibility_selected=self.selected,
+            accessibility_disabled=self.disabled,
+        )
+        if self.on_click is not None and not self.disabled:
+            # Hit testing resolves to the deepest text/icon node. Install the
+            # same action on non-interactive descendants so every row region
+            # activates the list item exactly once.
+            def attach(node):
+                if node.on_click is None and node.on_key_down is None:
+                    node.on_click = self.on_click
+                for child in node.children:
+                    attach(child)
+            attach(row)
+            row.on_click = self.on_click
+            row.on_key_down = lambda event: (
+                self.on_click(event)
+                if getattr(getattr(event, "key", None), "keycode", None) in (13, 32)
+                else False
+            )
+        if self.disabled:
+            row.accessibility_disabled = True
+        return row
+
+
+@dataclass
 class Card:
     children: Sequence[object] = ()
     padding: float | Insets = 16
