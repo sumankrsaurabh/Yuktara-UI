@@ -505,3 +505,14 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added tests for width/height selection, short-window fallback, resize transitions and invalid threshold ordering.
 - Added the API usage guide to `docs/native-responsive-layout.md`.
 - This is a composition primitive, not a full adaptive navigation system. Navigation scaffolds, pane-state restoration, previews and platform acceptance testing remain future work.
+
+
+## 3.6 — Adaptive navigation scaffold
+
+- Added `NavigationScaffold` with compact bottom navigation, medium navigation rail and expanded drawer presentations.
+- Added configurable width/height transition thresholds.
+- Reused the same retained content node across the three navigation compositions.
+- Synchronized selected destination styling and accessibility selection state across every presentation; disabled destinations cannot be selected.
+- Added tests for mode transitions, selection callbacks, cross-mode state retention, content-node identity and input validation.
+- Documented the scaffold and its application-owned page-switching responsibility.
+- This does not yet provide list-detail panes, multi-pane selection restoration, native OS navigation conventions or assistive-technology provider integration.
