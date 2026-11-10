@@ -115,3 +115,14 @@ def test_native_runtime_updates_adaptive_info_after_resize():
     assert runtime.adaptive_info.height_size_class is WindowHeightSizeClass.EXPANDED
     assert runtime.adaptive_info.scale_x == pytest.approx(2.0)
     assert runtime.adaptive_info.scale_y == pytest.approx(1.5)
+
+
+def test_native_runtime_ignores_identical_resize_metrics():
+    from types import SimpleNamespace
+    from novaui.native.runtime import NativeRuntime
+
+    renderer = SimpleNamespace(size=SimpleNamespace(scale=2.0, scale_y=1.5))
+    runtime = NativeRuntime(lambda: None, renderer, 500, 700)
+    previous_info = runtime.adaptive_info
+    runtime.resize(500, 700, pixel_width=1000, pixel_height=1050)
+    assert runtime.adaptive_info is previous_info
