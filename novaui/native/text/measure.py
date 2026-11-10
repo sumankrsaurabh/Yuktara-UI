@@ -34,15 +34,29 @@ def _is_virama(character: str) -> bool:
 
 
 def grapheme_spans(text: str) -> tuple[tuple[int, int], ...]:
-    """Return dependency-free grapheme-like spans for common Unicode sequences.
+    """Return extended grapheme spans, using ``regex`` when installed.
 
-    This covers combining marks, variation selectors, emoji skin tones, ZWJ
-    sequences, paired regional indicators and common Indic virama conjuncts.
-    It is intentionally not a complete implementation of Unicode Standard
-    Annex #29; uncommon script-specific rules still need a full segmenter.
+    The optional ``regex`` package implements Unicode extended grapheme
+    clusters via ``\\X``. Without it, a dependency-free fallback covers common
+    combining marks, variation selectors, emoji modifiers, ZWJ sequences,
+    regional-indicator pairs and Indic virama conjuncts.
     """
     if not isinstance(text, str):
         raise TypeError("text must be a string")
+
+    # Prefer the maintained ``regex`` package's Unicode \\X implementation
+    # (extended grapheme clusters, UAX #29). Keep the local segmenter as a
+    # dependency-free fallback so the base installation remains lightweight.
+    try:
+        import regex as unicode_regex
+    except ImportError:
+        unicode_regex = None
+    if unicode_regex is not None:
+        return tuple(
+            (match.start(), match.end())
+            for match in unicode_regex.finditer(r"\\X", text)
+        )
+
     spans: list[tuple[int, int]] = []
     index = 0
     regional_run = 0
