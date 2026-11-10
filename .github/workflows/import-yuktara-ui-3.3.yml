@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - ".yuktara-import-3.3/READY"
+      - ".yuktara-bootstrap/IMPORT_3.3_READY"
 
 permissions:
   contents: write
@@ -13,9 +13,10 @@ jobs:
   import-source:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source repository
+      - name: Check out repository
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Set up Python
@@ -23,7 +24,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Reassemble and verify source archive
+      - name: Verify and safely extract the 3.3.0 source archive
         shell: bash
         run: |
           python - <<'PY'
@@ -34,67 +35,66 @@ jobs:
           import tarfile
           import tomllib
 
-          stage = pathlib.Path(".yuktara-import-3.3")
-          parts = [stage / f"payload-{i:02d}.b64" for i in range(1, 9)]
-          encoded = "".join(p.read_text(encoding="ascii").strip() for p in parts)
-          raw = base64.b64decode(encoded, validate=True)
-          expected = "ebc11f68187c770e580d67f24025e78b2da055c1e6214f8d97958e7d7c77cfdc"
-          actual = hashlib.sha256(raw).hexdigest()
-          if actual != expected:
-              raise SystemExit(f"Archive SHA-256 mismatch: {actual}")
+          staging = pathlib.Path(".yuktara-bootstrap")
+          chunks = [staging / f"source-{i:02d}.b64" for i in range(1, 14)]
+          encoded = "".join(path.read_text(encoding="ascii").strip() for path in chunks)
+          archive_bytes = base64.b64decode(encoded, validate=True)
 
-          target = pathlib.Path("/tmp/yuktara-ui-3.3").resolve()
-          target.mkdir(parents=True, exist_ok=True)
-          with tarfile.open(fileobj=io.BytesIO(raw), mode="r:xz") as archive:
-              members = archive.getmembers()
+          expected = "a35410101397ec80dd13353da97b359f02ac9ee6d3cd1e586a221b3df28a0806"
+          actual = hashlib.sha256(archive_bytes).hexdigest()
+          if actual != expected:
+              raise SystemExit(f"Source archive SHA-256 mismatch: {actual}")
+
+          destination = pathlib.Path("/tmp/yuktara-ui-3.3").resolve()
+          destination.mkdir(parents=True, exist_ok=True)
+          with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as bundle:
+              members = bundle.getmembers()
               for member in members:
                   path = pathlib.PurePosixPath(member.name)
                   if path.is_absolute() or ".." in path.parts:
                       raise SystemExit(f"Unsafe archive path: {member.name}")
                   if member.issym() or member.islnk() or member.isdev():
                       raise SystemExit(f"Unsupported archive entry: {member.name}")
-              archive.extractall(target, filter="data")
+              bundle.extractall(destination, filter="data")
 
-          project = target / "pyproject.toml"
-          if not project.is_file():
-              raise SystemExit("Source archive does not contain pyproject.toml")
-          metadata = tomllib.loads(project.read_text(encoding="utf-8"))
-          version = metadata.get("project", {}).get("version")
+          project_file = destination / "pyproject.toml"
+          if not project_file.is_file():
+              raise SystemExit("Archive does not contain pyproject.toml")
+          project = tomllib.loads(project_file.read_text(encoding="utf-8"))
+          version = project.get("project", {}).get("version")
           if version != "3.3.0.dev0":
-              raise SystemExit(f"Unexpected package version: {version}")
+              raise SystemExit(f"Expected package version 3.3.0.dev0, got {version!r}")
+
           for required in ("novaui", "tests", "docs", "examples", "README.md"):
-              if not (target / required).exists():
-                  raise SystemExit(f"Missing required source path: {required}")
-          print(f"Verified Yuktara UI {version}; {len(members)} tar entries; SHA-256 {actual}")
+              if not (destination / required).exists():
+                  raise SystemExit(f"Archive missing required path: {required}")
+
+          print(f"Verified Yuktara UI {version}: {len(members)} archive entries; SHA-256 {actual}")
           PY
 
-      - name: Replace repository source with verified 3.3.0 source
+      - name: Replace repository files with the verified 3.3.0 source
         shell: bash
         run: |
           set -euo pipefail
-          git ls-files -z | while IFS= read -r -d '' path; do
-            rm -f -- "$path"
-          done
-          find . -depth -type d -empty -not -path './.git*' -delete || true
+          git rm -r --ignore-unmatch .
           cp -a /tmp/yuktara-ui-3.3/. .
           rm -rf .yuktara-bootstrap .yuktara-import-3.3
-          rm -f .github/workflows/import-yuktara-ui-3.3.yml
           find . -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache -o -name .ruff_cache -o -name build -o -name '*.egg-info' \) -prune -exec rm -rf {} +
           find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
       - name: Install project and development dependencies
         run: python -m pip install -e ".[dev]"
 
-      - name: Run complete test suite
+      - name: Run the complete test suite
         run: python -m pytest -q
 
-      - name: Compile Python packages
+      - name: Compile Python source
         run: python -m compileall -q novaui
 
-      - name: Build distributable wheel
+      - name: Build the wheel distribution
         run: python -m build --wheel
 
-      - name: Commit verified Yuktara UI 3.3.0 source to main
+      - name: Commit and push Yuktara UI 3.3.0 source to main
         shell: bash
         run: |
           set -euo pipefail
