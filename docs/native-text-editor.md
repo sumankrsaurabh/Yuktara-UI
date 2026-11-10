@@ -76,6 +76,32 @@ The lexer alias is supplied by Pygments (for example, `python`, `json`,
 do not use syntax highlighting do not need it installed. The default palette
 can be replaced with `SyntaxPalette`.
 
+## Markdown import
+
+Install the optional Mistune adapter:
+
+```bash
+python -m pip install 'yuktara-ui[markdown]'
+```
+
+Parse Markdown into plain source text, source-indexed native style spans,
+paragraph layout styles and link ranges:
+
+```python
+from novaui.native import parse_markdown
+
+document = parse_markdown("# Notes\\n\\nA **native** paragraph with [a link](https://example.com).")
+widget = document.to_rich_text(size=16)
+# document.links retains URL targets and source offsets for app-owned actions.
+```
+
+The adapter supports headings, paragraphs, ordered/unordered lists, block
+quotes, code blocks, code spans, strong text, emphasis, links and image alt
+text. Emphasis is currently represented as underline because the native text
+style model does not yet expose italic. Links are metadata, not automatic
+navigation: the application decides whether and how to open them. Parsing does
+not add HTML, CSS or a browser renderer.
+
 ## Text input, selection and clipboard
 
 `TextField` and `TextArea` now paint the caret and selection separately from the
