@@ -12,22 +12,22 @@ from novaui.native.platform.skia_bridge import renderer_frame
 def main() -> None:
     width, height = 640, 420
     renderer = SkiaRenderer(RenderSize(width, height))
-    skia = renderer._module()
-    root = column(
-        Label("Yuktara UI native runtime smoke test"),
-        Label("SDL3 window + Skia CPU raster presentation"),
-        TextField("", placeholder="IME-capable native text field", width=360),
-        Button("Rendered successfully"),
-        spacing=14,
-        padding=24,
-    )
-    runtime = NativeRuntime(lambda: root, renderer, width, height)
     window = SDL3Window(
         "Yuktara UI — Native integration smoke",
         width,
         height,
         resizable=False,
     )
+    skia = renderer._module()
+    root = column(
+        Label("Yuktara UI native runtime smoke test"),
+        Label("SDL3 window + Skia CPU raster presentation"),
+        TextField("", placeholder="IME-capable native text field", width=360, clipboard=window, text_input=window),
+        Button("Rendered successfully"),
+        spacing=14,
+        padding=24,
+    )
+    runtime = NativeRuntime(lambda: root, renderer, width, height)
     window.run_runtime(
         runtime,
         lambda _app: renderer_frame(renderer, skia_module=skia),
