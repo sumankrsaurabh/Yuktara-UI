@@ -569,3 +569,15 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added the interactive `examples/native/design_system_gallery.py` and documented the Yuktara design direction and component conventions in `docs/native-component-library.md`.
 - Design boundary: semantic elevation values are available, but complete shadow rendering is not implemented by the current CPU-raster renderer. Platform-native accessibility bridges and device-specific acceptance tests remain outstanding.
 - Validation status: tests were authored but not executed locally in this environment. CI status must be checked on the latest commit before merging.
+
+
+## 3.10 — Content and floating action components
+
+- Added `FloatingActionButton` with small, regular, large and extended presentations; the small target is sized to preserve the framework's 44-unit minimum touch target.
+- Added semantic `Chip` variants with selected/disabled and optional activation behavior.
+- Added `Avatar` with initials/glyph, size and semantic palette variants plus explicit accessible naming.
+- Added `ListTile` with leading/title/subtitle/trailing composition, selected/disabled states and row-wide pointer/keyboard activation.
+- Exported all four components from `novaui.native.widgets` and `novaui.native`.
+- Expanded the interactive gallery and component catalogue documentation.
+- Added `tests/native/test_content_components.py` for component semantics, sizing, validation and interaction.
+- Validation status: tests are authored but have not been executed locally; latest-head CI remains to be checked.
