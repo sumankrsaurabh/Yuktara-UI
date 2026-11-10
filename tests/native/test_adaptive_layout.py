@@ -88,15 +88,15 @@ def test_adaptive_layout_reflows_on_resize_without_rebuilding_component():
 def test_adaptive_variant_thresholds_must_be_unique():
     with pytest.raises(ValueError, match="unique"):
         AdaptiveLayout(variants=((0, 0, LayoutNode.column()), (0, 0, LayoutNode.row()))).build()
-    with pytest.raises(ValueError, match="unique"):
-        AdaptiveLayout(variants=((0, 0, LayoutNode.column()), (0, 0, LayoutNode.row()))).build()
 
 
 def test_height_only_variant_can_override_fallback_without_wide_window():
     compact = LayoutNode.column(LayoutNode("text", text="compact"))
     tall = LayoutNode.row(LayoutNode("text", text="tall-header"))
-    wide = LayoutNode.grid([LayoutNode("text", text="a"), LayoutNode("text", text="b")],
-                           grid_columns=2)
+    wide = LayoutNode(
+        "grid", [LayoutNode("text", text="a"), LayoutNode("text", text="b")],
+        grid_columns=2,
+    )
     root = AdaptiveLayout(
         variants=((0, 0, compact), (0, 700, tall), (700, 0, wide))
     ).build()

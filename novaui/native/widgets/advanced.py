@@ -585,6 +585,8 @@ class NavigationScaffold:
             raise ValueError("min_drawer_width must exceed min_rail_width")
         if self.content is None:
             raise ValueError("NavigationScaffold content cannot be None")
+        if self.on_select is not None and not callable(self.on_select):
+            raise TypeError("on_select must be callable")
         self._item_nodes: dict[str, list[LayoutNode]] = {}
         self._content_node: LayoutNode | None = None
         self._root: LayoutNode | None = None
@@ -620,7 +622,7 @@ class NavigationScaffold:
             label = item.icon or item.label[:1]
             padding = Insets.symmetric(vertical=13, horizontal=10)
         elif mode == "bottom":
-            label = ((item.icon + "\\n") if item.icon else "") + item.label
+            label = ((item.icon + "\n") if item.icon else "") + item.label
             padding = Insets.symmetric(vertical=8, horizontal=4)
         else:
             prefix = (item.icon + "  ") if item.icon else ""
@@ -694,6 +696,240 @@ class NavigationScaffold:
                 AdaptiveVariant(self.min_drawer_width, self.min_drawer_height, expanded),
             )
         ).build()
+        return self._root
+
+
+@dataclass(frozen=True)
+class ListDetailItem:
+    """A selectable list entry paired with its detail content."""
+
+    label: str
+    content: object
+    key: str | None = None
+    subtitle: str | None = None
+    disabled: bool = False
+
+    def __post_init__(self):
+        if not isinstance(self.label, str) or not self.label:
+            raise ValueError("ListDetailItem label must be a non-empty string")
+        if self.subtitle is not None and not isinstance(self.subtitle, str):
+            raise TypeError("ListDetailItem subtitle must be a string or None")
+        if self.content is None:
+            raise ValueError("ListDetailItem content cannot be None")
+
+
+@dataclass
+class ListDetailPane:
+    """Responsive master-detail view with a compact back-to-list flow.
+
+    Narrow windows show either the list or the selected detail. Wider windows
+    show both panes. Selection and the active detail node survive window
+    resizing because the list and detail nodes are retained across variants.
+    """
+
+    items: Sequence[ListDetailItem]
+    selected: str | None = None
+    on_select: Callable[[ListDetailItem], None] | None = None
+    min_expanded_width: float = 840
+    list_width: float = 300
+    detail_placeholder: object | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    def __post_init__(self):
+        if not self.items:
+            raise ValueError("ListDetailPane needs at least one item")
+        if self.on_select is not None and not callable(self.on_select):
+            raise TypeError("on_select must be callable")
+        if any(not isinstance(item, ListDetailItem) for item in self.items):
+            raise TypeError("items must contain ListDetailItem instances")
+        keys = [item.key or item.label for item in self.items]
+        if len(keys) != len(set(keys)):
+            raise ValueError("list-detail item keys must be unique")
+        if self.selected is not None and self.selected not in keys and self.selected not in {
+            item.label for item in self.items
+        }:
+            raise ValueError("selected must match an item key or label")
+        if any(isinstance(value, bool) or not isinstance(value, (int, float))
+               or not isfinite(float(value)) or value <= 0
+               for value in (self.min_expanded_width, self.list_width)):
+            raise ValueError("list-detail dimensions must be finite and positive")
+        self._item_nodes: dict[str, LayoutNode] = {}
+        self._content_nodes: dict[str, LayoutNode] = {}
+        self._detail_body: LayoutNode | None = None
+        self._compact_root: LayoutNode | None = None
+        self._compact_detail_header: LayoutNode | None = None
+        self._wide_detail_header: LayoutNode | None = None
+        self._show_detail = self.selected is not None
+
+    def _key(self, item: ListDetailItem) -> str:
+        return item.key or item.label
+
+    def _selected_item(self) -> ListDetailItem | None:
+        return next(
+            (item for item in self.items
+             if self.selected in {self._key(item), item.label}),
+            None,
+        )
+
+    def _sync_selection(self):
+        t = self.theme
+        for item in self.items:
+            key = self._key(item)
+            selected = self.selected in {key, item.label}
+            node = self._item_nodes.get(key)
+            if node is not None:
+                node.background = t.primary_soft if selected else None
+                node.text_color = (
+                    t.disabled_text if item.disabled else
+                    t.primary if selected else t.foreground
+                )
+                node.accessibility_selected = selected
+
+    def _show_selected_detail(self):
+        item = self._selected_item()
+        if item is None:
+            return
+        self._detail_body.children = [self._content_nodes[self._key(item)]]
+        self._show_detail = True
+        self._sync_detail_headers()
+        if self._compact_root is not None:
+            self._compact_root.children = [self._compact_detail_view]
+
+    def _sync_detail_headers(self):
+        item = self._selected_item()
+        label = item.label if item is not None else "Details"
+        if self._compact_detail_header is not None:
+            title_node = self._compact_detail_header.children[-1]
+            title_node.text = label
+            title_node.accessibility_label = label
+            title_node.text_layout = None
+        if self._wide_detail_header is not None:
+            title_node = self._wide_detail_header.children[0]
+            title_node.text = label
+            title_node.accessibility_label = label
+            title_node.text_layout = None
+
+    def _select(self, item: ListDetailItem):
+        if item.disabled:
+            return
+        self.selected = self._key(item)
+        self._sync_selection()
+        self._show_selected_detail()
+        if self.on_select is not None:
+            self.on_select(item)
+
+    def _back_to_list(self, _event=None):
+        self._show_detail = False
+        if self._compact_root is not None:
+            self._compact_root.children = [self._list_pane]
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        self._item_nodes = {}
+        self._content_nodes = {
+            self._key(item): _node(item.content) for item in self.items
+        }
+        list_items = []
+        for item in self.items:
+            key = self._key(item)
+            selected = self.selected in {key, item.label}
+            label = item.label
+            if item.subtitle:
+                label += "\n" + item.subtitle
+            node = LayoutNode(
+                "text", text=label, font_size=14,
+                text_color=t.disabled_text if item.disabled else (t.primary if selected else t.foreground),
+                padding=Insets.symmetric(vertical=11, horizontal=12),
+                background=t.primary_soft if selected else None,
+                radius=t.radius_small,
+                accessibility_role="listitem",
+                accessibility_label=item.label,
+                accessibility_disabled=item.disabled,
+                accessibility_selected=selected,
+                on_click=None if item.disabled else (lambda _event=None, value=item: self._select(value)),
+            )
+            self._item_nodes[key] = node
+            list_items.append(node)
+
+        self._list_pane = LayoutNode.column(
+            *list_items, spacing=4,
+            padding=Insets.all(10), background=t.surface,
+            border_color=t.border, border_width=1,
+            accessibility_role="list", accessibility_label="Items",
+        )
+        placeholder = self.detail_placeholder
+        if placeholder is None:
+            placeholder = _text_node(
+                "Select an item to view its details",
+                color=t.muted, size=14, role="status",
+                label="No item selected",
+            )
+        selected_item = self._selected_item()
+        initial_detail = (
+            self._content_nodes[self._key(selected_item)]
+            if selected_item is not None else _node(placeholder)
+        )
+        self._detail_body = LayoutNode.box(
+            initial_detail, weight=1, padding=Insets.all(16),
+            accessibility_role="region", accessibility_label="Item details",
+        )
+
+        back_button = _text_node(
+            "‹  Back", color=t.primary, size=14, weight="semibold",
+            padding=Insets.symmetric(vertical=10, horizontal=8),
+            role="button", label="Back to list", on_click=self._back_to_list,
+        )
+        compact_title = _text_node(
+            selected_item.label if selected_item else "Details",
+            color=t.foreground, size=17, weight="semibold",
+            role="heading", label="Selected item",
+        )
+        self._compact_detail_header = LayoutNode.row(
+            back_button, compact_title, spacing=12,
+            cross_align=Alignment.CENTER,
+            accessibility_role="toolbar",
+        )
+        self._wide_detail_header = LayoutNode.row(
+            _text_node(
+                selected_item.label if selected_item else "Details",
+                color=t.foreground, size=20, weight="semibold",
+                role="heading", label="Selected item",
+            ),
+            padding=Insets.symmetric(horizontal=16, vertical=12),
+            accessibility_role="toolbar",
+        )
+        compact_detail = LayoutNode.column(
+            self._compact_detail_header, self._detail_body,
+            cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+        self._compact_root = LayoutNode.column(
+            compact_detail if self._show_detail else self._list_pane,
+            cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+        wide_detail = LayoutNode.column(
+            self._wide_detail_header, self._detail_body,
+            cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+        wide_list = LayoutNode.box(
+            self._list_pane, width=self.list_width,
+            accessibility_role="group", accessibility_label="Master list",
+        )
+        wide = LayoutNode.row(
+            wide_list, wide_detail,
+            cross_align=Alignment.STRETCH,
+            accessibility_role="group",
+        )
+        self._compact_detail_view = compact_detail
+        self._root = AdaptiveLayout(
+            variants=(
+                AdaptiveVariant(0, 0, self._compact_root),
+                AdaptiveVariant(self.min_expanded_width, 0, wide),
+            )
+        ).build()
+        self._sync_selection()
         return self._root
 
 
@@ -1055,6 +1291,6 @@ class TreeView:
 __all__ = [
     "AdaptiveLayout", "AdaptiveVariant", "Calendar", "Container", "DatePicker",
     "Grid", "GridItem", "Image", "Responsive", "ResponsiveVariant",
-    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "Positioned", "ScrollView", "Table",
+    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "ListDetailItem", "ListDetailPane", "Positioned", "ScrollView", "Table",
     "TreeItem", "TreeView", "FilePicker",
 ]

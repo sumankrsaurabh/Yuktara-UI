@@ -505,3 +505,33 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added tests for width/height selection, short-window fallback, resize transitions and invalid threshold ordering.
 - Added the API usage guide to `docs/native-responsive-layout.md`.
 - This is a composition primitive, not a full adaptive navigation system. Navigation scaffolds, pane-state restoration, previews and platform acceptance testing remain future work.
+
+
+## 3.6 — Adaptive navigation scaffold
+
+- Added `NavigationScaffold` with compact bottom navigation, medium navigation rail and expanded drawer presentations.
+- Added configurable width/height transition thresholds.
+- Reused the same retained content node across the three navigation compositions.
+- Synchronized selected destination styling and accessibility selection state across every presentation; disabled destinations cannot be selected.
+- Added tests for mode transitions, selection callbacks, cross-mode state retention, content-node identity and input validation.
+- Documented the scaffold and its application-owned page-switching responsibility.
+- This does not yet provide list-detail panes, multi-pane selection restoration, native OS navigation conventions or assistive-technology provider integration.
+
+
+## 3.6 — Adaptive navigation and list-detail patterns
+
+- Added `NavigationScaffold` with bottom-bar, navigation-rail and drawer modes, shared content retention and synchronized destination selection.
+- Added `ListDetailPane` and `ListDetailItem` for compact single-surface navigation and expanded side-by-side master-detail layouts.
+- Added compact back-to-list behavior and preserved the selected detail node across window resizing.
+- Added regression tests for scaffold mode changes, selection synchronization, list-detail transitions, disabled entries and retained content identity.
+- Documented both patterns and their application-owned navigation/content responsibilities.
+- These primitives are not yet a complete navigation framework: route stacks, deep links, restoration across process restarts, multi-pane inspector workflows and OS accessibility integration remain open.
+
+
+## CI feedback and regression-test corrections
+
+- The first CI run for PR #2 executed the native suite and exposed five failures in newly added test fixtures/assertions and the resize-host test's startup-sync expectation.
+- Corrected the adaptive grid fixture to construct a supported `LayoutNode("grid", ...)` node.
+- Corrected compact list-detail and navigation test tree paths and changed the disabled-navigation assertion to verify that no click callback is installed.
+- Corrected the resize test to expect the one initial runtime-size synchronization plus one synchronization for the coalesced resize event batch.
+- These corrections are committed after the failing CI head. A CI run for the corrected latest commit has not yet been reported; do not treat this as a green test suite.
