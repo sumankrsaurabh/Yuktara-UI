@@ -319,7 +319,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 
 ### Continuous integration
 
-- `.github/workflows/ci.yml` runs the existing native suite and Python compilation on Ubuntu, Windows and macOS with Python 3.10 and 3.13.
+- `.github/workflows/ci.yml` runs the existing native suite and Python compilation on Ubuntu, Windows and macOS with Python 3.10, 3.11, 3.12 and 3.13.
 - The workflow also builds and installs the wheel, verifies the installed package outside the source checkout, and measures package coverage.
 - `.github/workflows/native-integration.yml` is an opt-in Linux/Xvfb job that installs SDL3 build prerequisites, provisions Skia/SDL3 through `python -m novaui setup`, opens a real SDL3 window and presents Skia frames.
 - `scripts/native_runtime_smoke.py` is the bounded three-frame desktop smoke application.
@@ -331,9 +331,10 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 - Added SDL3 `SDL_EVENT_TEXT_EDITING` decoding.
 - Routed composition events through `NativeRuntime`, `InputDispatcher` and the focused text control.
 - TextField/TextArea now display the temporary pre-edit string and underline without changing their committed value.
+- Text input/IME operations are injectable through a dedicated `text_input` service; the existing `clipboard` adapter remains a backward-compatible fallback. OS clipboard access stays separately injectable.
 - SDL3 `SDL_SetTextInputArea` and `SDL_ClearComposition` are exposed through `SDL3Window`; the candidate area is updated from measured caret geometry after layout.
 - Committed `TEXT_INPUT` replaces the original selected range; Escape/blur cancels the pre-edit state.
-- Added seven targeted tests in `tests/native/test_ime_composition.py`. They are new regression tests; do not count them as passing until the CI test job reports success.
+- Added eight targeted tests in `tests/native/test_ime_composition.py`, covering SDL event decode, preview, commit, cancellation, runtime routing, candidate-area binding and independent input/clipboard services. They are new regression tests; do not count them as passing until the CI test job reports success.
 
 ## 12. Known limitations and unfinished integration
 
