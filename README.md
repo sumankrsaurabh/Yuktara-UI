@@ -21,7 +21,7 @@ For a cumulative inventory of implemented features, development milestones, exam
   cluster-aware text metrics, selection/caret painting, text scrolling,
   SDL3-backed system clipboard access, paragraph-aware Unicode line wrapping
   and source-indexed rich inline text styling. Optional Pygments-based syntax
-  highlighting is available through the `syntax` extra. Optional Unicode extended
+  highlighting is available through the `syntax` extra. Markdown import is\n  available through the optional `markdown` extra. Optional Unicode extended
   grapheme segmentation is available through the `unicode` extra; optional
   HarfBuzz shaping is available through the `shaping` extra and explicit
   font-file configuration.
