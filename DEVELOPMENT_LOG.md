@@ -325,6 +325,20 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 - `scripts/native_runtime_smoke.py` is the bounded three-frame desktop smoke application.
 - The ordinary test matrix is backend-neutral by design; the opt-in job is the first actual SDL3 + Skia window smoke check. The new workflows must be observed completing successfully before their results are recorded as passing.
 
+### Window resizing, high DPI and responsive layout
+
+- SDL3 windows now request `SDL_WINDOW_HIGH_PIXEL_DENSITY` by default and enforce a configurable minimum client size (defaults to 320×240 UI units).
+- Window size, backing pixel size, SDL window display scale and pixel density are read separately and normalized into device-independent UI coordinates.
+- Mouse positions/deltas and IME candidate-window rectangles are converted using the same UI coordinate scale; touch coordinates remain normalized and are mapped by the runtime.
+- SDL window display-scale changes trigger a fresh runtime/renderer size synchronization.
+- SDL3 texture presentation uses a centered aspect-fit destination rectangle and letterboxing instead of stretching a mismatched frame across the output surface.
+- Corrected SDL3 focus-gained/focus-lost event identifiers and added display-scale-change decoding.
+- Added public `Responsive` and `ResponsiveVariant` components. The layout engine selects width variants during measure, so the active tree changes at a breakpoint without a component rebuild.
+- Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
+- All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
+- Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.
+- Added tests in `tests/native/test_responsive_layout.py` and `tests/native/test_window_metrics.py`; results are pending CI execution.
+
 ### IME composition path
 
 - Added normalized `EventType.TEXT_EDITING` events carrying the composition string, cursor position and selection length.
@@ -345,7 +359,7 @@ The following items are **not** to be treated as completed features in the 3.3 b
 - Full Unicode Standard Annex #29 segmentation and complete Unicode line breaking.
 - Complete bidirectional text, Arabic joining, Indic shaping, ligature-aware caret geometry and complex-script shaping across all platforms. Optional HarfBuzz support is available, but it does not make the entire text pipeline fully certified.
 - Native accessibility provider bridges for Windows UI Automation, macOS NSAccessibility and Linux AT-SPI; screen-reader behavior is not certified.
-- End-to-end SDL3 window, DPI, clipboard, file-dialog, font fallback and image decoding verification on every supported OS/configuration.
+- End-to-end SDL3 window, mixed-DPI monitor movement, clipboard, file-dialog, font fallback and image decoding verification on every supported OS/configuration. A Linux/Xvfb smoke run does not certify all platform-native behavior.
 - Direct GPU Skia surfaces; the documented renderer path is CPU raster content presented through SDL3.
 - Mobile backends for Android/iOS.
 - PDF export, OS printing and advanced publishing features such as footnotes, section breaks, multi-column flow and floating document images.
