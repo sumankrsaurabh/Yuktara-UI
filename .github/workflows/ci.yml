@@ -78,7 +78,7 @@ jobs:
 
       - name: Verify installed distribution
         run: |
-          python -c "import importlib.metadata as m; import novaui; print('Installed yuktara-ui', m.version('yuktara-ui'))"
+          python -c "import os, importlib.metadata as m; os.chdir('/tmp'); import novaui; print('Installed yuktara-ui', m.version('yuktara-ui'), 'from', novaui.__file__)"
 
   coverage:
     name: Measure test coverage
@@ -107,5 +107,5 @@ jobs:
           coverage xml -o coverage.xml
 
       - name: Add coverage summary
-        if: always()
+        if: success()
         run: coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
