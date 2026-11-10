@@ -357,3 +357,42 @@ def test_run_runtime_tears_down_when_frame_provider_returns_invalid_value():
 
     assert runtime.root is None
     assert window.did_close is True
+
+def test_sdl3_window_validates_graphics_backend_and_defaults_to_sdl():
+    from novaui.native.platform.sdl3 import SDL3Window
+
+    assert SDL3Window().graphics_backend == "sdl"
+    assert SDL3Window(graphics_backend="opengl").graphics_backend == "opengl"
+    with pytest.raises(ValueError, match="graphics_backend"):
+        SDL3Window(graphics_backend="vulkan")
+
+
+def test_sdl3_opengl_presentation_flushes_gpu_renderer_then_swaps():
+    import threading
+    from novaui.native.platform.sdl3 import SDL3Window, SDL3Error
+
+    calls = []
+
+    class FakeLibrary:
+        pass
+
+    fake = FakeLibrary()
+    fake.SDL_GL_SwapWindow = lambda window: calls.append(("swap", window)) or True
+    window = SDL3Window(graphics_backend="opengl")
+    window._lib = fake
+    window._opened = True
+    window._thread_id = threading.get_ident()
+    window._window = 42
+    window._gl_context = 99
+
+    class Renderer:
+        backend = "opengl"
+        framebuffer = True
+
+        def flush(self):
+            calls.append(("flush", None))
+
+    window.present_gpu(Renderer())
+    assert calls == [("flush", None), ("swap", 42)]
+    with pytest.raises(SDL3Error, match="present\\(PixelFrame\\)"):
+        window.present(PixelFrame(1, 1, bytes(4)))
