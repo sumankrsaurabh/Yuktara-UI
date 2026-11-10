@@ -411,8 +411,8 @@ class Badge:
             "info": (t.info_soft, t.info),
         }
         bg, fg = colors[self.variant]
-        return _text_node(self.text, color=fg, size=12, weight="semibold",
-                          padding=Insets.symmetric(vertical=4, horizontal=8),
+        return _text_node(self.text, color=fg, size=t.type_label_small, weight="semibold",
+                          padding=Insets.symmetric(vertical=t.space_1, horizontal=t.space_2),
                           background=bg, radius=t.radius_pill,
                           role="status", label=self.text)
 
@@ -527,12 +527,13 @@ class Switch:
         t = self.theme
         track_color = t.disabled_surface if self.disabled else (t.primary if self.checked else t.border)
         knob = LayoutNode.box(
-            width=16, height=16, background=0xFFFFFFFF, radius=8,
+            width=18, height=18, background=t.surface_container_lowest,
+            radius=t.radius_pill,
             on_click=None if self.disabled else self._toggle,
         )
         track = LayoutNode.box(
-            knob, width=38, height=22, padding=Insets.all(3),
-            background=track_color, radius=11,
+            knob, width=42, height=26, padding=Insets.all(t.space_1),
+            background=track_color, radius=t.radius_pill,
             align=Alignment.END if self.checked else Alignment.START,
             on_click=None if self.disabled else self._toggle,
             accessibility_role="switch", accessibility_label=self.label,
@@ -545,7 +546,7 @@ class Switch:
             on_click=None if self.disabled else self._toggle,
         )
         self._track_node = track
-        return LayoutNode.row(track, caption, spacing=8,
+        return LayoutNode.row(track, caption, spacing=t.space_2,
                               cross_align=Alignment.CENTER,
                               accessibility_role="group", accessibility_label=self.label)
 
@@ -593,7 +594,7 @@ class TextField:
     value: str = ""
     placeholder: str = ""
     width: float = 240
-    height: float = 40
+    height: float = 44
     on_change: Callable[[str], None] | None = None
     on_submit: Callable[[str], None] | None = None
     max_length: int | None = None
@@ -745,11 +746,11 @@ class TextField:
     def build(self) -> LayoutNode:
         node = LayoutNode(
             "text", text=self._display_text(), width=self.width, height=self.height,
-            padding=Insets.symmetric(horizontal=11, vertical=8),
-            background=self.theme.disabled_surface if self.disabled else self.theme.surface,
+            padding=Insets.symmetric(horizontal=self.theme.space_3, vertical=self.theme.space_2),
+            background=self.theme.disabled_surface if self.disabled else self.theme.surface_container_lowest,
             radius=self.theme.radius_medium,
-            border_color=self.theme.focus if self._focused else self.theme.border,
-            border_width=1,
+            border_color=self.theme.focus if self._focused else self.theme.outline_variant,
+            border_width=2 if self._focused else 1,
             text_color=(self.theme.disabled_text if self.disabled else
                         self.theme.muted if not self.value else self.theme.foreground),
             font_size=self.font_size,
@@ -791,6 +792,7 @@ class TextField:
         self._sync_node()
         if self._built_node is not None:
             self._built_node.border_color = self.theme.focus
+            self._built_node.border_width = 2
 
     def _blur(self, _event=None):
         self._clear_composition(restore_selection=True)
@@ -806,7 +808,8 @@ class TextField:
         self.anchor = self.cursor
         self._sync_node()
         if self._built_node is not None:
-            self._built_node.border_color = self.theme.border
+            self._built_node.border_color = self.theme.outline_variant
+            self._built_node.border_width = 1
 
     def _offset_from_pointer(self, event):
         pointer = getattr(event, "pointer", None)
