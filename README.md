@@ -9,6 +9,8 @@ only through a planned compatibility release.
 > layout, retained-tree, scheduler and runtime lifecycle have backend-injected
 > regression coverage; real SDL3/Skia integration still needs validation on each target OS.
 
+For a cumulative inventory of implemented features, development milestones, examples and known limitations, see [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md).
+
 ## Native stack
 
 - **SDL3 3.4.20** — native desktop window and event host.
