@@ -19,6 +19,7 @@ from typing import Callable, Sequence
 
 
 SDL_INIT_VIDEO = 0x00000020
+SDL_WINDOW_OPENGL = 0x00000002
 SDL_WINDOW_RESIZABLE = 0x00000020
 SDL_WINDOW_HIGH_PIXEL_DENSITY = 0x00002000
 SDL_TEXTUREACCESS_STREAMING = 1
@@ -126,7 +127,7 @@ class SDL3Error(RuntimeError):
 
 
 class SDL3Window:
-    """SDL3 window that presents RGBA frames through a streaming texture.
+    """SDL3 window using either a streaming texture or an OpenGL context.
 
     SDL calls and presentation must remain on the thread that opens the window.
     The event API intentionally exposes raw SDL_Event bytes for the next input
@@ -145,6 +146,7 @@ class SDL3Window:
         min_height: int = 240,
         preserve_aspect: bool = True,
         vsync: int = 1,
+        graphics_backend: str = "sdl",
         library_path: str | None = None,
     ) -> None:
         for name, value in (("width", width), ("height", height),
@@ -163,6 +165,8 @@ class SDL3Window:
             raise TypeError("vsync must be an integer interval")
         if vsync < -1:
             raise ValueError("vsync must be -1 (adaptive), 0 (off), or a positive interval")
+        if graphics_backend not in {"sdl", "opengl"}:
+            raise ValueError("graphics_backend must be 'sdl' or 'opengl'")
         self.title = title
         self.width = width
         self.height = height
@@ -172,6 +176,7 @@ class SDL3Window:
         self.min_height = min_height
         self.preserve_aspect = preserve_aspect
         self.requested_vsync = vsync
+        self.graphics_backend = graphics_backend
         self.actual_vsync: int | None = None
         self.display_metrics: DisplayMetrics | None = None
         self.letterbox_color = (0, 0, 0, 255)
@@ -183,6 +188,7 @@ class SDL3Window:
         self._window = None
         self._renderer = None
         self._texture = None
+        self._gl_context = None
         self._opened = False
         self._closed = False
         self._thread_id = None
@@ -264,6 +270,19 @@ class SDL3Window:
         if not init(SDL_INIT_VIDEO):
             raise SDL3Error(f"SDL_Init failed: {self._error()}")
 
+        if self.graphics_backend == "opengl":
+            set_gl_attribute = self._bind(
+                "SDL_GL_SetAttribute", ctypes.c_bool, [ctypes.c_int, ctypes.c_int]
+            )
+            # SDL_GL_CONTEXT_MAJOR_VERSION=17, MINOR_VERSION=18,
+            # PROFILE_MASK=21, CORE_PROFILE=1. Request a conservative 3.3 core
+            # context supported by the Skia OpenGL backend.
+            for attribute, value in ((17, 3), (18, 3), (21, 1), (5, 1)):
+                if not set_gl_attribute(attribute, value):
+                    error = self._error()
+                    self.close()
+                    raise SDL3Error(f"SDL_GL_SetAttribute({attribute}) failed: {error}")
+
         create_window = self._bind(
             "SDL_CreateWindow",
             ctypes.c_void_p,
@@ -272,12 +291,33 @@ class SDL3Window:
         flags = SDL_WINDOW_RESIZABLE if self.resizable else 0
         if self.high_dpi:
             flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY
+        if self.graphics_backend == "opengl":
+            flags |= SDL_WINDOW_OPENGL
         self._window = create_window(
             self.title.encode("utf-8"), self.width, self.height, flags
         )
         if not self._window:
             self.close()
             raise SDL3Error(f"SDL_CreateWindow failed: {self._error()}")
+        if self.graphics_backend == "opengl":
+            create_context = self._bind(
+                "SDL_GL_CreateContext", ctypes.c_void_p, [ctypes.c_void_p]
+            )
+            self._gl_context = create_context(self._window)
+            if not self._gl_context:
+                self.close()
+                raise SDL3Error(f"SDL_GL_CreateContext failed: {self._error()}")
+            set_swap_interval = self._bind(
+                "SDL_GL_SetSwapInterval", ctypes.c_bool, [ctypes.c_int]
+            )
+            if set_swap_interval(self.requested_vsync):
+                self.actual_vsync = self.requested_vsync
+            elif self.requested_vsync == -1 and set_swap_interval(1):
+                self.actual_vsync = 1
+            elif self.requested_vsync != 0 and set_swap_interval(0):
+                self.actual_vsync = 0
+            else:
+                self.actual_vsync = None
         try:
             pixel_density = float(self._bind(
                 "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
@@ -327,15 +367,16 @@ class SDL3Window:
                 self.close()
                 raise SDL3Error(f"SDL_SetWindowMinimumSize failed: {self._error()}")
 
-        create_renderer = self._bind(
-            "SDL_CreateRenderer",
-            ctypes.c_void_p,
-            [ctypes.c_void_p, ctypes.c_char_p],
-        )
-        self._renderer = create_renderer(self._window, None)
-        if not self._renderer:
-            self.close()
-            raise SDL3Error(f"SDL_CreateRenderer failed: {self._error()}")
+        if self.graphics_backend == "sdl":
+            create_renderer = self._bind(
+                "SDL_CreateRenderer",
+                ctypes.c_void_p,
+                [ctypes.c_void_p, ctypes.c_char_p],
+            )
+            self._renderer = create_renderer(self._window, None)
+            if not self._renderer:
+                self.close()
+                raise SDL3Error(f"SDL_CreateRenderer failed: {self._error()}")
 
         # SDL renderers default to VSync disabled. Request synchronization with
         # the monitor's vertical refresh so presentation follows 60/90/120/144Hz
@@ -724,6 +765,8 @@ class SDL3Window:
 
     def present(self, frame: PixelFrame) -> None:
         self._assert_open()
+        if self.graphics_backend != "sdl":
+            raise SDL3Error("present(PixelFrame) is only available with graphics_backend='sdl'.")
         self._ensure_texture(frame.width, frame.height)
         update = self._bind(
             "SDL_UpdateTexture",
@@ -776,6 +819,42 @@ class SDL3Window:
         if not render_texture(self._renderer, self._texture, None, destination):
             raise SDL3Error(f"SDL_RenderTexture failed: {self._error()}")
         present(self._renderer)
+
+    def create_gpu_renderer(self, *, skia_module=None):
+        """Create a Skia surface that draws directly into this window's GL backbuffer."""
+        self._assert_open()
+        if self.graphics_backend != "opengl" or not self._gl_context:
+            raise SDL3Error("Open the window with graphics_backend='opengl' first.")
+        width = ctypes.c_int()
+        height = ctypes.c_int()
+        get_pixels = self._bind(
+            "SDL_GetWindowSizeInPixels", ctypes.c_bool,
+            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+        )
+        if not get_pixels(self._window, ctypes.byref(width), ctypes.byref(height)):
+            raise SDL3Error(f"SDL_GetWindowSizeInPixels failed: {self._error()}")
+        from ..renderer import RenderSize
+        from ..gpu import SkiaGpuRenderer
+        logical_width = max(1, self.width)
+        logical_height = max(1, self.height)
+        size = RenderSize(
+            logical_width, logical_height,
+            scale=width.value / logical_width,
+            scale_y=height.value / logical_height,
+        )
+        return SkiaGpuRenderer(size, skia_module=skia_module, framebuffer=True)
+
+    def present_gpu(self, renderer) -> None:
+        """Submit a direct-framebuffer Skia frame and swap the SDL OpenGL window."""
+        self._assert_open()
+        if self.graphics_backend != "opengl" or not self._gl_context:
+            raise SDL3Error("present_gpu requires graphics_backend='opengl'.")
+        if getattr(renderer, "backend", None) != "opengl" or not getattr(renderer, "framebuffer", False):
+            raise TypeError("renderer must be a framebuffer-backed SkiaGpuRenderer.")
+        renderer.flush()
+        swap = self._bind("SDL_GL_SwapWindow", ctypes.c_bool, [ctypes.c_void_p])
+        if not swap(self._window):
+            raise SDL3Error(f"SDL_GL_SwapWindow failed: {self._error()}")
 
     def poll_events(self) -> list[SDLEvent]:
         self._assert_open()
@@ -976,6 +1055,9 @@ class SDL3Window:
             if self._renderer:
                 self._bind("SDL_DestroyRenderer", None, [ctypes.c_void_p])(self._renderer)
                 self._renderer = None
+            if self._gl_context:
+                self._bind("SDL_GL_DestroyContext", ctypes.c_bool, [ctypes.c_void_p])(self._gl_context)
+                self._gl_context = None
             if self._window:
                 self._bind("SDL_DestroyWindow", None, [ctypes.c_void_p])(self._window)
                 self._window = None
