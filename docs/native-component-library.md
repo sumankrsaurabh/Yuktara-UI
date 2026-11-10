@@ -135,3 +135,86 @@ scaling, accessibility provider bridges and input behavior on each supported OS.
 Native accessibility semantics are represented in Yuktara's semantic tree;
 UI Automation, NSAccessibility and AT-SPI provider bridges are separate work.
 Mobile renderers are not included.
+
+
+## Yuktara design system
+
+Yuktara's component language uses a shared semantic token system rather than
+independent per-widget colors and measurements. The design direction combines
+the systematic state and role model common to modern platform design systems
+with restrained native typography, comfortable touch targets, quiet surfaces
+and clear hierarchy. It is an original Yuktara implementation, not a copy of
+Material 3 or Apple's proprietary assets.
+
+### Theme tokens
+
+`NativeTheme` is immutable and provides:
+
+- **Color roles:** primary, secondary, tertiary, danger, warning, success,
+  information, on-colors, outline, focus, inverse surfaces and disabled roles.
+- **Surface scale:** lowest, low, base, high and highest container roles.
+- **Shape scale:** extra-small through extra-large plus pill.
+- **Spacing scale:** 4, 8, 12, 16, 20, 24, 32, 40 and 48 logical units.
+- **Typography roles:** display, headline, title, body and label sizes.
+- **Control metrics:** shared small, medium and large control heights and
+  icon-button dimensions, with a 44-unit default touch target.
+- **Dark palette:** `NativeTheme.dark()` supplies a complete matching semantic
+  palette rather than simply inverting light colors.
+
+Existing token names such as `primary`, `surface`, `radius_medium` and
+`radius_large` remain supported. Components should consume semantic roles
+from the supplied theme; avoid hard-coded colors, radii or arbitrary spacing
+inside new widgets.
+
+### Core component patterns
+
+`Button` supports `primary`, `tonal`, `secondary`, `outline`, `text`,
+`danger` and `success` variants. Small, medium and large sizes share the
+theme's control metrics. Enabled buttons expose hover, pressed and keyboard
+focus states; disabled buttons install no activation or pointer-state handlers.
+
+`IconButton` requires a visible glyph and a separate accessible label. Its
+standard, filled, tonal and outlined variants share the same button state
+behavior and square target metrics.
+
+`Surface` provides lowest, low, base, high, highest and outlined surface
+roles. Use these roles to establish hierarchy before introducing custom colors
+or borders. `Card` remains available as a compatibility-friendly content
+container.
+
+Text fields use the shared surface, outline and focus tokens. Status badges,
+switches and buttons consume the shared typography and spacing scales.
+
+### Usage
+
+```python
+from novaui.native import (
+    Button, IconButton, NativeTheme, Surface, column, row,
+)
+
+theme = NativeTheme()
+screen = Surface(
+    variant="low",
+    children=(
+        row(
+            Button("Continue", variant="primary", theme=theme),
+            Button("Learn more", variant="text", theme=theme),
+        ),
+        IconButton("＋", "Create item", variant="tonal", theme=theme),
+    ),
+    theme=theme,
+)
+```
+
+Run the interactive catalogue with `python examples/native/design_system_gallery.py`.
+Use `--dark` to inspect the dark palette. The automated token and interaction
+regressions are in `tests/native/test_design_system.py`.
+
+### Rendering and platform boundaries
+
+Elevation levels are semantic tokens today; the current CPU-raster renderer
+does not yet provide a complete cross-platform shadow/elevation compositor.
+The gallery and headless tests validate native component trees and states,
+not certification against Android Material You, iOS UIKit, macOS AppKit or
+assistive-technology platform bridges. Yuktara keeps its own component APIs
+and visual identity while adopting familiar interaction conventions.
