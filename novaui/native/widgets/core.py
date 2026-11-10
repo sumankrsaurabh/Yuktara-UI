@@ -711,6 +711,7 @@ class AppBar:
 
 @dataclass
 class Card:
+    """Content container with tokenized outlined, filled, flat and elevated roles."""
     children: Sequence[object] = ()
     padding: float | Insets = 16
     spacing: float = 10
@@ -718,18 +719,48 @@ class Card:
     radius: float | None = None
     bordered: bool = True
     theme: NativeTheme = field(default_factory=NativeTheme)
+    variant: str | None = None
+
+    VARIANTS = frozenset({"outlined", "filled", "flat", "elevated"})
+
+    def __post_init__(self):
+        if self.variant is not None and self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported card variant: {self.variant}")
+        if not isinstance(self.bordered, bool):
+            raise TypeError("Card bordered must be a boolean")
+        if not isfinite(float(self.spacing)) or self.spacing < 0:
+            raise ValueError("Card spacing must be finite and non-negative")
+        if self.radius is not None and (
+            not isfinite(float(self.radius)) or self.radius < 0
+        ):
+            raise ValueError("Card radius must be finite and non-negative")
+        if isinstance(self.padding, (int, float)):
+            if isinstance(self.padding, bool) or not isfinite(float(self.padding)) or self.padding < 0:
+                raise ValueError("Card padding must be finite and non-negative")
+        elif not isinstance(self.padding, Insets):
+            raise TypeError("Card padding must be a non-negative number or Insets")
 
     def build(self) -> LayoutNode:
+        t = self.theme
+        variant = self.variant or ("outlined" if self.bordered else "flat")
+        backgrounds = {
+            "outlined": t.surface,
+            "filled": t.surface_container_low,
+            "flat": t.surface,
+            "elevated": t.surface_container_low,
+        }
+        has_border = variant == "outlined" if self.variant is not None else self.bordered
+        border_color = t.outline_variant if self.variant is not None else t.border
         insets = self.padding if isinstance(self.padding, Insets) else Insets.all(self.padding)
-        if isinstance(self.padding, (int, float)) and self.padding < 0:
-            raise ValueError("Card padding must be non-negative")
         children = [_node(child) for child in self.children]
         return LayoutNode.column(
-            *children, spacing=self.spacing, padding=insets,
-            background=self.background if self.background is not None else self.theme.surface,
-            radius=self.radius if self.radius is not None else self.theme.radius_large,
-            border_color=self.theme.border if self.bordered else None,
-            border_width=1 if self.bordered else 0,
+            *children,
+            spacing=self.spacing,
+            padding=insets,
+            background=self.background if self.background is not None else backgrounds[variant],
+            radius=self.radius if self.radius is not None else t.radius_large,
+            border_color=border_color if has_border else None,
+            border_width=1 if has_border else 0,
             cross_align=Alignment.STRETCH,
             accessibility_role="group",
         )
