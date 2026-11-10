@@ -700,9 +700,10 @@ class SDL3Window:
         )
         try:
             self.get_display_metrics()
-        except AttributeError:
-            # Older injected SDL shims may not expose display mode queries.
-            pass
+        except (AttributeError, SDL3Error):
+            # Display metadata is diagnostic; logical/pixel resize must still
+            # succeed on older SDL builds and injected window test doubles.
+            self.display_metrics = None
 
     @staticmethod
     def _aspect_fit_rect(
