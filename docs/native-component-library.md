@@ -297,3 +297,26 @@ compositor is still future work.
 The design-system gallery now includes application bars, alerts, content
 components and card surfaces. New regression coverage is in
 `tests/native/test_app_bar_alert.py` and `tests/native/test_design_system.py`.
+
+
+### Keyboard navigation and tab semantics (4.1)
+
+`Tabs` now skips disabled items during keyboard navigation and supports
+Left/Right Arrow, Home and End navigation. A disabled tab cannot be selected
+as the initial active value, and a tab set must contain at least one enabled
+item. Selection updates the active tab and its associated tab-panel node
+together. Tab labels, spacing and padding consume the shared typography and
+spacing tokens.
+
+```python
+from novaui.native import TabItem, Tabs
+
+settings = Tabs([
+    TabItem("General", content="General preferences"),
+    TabItem("Security", content="Security preferences"),
+    TabItem("Billing", content="Billing is unavailable", disabled=True),
+])
+```
+
+The keyboard and semantic regression suite is
+`tests/native/test_tabs_accessibility.py`.
