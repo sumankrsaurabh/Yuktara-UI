@@ -699,6 +699,97 @@ class NavigationScaffold:
         return self._root
 
 
+@dataclass
+class AdaptiveWorkspace:
+    """Compose a retained workspace as one, two or three visible panes.
+
+    Narrow windows prioritize the primary content, medium windows add the
+    sidebar, and spacious windows add an inspector pane. All pane nodes are
+    built once and retained when the window crosses adaptive breakpoints.
+    """
+
+    content: object
+    sidebar: object | None = None
+    inspector: object | None = None
+    min_two_pane_width: float = 760
+    min_three_pane_width: float = 1280
+    min_three_pane_height: float = 700
+    sidebar_width: float = 240
+    inspector_width: float = 280
+    pane_spacing: float = 0
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    def __post_init__(self):
+        if self.content is None:
+            raise ValueError("AdaptiveWorkspace content cannot be None")
+        dimensions = (
+            self.min_two_pane_width, self.min_three_pane_width,
+            self.min_three_pane_height, self.sidebar_width,
+            self.inspector_width,
+        )
+        if any(isinstance(value, bool) or not isinstance(value, (int, float))
+               or not isfinite(float(value)) or value <= 0 for value in dimensions):
+            raise ValueError("workspace dimensions must be finite and positive")
+        if self.min_three_pane_width <= self.min_two_pane_width:
+            raise ValueError("min_three_pane_width must exceed min_two_pane_width")
+        if (isinstance(self.pane_spacing, bool)
+                or not isinstance(self.pane_spacing, (int, float))
+                or not isfinite(float(self.pane_spacing)) or self.pane_spacing < 0):
+            raise ValueError("pane_spacing must be finite and non-negative")
+        self._content_node: LayoutNode | None = None
+        self._sidebar_node: LayoutNode | None = None
+        self._inspector_node: LayoutNode | None = None
+        self._root: LayoutNode | None = None
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        self._content_node = LayoutNode.box(
+            _node(self.content), weight=1, padding=Insets.all(16),
+            background=t.background, accessibility_role="main",
+            accessibility_label="Workspace content",
+        )
+        if self.sidebar is not None:
+            self._sidebar_node = LayoutNode.box(
+                _node(self.sidebar), width=self.sidebar_width,
+                padding=Insets.all(12), background=t.surface,
+                border_color=t.border, border_width=1,
+                accessibility_role="complementary",
+                accessibility_label="Workspace sidebar",
+            )
+        if self.inspector is not None:
+            self._inspector_node = LayoutNode.box(
+                _node(self.inspector), width=self.inspector_width,
+                padding=Insets.all(12), background=t.surface,
+                border_color=t.border, border_width=1,
+                accessibility_role="complementary",
+                accessibility_label="Workspace inspector",
+            )
+
+        compact = LayoutNode.row(
+            self._content_node, cross_align=Alignment.STRETCH,
+            accessibility_role="group", accessibility_label="Compact workspace",
+        )
+        variants = [AdaptiveVariant(0, 0, compact)]
+        if self._sidebar_node is not None:
+            medium = LayoutNode.row(
+                self._sidebar_node, self._content_node,
+                spacing=self.pane_spacing, cross_align=Alignment.STRETCH,
+                accessibility_role="group", accessibility_label="Two-pane workspace",
+            )
+            variants.append(AdaptiveVariant(self.min_two_pane_width, 0, medium))
+        if self._sidebar_node is not None and self._inspector_node is not None:
+            expanded = LayoutNode.row(
+                self._sidebar_node, self._content_node, self._inspector_node,
+                spacing=self.pane_spacing, cross_align=Alignment.STRETCH,
+                accessibility_role="group", accessibility_label="Three-pane workspace",
+            )
+            variants.append(AdaptiveVariant(
+                self.min_three_pane_width, self.min_three_pane_height, expanded
+            ))
+        self._root = AdaptiveLayout(variants=tuple(variants)).build()
+        return self._root
+
+
 @dataclass(frozen=True)
 class ListDetailItem:
     """A selectable list entry paired with its detail content."""
@@ -1291,6 +1382,6 @@ class TreeView:
 __all__ = [
     "AdaptiveLayout", "AdaptiveVariant", "Calendar", "Container", "DatePicker",
     "Grid", "GridItem", "Image", "Responsive", "ResponsiveVariant",
-    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "ListDetailItem", "ListDetailPane", "Positioned", "ScrollView", "Table",
+    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "AdaptiveWorkspace", "ListDetailItem", "ListDetailPane", "Positioned", "ScrollView", "Table",
     "TreeItem", "TreeView", "FilePicker",
 ]
