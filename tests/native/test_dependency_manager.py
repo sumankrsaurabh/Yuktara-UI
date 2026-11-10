@@ -132,7 +132,7 @@ def test_platform_assets_are_pinned_to_official_release():
 def test_linux_bootstrap_uses_real_apt_package_command(monkeypatch):
     commands = []
     monkeypatch.setattr(manager.shutil, "which", lambda name: "/usr/bin/apt-get" if name == "apt-get" else None)
-    monkeypatch.setattr(manager.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(manager.os, "geteuid", lambda: 0, raising=False)
     monkeypatch.setattr(manager, "_run", lambda command, cwd=None: commands.append(command))
 
     assert manager._try_install_linux_build_tools() is True
@@ -148,7 +148,7 @@ def test_linux_bootstrap_does_not_open_hidden_sudo_prompt(monkeypatch):
     from types import SimpleNamespace
 
     monkeypatch.setattr(manager.shutil, "which", lambda name: f"/usr/bin/{name}" if name in {"apt-get", "sudo"} else None)
-    monkeypatch.setattr(manager.os, "geteuid", lambda: 1000)
+    monkeypatch.setattr(manager.os, "geteuid", lambda: 1000, raising=False)
     monkeypatch.setattr(manager.sys, "stdin", SimpleNamespace(isatty=lambda: False))
     monkeypatch.setattr(manager.sys, "stdout", SimpleNamespace(isatty=lambda: False))
     monkeypatch.setattr(manager, "_run", lambda command, cwd=None: pytest.fail("sudo should not run without a tty"))
