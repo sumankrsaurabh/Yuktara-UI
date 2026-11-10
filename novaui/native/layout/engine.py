@@ -75,15 +75,22 @@ class LayoutEngine:
             content = self._measure_scroll(node, content_constraints)
         elif node.kind == "grid":
             content = self._measure_grid(node, content_constraints)
-        elif node.kind == "responsive":
+        elif node.kind in {"responsive", "adaptive"}:
             available_width = content_constraints.max_width
+            available_height = content_constraints.max_height
             active_index = 0
-            for index, (minimum_width, _child) in enumerate(node.responsive_variants):
-                if available_width >= minimum_width:
-                    active_index = index
-                else:
-                    break
-            selected_child = node.responsive_variants[active_index][1]
+            if node.kind == "responsive":
+                for index, (minimum_width, _child) in enumerate(node.responsive_variants):
+                    if available_width >= minimum_width:
+                        active_index = index
+                    else:
+                        break
+                selected_child = node.responsive_variants[active_index][1]
+            else:
+                for index, (minimum_width, minimum_height, _child) in enumerate(node.adaptive_variants):
+                    if available_width >= minimum_width and available_height >= minimum_height:
+                        active_index = index
+                selected_child = node.adaptive_variants[active_index][2]
             if (node.responsive_active_index != active_index
                     or len(node.children) != 1
                     or node.children[0] is not selected_child):
@@ -445,7 +452,7 @@ class LayoutEngine:
         content = bounds.inset(node.padding)
         node.content_bounds = content
 
-        if node.kind in {"box", "responsive"}:
+        if node.kind in {"box", "responsive", "adaptive"}:
             flow = [child for child in node.children if not _is_absolute(child)]
             if flow:
                 self._arrange_aligned(flow[0], content, node.align)

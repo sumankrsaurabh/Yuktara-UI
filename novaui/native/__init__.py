@@ -3,6 +3,9 @@
 This package contains the native SDL3 + Skia runtime and no browser-rendering stack.
 """
 from .renderer import SkiaRenderer, RenderSize
+from .adaptive import (WindowAdaptiveInfo, WindowSizeBreakpoints,
+                       WindowWidthSizeClass, WindowHeightSizeClass,
+                       compute_window_adaptive_info)
 from .typography import (FontConfig, FontResolver, FontRun, DEFAULT_FONT_FAMILY)
 
 __all__ = [
@@ -12,6 +15,9 @@ __all__ = [
     "FontRun",
     "RenderSize",
     "SkiaRenderer",
+    "WindowAdaptiveInfo", "WindowSizeBreakpoints",
+    "WindowWidthSizeClass", "WindowHeightSizeClass",
+    "compute_window_adaptive_info",
 ]
 
 # SDL3 is imported explicitly from novaui.native.platform to keep it optional.
@@ -31,8 +37,8 @@ from .widgets import (Badge, Button, Card, Checkbox, Divider, Dropdown, Label,
                       Switch, TabItem, Tabs, TextArea, TextField, column, row, stack,
                       ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip,
                       Calendar, Container, DatePicker, Grid, GridItem, Image, NavigationDrawer,
-                      NavigationItem, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
-                      Responsive, ResponsiveVariant)
+                      NavigationItem, NavigationScaffold, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
+                      Responsive, ResponsiveVariant, AdaptiveLayout, AdaptiveVariant)
 __all__ += [
     "SemanticNode", "build_accessibility_tree", "Badge", "Button", "Card",
     "Checkbox", "Divider", "Dropdown", "Label", "ProgressBar", "RadioGroup", "RichText",
@@ -40,8 +46,8 @@ __all__ += [
     "TextArea", "TextField", "column", "row", "stack", "ContextMenu",
     "Dialog", "MenuItem", "Popover", "Toast", "Tooltip", "Calendar",
     "Container", "DatePicker", "Grid", "GridItem", "Image", "NavigationDrawer",
-    "NavigationItem", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
-    "Responsive", "ResponsiveVariant",
+    "NavigationItem", "NavigationScaffold", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
+    "Responsive", "ResponsiveVariant", "AdaptiveLayout", "AdaptiveVariant",
 ]
 
 from .theme import NativeTheme

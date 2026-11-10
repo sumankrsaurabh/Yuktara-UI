@@ -251,3 +251,111 @@ def test_open_treats_initial_window_size_as_ui_units_on_high_dpi_windows():
 def test_sdl3_window_rejects_invalid_dimension_and_flag_types(kwargs, error):
     with pytest.raises(error):
         SDL3Window(**kwargs)
+
+
+def test_get_display_metrics_reads_active_resolution_and_fractional_refresh_rate():
+    from novaui.native.platform.sdl3 import _SDLDisplayMode
+
+    mode = _SDLDisplayMode()
+    mode.displayID = 12
+    mode.w = 2560
+    mode.h = 1440
+    mode.pixel_density = 1.5
+    mode.refresh_rate = 143.97
+    mode.refresh_rate_numerator = 143970
+    mode.refresh_rate_denominator = 1000
+    library = SimpleNamespace(
+        SDL_GetDisplayForWindow=_Function(lambda _window: 12),
+        SDL_GetCurrentDisplayMode=_Function(lambda _display: ctypes.pointer(mode)),
+    )
+    window = SDL3Window()
+    window._lib = library
+    window._window = 7
+    window._opened = True
+    window._closed = False
+    window._thread_id = get_ident()
+
+    metrics = window.get_display_metrics()
+
+    assert metrics.display_id == 12
+    assert (metrics.width, metrics.height) == (2560, 1440)
+    assert metrics.pixel_density == pytest.approx(1.5)
+    assert metrics.refresh_rate == pytest.approx(143.97)
+    assert metrics.refresh_rate_numerator == 143970
+    assert metrics.refresh_rate_denominator == 1000
+
+
+@pytest.mark.parametrize("vsync", [-1, 0, 1, 2, 3])
+def test_window_accepts_supported_vsync_intervals(vsync):
+    assert SDL3Window(vsync=vsync).requested_vsync == vsync
+
+
+@pytest.mark.parametrize("vsync,error", [(True, TypeError), (1.5, TypeError), (-2, ValueError)])
+def test_window_rejects_invalid_vsync_intervals(vsync, error):
+    with pytest.raises(error):
+        SDL3Window(vsync=vsync)
+
+
+def test_unsynchronized_loop_yields_but_vsync_loop_does_not_sleep():
+    calls = []
+    window = SDL3Window()
+    window._lib = SimpleNamespace(SDL_Delay=_Function(lambda ms: calls.append(ms)))
+    window.actual_vsync = 1
+    window._idle_if_unsynchronized()
+    assert calls == []
+
+    window.actual_vsync = 0
+    window._idle_if_unsynchronized()
+    assert calls == [1]
+
+
+def test_run_runtime_coalesces_resize_and_pixel_size_events(monkeypatch):
+    from types import SimpleNamespace
+    from novaui.native.platform.sdl3 import PixelFrame
+
+    events = [
+        SimpleNamespace(type=EventType.WINDOW_RESIZED, window=SimpleNamespace(width=900, height=650)),
+        SimpleNamespace(type=EventType.WINDOW_PIXEL_SIZE_CHANGED, window=SimpleNamespace(width=1800, height=1300)),
+    ]
+    sync_calls = []
+    monkeypatch.setattr(SDL3Window, "open", lambda self: self)
+    monkeypatch.setattr(SDL3Window, "close", lambda self: None)
+    monkeypatch.setattr(SDL3Window, "poll_input_events", lambda self: events)
+    monkeypatch.setattr(SDL3Window, "sync_runtime_size", lambda self, runtime: sync_calls.append(runtime))
+    monkeypatch.setattr(SDL3Window, "present", lambda self, frame: None)
+
+    class Runtime:
+        quit_requested = False
+
+        def __init__(self):
+            self.handled = []
+            self.started = False
+            self.stopped = False
+
+        def start(self):
+            self.started = True
+
+        def handle_event(self, event):
+            self.handled.append(event)
+            return True
+
+        def process_pending(self):
+            pass
+
+        def advance_time(self, _delta):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    runtime = Runtime()
+    window = SDL3Window()
+    window.run_runtime(
+        runtime,
+        lambda _runtime: PixelFrame(1, 1, bytes((0, 0, 0, 255))),
+        max_frames=1,
+    )
+
+    assert sync_calls == [runtime]
+    assert runtime.handled == []
+    assert runtime.started and runtime.stopped

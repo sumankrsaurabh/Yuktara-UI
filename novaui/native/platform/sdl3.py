@@ -23,6 +23,8 @@ SDL_WINDOW_RESIZABLE = 0x00000020
 SDL_WINDOW_HIGH_PIXEL_DENSITY = 0x00002000
 SDL_TEXTUREACCESS_STREAMING = 1
 SDL_EVENT_QUIT = 0x100
+SDL_RENDERER_VSYNC_DISABLED = 0
+SDL_RENDERER_VSYNC_ADAPTIVE = -1
 SDL_HINT_IME_IMPLEMENTED_UI = b"SDL_IME_IMPLEMENTED_UI"
 
 
@@ -84,6 +86,33 @@ class PixelFrame:
 
 
 @dataclass(frozen=True, slots=True)
+class DisplayMetrics:
+    """Current display characteristics for the monitor hosting a window."""
+
+    display_id: int
+    width: int
+    height: int
+    pixel_density: float
+    refresh_rate: float
+    refresh_rate_numerator: int = 0
+    refresh_rate_denominator: int = 0
+
+
+class _SDLDisplayMode(ctypes.Structure):
+    _fields_ = [
+        ("displayID", ctypes.c_uint32),
+        ("format", ctypes.c_uint32),
+        ("w", ctypes.c_int),
+        ("h", ctypes.c_int),
+        ("pixel_density", ctypes.c_float),
+        ("refresh_rate", ctypes.c_float),
+        ("refresh_rate_numerator", ctypes.c_int),
+        ("refresh_rate_denominator", ctypes.c_int),
+        ("internal", ctypes.c_void_p),
+    ]
+
+
+@dataclass(frozen=True, slots=True)
 class SDLEvent:
     """Minimal normalized event. `raw_type` preserves SDL3 event identity."""
 
@@ -115,6 +144,7 @@ class SDL3Window:
         min_width: int = 320,
         min_height: int = 240,
         preserve_aspect: bool = True,
+        vsync: int = 1,
         library_path: str | None = None,
     ) -> None:
         for name, value in (("width", width), ("height", height),
@@ -129,6 +159,10 @@ class SDL3Window:
             raise TypeError("resizable must be a boolean")
         if not isinstance(high_dpi, bool) or not isinstance(preserve_aspect, bool):
             raise TypeError("high_dpi and preserve_aspect must be booleans")
+        if isinstance(vsync, bool) or not isinstance(vsync, int):
+            raise TypeError("vsync must be an integer interval")
+        if vsync < -1:
+            raise ValueError("vsync must be -1 (adaptive), 0 (off), or a positive interval")
         self.title = title
         self.width = width
         self.height = height
@@ -137,6 +171,9 @@ class SDL3Window:
         self.min_width = min_width
         self.min_height = min_height
         self.preserve_aspect = preserve_aspect
+        self.requested_vsync = vsync
+        self.actual_vsync: int | None = None
+        self.display_metrics: DisplayMetrics | None = None
         self.letterbox_color = (0, 0, 0, 255)
         self.library_path = library_path
         self._coordinate_scale = 1.0
@@ -300,7 +337,29 @@ class SDL3Window:
             self.close()
             raise SDL3Error(f"SDL_CreateRenderer failed: {self._error()}")
 
+        # SDL renderers default to VSync disabled. Request synchronization with
+        # the monitor's vertical refresh so presentation follows 60/90/120/144Hz
+        # displays without a hard-coded frame-rate assumption. Drivers may
+        # reject a mode; in that case retain a usable unsynchronized renderer.
+        try:
+            set_vsync = self._bind(
+                "SDL_SetRenderVSync", ctypes.c_bool,
+                [ctypes.c_void_p, ctypes.c_int],
+            )
+            if set_vsync(self._renderer, self.requested_vsync):
+                self.actual_vsync = self.requested_vsync
+            elif self.requested_vsync != SDL_RENDERER_VSYNC_DISABLED and set_vsync(
+                self._renderer, SDL_RENDERER_VSYNC_DISABLED
+            ):
+                self.actual_vsync = SDL_RENDERER_VSYNC_DISABLED
+        except AttributeError:
+            self.actual_vsync = None
+
         self._opened = True
+        try:
+            self.display_metrics = self.get_display_metrics()
+        except (AttributeError, SDL3Error):
+            self.display_metrics = None
         return self
 
     def _assert_open(self) -> None:
@@ -596,12 +655,55 @@ class SDL3Window:
         self.width, self.height = ui_size
         return ui_size, pixel_size
 
+    def get_display_metrics(self) -> DisplayMetrics:
+        """Return the active monitor's current resolution and refresh rate.
+
+        The refresh rate is informational: SDL's renderer VSync controls
+        presentation cadence and automatically follows the active display.
+        """
+        self._assert_open()
+        get_display = self._bind(
+            "SDL_GetDisplayForWindow", ctypes.c_uint32, [ctypes.c_void_p]
+        )
+        display_id = int(get_display(self._window))
+        if display_id == 0:
+            raise SDL3Error(f"SDL_GetDisplayForWindow failed: {self._error()}")
+        get_mode = self._bind(
+            "SDL_GetCurrentDisplayMode", ctypes.POINTER(_SDLDisplayMode),
+            [ctypes.c_uint32],
+        )
+        mode = get_mode(display_id)
+        if not mode:
+            raise SDL3Error(f"SDL_GetCurrentDisplayMode failed: {self._error()}")
+        value = mode.contents
+        metrics = DisplayMetrics(
+            display_id=display_id,
+            width=int(value.w),
+            height=int(value.h),
+            pixel_density=float(value.pixel_density),
+            refresh_rate=float(value.refresh_rate),
+            refresh_rate_numerator=int(value.refresh_rate_numerator),
+            refresh_rate_denominator=int(value.refresh_rate_denominator),
+        )
+        if (metrics.width <= 0 or metrics.height <= 0
+                or not isfinite(metrics.refresh_rate) or metrics.refresh_rate < 0
+                or not isfinite(metrics.pixel_density) or metrics.pixel_density <= 0):
+            raise SDL3Error("SDL returned invalid active display metrics.")
+        self.display_metrics = metrics
+        return metrics
+
     def sync_runtime_size(self, runtime) -> None:
-        """Synchronize a NativeRuntime with the current logical and pixel sizes."""
+        """Synchronize logical layout, backing pixels and active display metrics."""
         logical, pixels = self.get_sizes()
         runtime.resize(
             *logical, pixel_width=pixels[0], pixel_height=pixels[1]
         )
+        try:
+            self.get_display_metrics()
+        except (AttributeError, SDL3Error):
+            # Display metadata is diagnostic; logical/pixel resize must still
+            # succeed on older SDL builds and injected window test doubles.
+            self.display_metrics = None
 
     @staticmethod
     def _aspect_fit_rect(
@@ -713,6 +815,12 @@ class SDL3Window:
                 EventType.WINDOW_DISPLAY_SCALE_CHANGED,
             }:
                 self.get_sizes()
+                # A backing-size transition can accompany a desktop mode or
+                # refresh change even when the window remains on the same display.
+                try:
+                    self.get_display_metrics()
+                except AttributeError:
+                    pass
             coordinate_scale = self._coordinate_scale
             if event.type == EventType.WINDOW_RESIZED and event.window is not None:
                 event = replace(
@@ -737,6 +845,11 @@ class SDL3Window:
             decoded.append(event)
         return decoded
 
+    def _idle_if_unsynchronized(self) -> None:
+        """Yield only when VSync is unavailable; a synced present is the frame clock."""
+        if self.actual_vsync in (None, SDL_RENDERER_VSYNC_DISABLED):
+            self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+
     def run(self, draw_frame: Callable[[], PixelFrame], *, on_event=None) -> None:
         """Run a raw SDL event/presentation loop until SDL_QUIT."""
         self.open()
@@ -752,7 +865,7 @@ class SDL3Window:
                 if running:
                     self.present(draw_frame())
                     if not events:
-                        self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+                        self._idle_if_unsynchronized()
         finally:
             self.close()
 
@@ -782,18 +895,49 @@ class SDL3Window:
             while running and not runtime.quit_requested:
                 events = self.poll_input_events()
                 from .events import EventType
+                metrics_dirty = False
+                display_changed = False
+                metrics_events = {
+                    EventType.WINDOW_RESIZED,
+                    EventType.WINDOW_PIXEL_SIZE_CHANGED,
+                    EventType.WINDOW_DISPLAY_CHANGED,
+                    EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+                }
                 for event in events:
                     if on_event is not None:
                         on_event(event)
-                    if event.type in {
-                        EventType.WINDOW_DISPLAY_CHANGED,
-                        EventType.WINDOW_DISPLAY_SCALE_CHANGED,
-                    }:
-                        self.sync_runtime_size(runtime)
+                    if event.type in metrics_events:
+                        # Coalesce every resize/DPI/display event in this SDL
+                        # batch. Query the final window metrics once, then do
+                        # one surface recreation and one layout/render pass.
+                        metrics_dirty = True
+                        display_changed = display_changed or event.type in {
+                            EventType.WINDOW_DISPLAY_CHANGED,
+                            EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+                        }
                         continue
                     if not runtime.handle_event(event):
                         running = False
                         break
+                if running and metrics_dirty:
+                    self.sync_runtime_size(runtime)
+                if running and display_changed:
+                    # Re-apply after monitor migration; drivers can differ.
+                    try:
+                        set_vsync = self._bind(
+                            "SDL_SetRenderVSync", ctypes.c_bool,
+                            [ctypes.c_void_p, ctypes.c_int],
+                        )
+                        if set_vsync(self._renderer, self.requested_vsync):
+                            self.actual_vsync = self.requested_vsync
+                        elif self.requested_vsync != SDL_RENDERER_VSYNC_DISABLED and set_vsync(
+                            self._renderer, SDL_RENDERER_VSYNC_DISABLED
+                        ):
+                            self.actual_vsync = SDL_RENDERER_VSYNC_DISABLED
+                        else:
+                            self.actual_vsync = None
+                    except AttributeError:
+                        self.actual_vsync = None
                 runtime.process_pending()
                 now = perf_counter()
                 runtime.advance_time(max(0.0, (now - previous) * 1000.0))
@@ -808,7 +952,7 @@ class SDL3Window:
                 if max_frames is not None and frame_count >= max_frames:
                     break
                 if not events:
-                    self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+                    self._idle_if_unsynchronized()
         finally:
             try:
                 if runtime_started:

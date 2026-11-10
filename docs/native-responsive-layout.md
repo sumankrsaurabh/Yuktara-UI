@@ -93,3 +93,86 @@ Moving a window between monitors is handled by SDL's window-display-changed
 and window-display-scale-changed events. The host re-reads window size,
 pixel density and display scale, then synchronizes the layout and Skia
 backing surface again.
+
+
+## Window adaptive information
+
+Use `NativeRuntime.adaptive_info` when application-level decisions need both
+width and height classes. It is recalculated whenever the runtime's logical
+window size or backing-pixel scale changes.
+
+```python
+from novaui.native import (
+    WindowWidthSizeClass,
+    WindowHeightSizeClass,
+)
+
+info = runtime.adaptive_info
+
+if info.width_size_class is WindowWidthSizeClass.COMPACT:
+    # Use bottom navigation and a single content pane.
+    ...
+elif info.width_size_class in {
+    WindowWidthSizeClass.LARGE,
+    WindowWidthSizeClass.EXTRA_LARGE,
+}:
+    # Consider a navigation rail and a multi-pane workspace.
+    ...
+
+if info.height_size_class is WindowHeightSizeClass.COMPACT:
+    # Reduce vertical chrome and allow content to scroll.
+    ...
+```
+
+The default width classes use logical breakpoints: compact below 600, medium
+from 600, expanded from 840, large from 1200 and extra-large from 1600. Height
+classes are compact below 480, medium from 480 and expanded from 900. These
+defaults can be customized with `WindowSizeBreakpoints`. Width and height are
+classified independently. `pixel_width` and `pixel_height` are included for
+rendering diagnostics only; they never drive adaptive breakpoints.
+
+The helper `compute_window_adaptive_info()` can also be used without creating
+a native runtime, for previews, tests and custom application hosts.
+
+## Resize event coalescing
+
+The standard SDL3 runtime host coalesces all window-resize, backing-pixel-size,
+display-migration and display-scale events from one SDL event batch. It queries
+the final window metrics once, updates the runtime once, and performs at most
+one surface recreation/layout pass for that batch. Identical repeated metrics
+are treated as a no-op by `NativeRuntime.resize()`. This avoids repeated full
+layout and raster work while the user is dragging a window edge.
+
+## Two-dimensional adaptive composition
+
+Use `AdaptiveLayout` when the best composition depends on both available
+width and height. This is useful for short landscape windows, compact laptop
+windows, and large desktop workspaces. The first variant is the fallback;
+later variants activate only when **both** minimum dimensions are satisfied.
+
+```python
+from novaui.native import AdaptiveLayout, AdaptiveVariant, column, row, Grid
+
+compact = column(sidebar, content)
+wide = row(sidebar, content, spacing=16)
+workspace = Grid(children=(sidebar, content, inspector), columns=3)
+
+screen = AdaptiveLayout(
+    variants=(
+        AdaptiveVariant(0, 0, compact),
+        AdaptiveVariant(760, 0, wide),
+        AdaptiveVariant(1200, 720, workspace),
+    )
+)
+```
+
+The first variant is the fallback; later variants override earlier matches.
+This supports independent width-only and height-only conditions. Threshold
+pairs must be unique. Resizing
+or changing the available window height switches the retained child without
+rebuilding the component. As with `Responsive`, thresholds use logical UI
+units, not framebuffer pixels.
+
+Use `Responsive` for width-only breakpoints and `AdaptiveLayout` when both
+axes materially affect information hierarchy. Avoid using the latter merely
+to scale controls; use fluid constraints, wrapping and scrolling for that.

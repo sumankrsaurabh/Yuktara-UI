@@ -466,3 +466,42 @@ For every future development batch:
 7. Update the recorded source baseline and review date.
 
 This file is intended to be the central, cumulative implementation record. Release-specific README files and subsystem guides remain the detailed API references.
+
+### Display and presentation hardening — 3.4 development
+
+- `SDL3Window.get_display_metrics()` exposes the active monitor ID, current
+  mode resolution, pixel density and refresh-rate fraction.
+- SDL renderer VSync is requested by default and can be configured as disabled,
+  adaptive, or an every-N-refresh interval. Unsupported modes degrade to
+  unsynchronized presentation rather than preventing the application from
+  opening.
+- The host avoids an additional 1 ms sleep when VSync is active, allowing the
+  renderer's vertical-refresh synchronization to act as the presentation clock.
+- Display metrics are refreshed after monitor and display-scale migration.
+- Regression coverage added for display-mode metadata, VSync configuration
+  validation and the synchronized/unsynchronized idle policy.
+- The renderer remains CPU-raster Skia. GPU rendering, measured frame-time
+  profiling, physical multi-monitor validation and end-to-end refresh-rate
+  verification remain separate work; do not claim them as completed.
+
+
+### Adaptive window and resize efficiency — 3.4 development
+
+- Added immutable WindowAdaptiveInfo snapshots with independent logical width and height classes, orientation, aspect ratio, and backing-pixel diagnostics.
+- Added customizable breakpoints with compact/medium/expanded/large/extra-large width classes and compact/medium/expanded height classes.
+- NativeRuntime now exposes live adaptive_info and refreshes it after logical or backing-pixel resize changes.
+- Identical runtime dimensions are treated as a no-op to avoid redundant Skia surface recreation and rendering.
+- SDL3 run_runtime coalesces resize, pixel-size, display-migration and display-scale events within one event batch and synchronizes the final metrics once.
+- Added regression coverage for breakpoint boundaries, density-independent classification, runtime resize updates and event coalescing.
+- The first CI run exposed legacy fake-window failures because optional display metadata could raise during resize synchronization. The sync path now treats display metadata as optional and keeps logical/backing-pixel resize operational.
+- Adaptive navigation scaffolds, multi-pane state transitions, GPU rendering and physical mixed-DPI/high-refresh certification remain unfinished.
+
+
+## 3.5 — Two-dimensional adaptive composition
+
+- Added `AdaptiveLayout` and `AdaptiveVariant` as public native widgets.
+- Extended retained layout nodes and the measure/arrange engine to select a variant using both available logical width and height.
+- Adaptive transitions occur during layout and preserve the existing component tree/build count.
+- Added tests for width/height selection, short-window fallback, resize transitions and invalid threshold ordering.
+- Added the API usage guide to `docs/native-responsive-layout.md`.
+- This is a composition primitive, not a full adaptive navigation system. Navigation scaffolds, pane-state restoration, previews and platform acceptance testing remain future work.
