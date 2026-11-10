@@ -128,6 +128,7 @@ class LayoutNode:
     grid_placements: list = field(default_factory=list, init=False, repr=False)
     first_baseline: Optional[float] = field(default=None, init=False, repr=False)
     responsive_variants: tuple[tuple[float, "LayoutNode"], ...] = ()
+    adaptive_variants: tuple[tuple[float, float, "LayoutNode"], ...] = ()
     responsive_active_index: int = field(default=-1, init=False)
 
     def __post_init__(self):
@@ -150,7 +151,26 @@ class LayoutNode:
                 raise ValueError("responsive node children are selected from responsive_variants")
         elif self.responsive_variants:
             raise ValueError("responsive_variants are only valid on responsive nodes")
-        if self.kind not in {"box", "row", "column", "stack", "text", "scroll", "grid", "responsive"}:
+        if self.kind == "adaptive":
+            if not self.adaptive_variants:
+                raise ValueError("adaptive nodes require at least one width/height variant")
+            previous = (-1.0, -1.0)
+            for minimum_width, minimum_height, child in self.adaptive_variants:
+                values = (minimum_width, minimum_height)
+                if any(isinstance(value, bool) or not isinstance(value, (int, float))
+                       or not isfinite(float(value)) or value < 0 for value in values):
+                    raise ValueError("adaptive variant minimum dimensions must be finite and non-negative")
+                current = (float(minimum_width), float(minimum_height))
+                if current[0] < previous[0] or current[1] < previous[1] or current == previous:
+                    raise ValueError("adaptive variants must be ordered by non-decreasing width and height")
+                if not isinstance(child, LayoutNode):
+                    raise TypeError("adaptive variant children must be LayoutNode instances")
+                previous = current
+            if self.children:
+                raise ValueError("adaptive node children are selected from adaptive_variants")
+        elif self.adaptive_variants:
+            raise ValueError("adaptive_variants are only valid on adaptive nodes")
+        if self.kind not in {"box", "row", "column", "stack", "text", "scroll", "grid", "responsive", "adaptive"}:
             raise ValueError(f"unsupported layout node kind: {self.kind}")
         self.align = Alignment(self.align)
         self.cross_align = Alignment(self.cross_align)
