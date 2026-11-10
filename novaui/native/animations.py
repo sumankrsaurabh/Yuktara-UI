@@ -39,6 +39,22 @@ class AnimationManager:
         "ease_out": lambda t: 1 - (1 - t) * (1 - t),
         "ease_in_out": lambda t: 3 * t * t - 2 * t * t * t,
         "ease_out_cubic": lambda t: 1 - (1 - t) ** 3,
+        "ease_in_cubic": lambda t: t ** 3,
+        "ease_in_quart": lambda t: t ** 4,
+        "ease_out_quart": lambda t: 1 - (1 - t) ** 4,
+        "ease_in_sine": lambda t: 1 - math.cos((t * math.pi) / 2),
+        "ease_out_sine": lambda t: math.sin((t * math.pi) / 2),
+        "ease_out_back": lambda t: 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2,
+        "ease_out_bounce": lambda t: (
+            7.5625 * t * t if t < 1 / 2.75 else
+            7.5625 * (t - 1.5 / 2.75) ** 2 + 0.75 if t < 2 / 2.75 else
+            7.5625 * (t - 2.25 / 2.75) ** 2 + 0.9375 if t < 2.5 / 2.75 else
+            7.5625 * (t - 2.625 / 2.75) ** 2 + 0.984375
+        ),
+        "ease_out_elastic": lambda t: (
+            0.0 if t == 0 else 1.0 if t == 1 else
+            2 ** (-10 * t) * math.sin((t * 10 - 0.75) * (2 * math.pi / 3)) + 1
+        ),
     }
 
     def __init__(self, *, on_change: Callable | None = None,
@@ -69,7 +85,8 @@ class AnimationManager:
         return float(value)
 
     def animate(self, target, attribute: str, to_value, *, duration_ms: float = 220,
-                easing: str = "ease_in_out", on_complete: Callable | None = None
+                easing: str | Callable[[float], float] = "ease_in_out",
+                on_complete: Callable | None = None
                 ) -> AnimationHandle:
         """Animate ``target.attribute`` to a numeric value.
 
@@ -87,8 +104,14 @@ class AnimationManager:
         duration = self._number(duration_ms, "duration_ms")
         if duration < 0:
             raise ValueError("duration_ms must be non-negative")
-        if easing not in self.EASINGS:
-            raise ValueError(f"easing must be one of {sorted(self.EASINGS)}")
+        if isinstance(easing, str):
+            if easing not in self.EASINGS:
+                raise ValueError(f"easing must be one of {sorted(self.EASINGS)}")
+            easing_function = self.EASINGS[easing]
+        elif callable(easing):
+            easing_function = easing
+        else:
+            raise TypeError("easing must be a registered name or callable")
         if on_complete is not None and not callable(on_complete):
             raise TypeError("on_complete must be callable")
 
@@ -105,7 +128,7 @@ class AnimationManager:
             return handle
         self._animations.append(_Animation(
             handle, target, attribute, start, end, duration, 0.0,
-            self.EASINGS[easing], on_complete,
+            easing_function, on_complete,
         ))
         return handle
 
