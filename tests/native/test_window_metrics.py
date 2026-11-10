@@ -10,6 +10,7 @@ from novaui.native.platform.sdl3 import SDL3Window
 from novaui.native.platform.events import EventType
 from novaui.native.platform.sdl3_events import (
     SDL3EventDecoder,
+    SDL_EVENT_WINDOW_DISPLAY_CHANGED,
     SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED,
     SDL_EVENT_WINDOW_FOCUS_GAINED,
     SDL_EVENT_WINDOW_FOCUS_LOST,
@@ -95,12 +96,14 @@ def _window_event(event_type, window_id=9):
     event.type = event_type
     event.timestamp = 77
     event.windowID = window_id
-    return ctypes.string_at(ctypes.byref(event), ctypes.sizeof(event)).ljust(128, b"\\0")
+    raw = ctypes.string_at(ctypes.byref(event), ctypes.sizeof(event))
+    return raw + bytes(128 - len(raw))
 
 
 @pytest.mark.parametrize(
     "raw_type,expected",
     [
+        (SDL_EVENT_WINDOW_DISPLAY_CHANGED, EventType.WINDOW_DISPLAY_CHANGED),
         (SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED, EventType.WINDOW_DISPLAY_SCALE_CHANGED),
         (SDL_EVENT_WINDOW_FOCUS_GAINED, EventType.WINDOW_FOCUS_GAINED),
         (SDL_EVENT_WINDOW_FOCUS_LOST, EventType.WINDOW_FOCUS_LOST),
@@ -132,9 +135,11 @@ def test_poll_input_events_normalizes_mouse_and_window_coordinates():
     resize.data1 = 1200
     resize.data2 = 800
 
+    motion_raw = ctypes.string_at(ctypes.byref(motion), ctypes.sizeof(motion))
+    resize_raw = ctypes.string_at(ctypes.byref(resize), ctypes.sizeof(resize))
     raw_events = [
-        ctypes.string_at(ctypes.byref(motion), ctypes.sizeof(motion)).ljust(128, b"\\0"),
-        ctypes.string_at(ctypes.byref(resize), ctypes.sizeof(resize)).ljust(128, b"\\0"),
+        motion_raw + bytes(128 - len(motion_raw)),
+        resize_raw + bytes(128 - len(resize_raw)),
     ]
 
     class PollEvent:
