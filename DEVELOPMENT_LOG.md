@@ -592,3 +592,14 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Extended the design-system gallery with toolbar and alert examples.
 - Added `tests/native/test_app_bar_alert.py` and card variant/compatibility tests in `tests/native/test_design_system.py`.
 - Validation status: tests have been authored but not executed locally; CI status must be checked on the latest head. The elevated card variant uses a surface-container role; shadow compositing remains unimplemented.
+
+
+## 4.1 — Keyboard navigation and tab semantics
+
+- Hardened `TabItem` validation for non-empty labels and boolean disabled state.
+- Prevented disabled tabs from being selected as the initial active value; require at least one enabled tab.
+- Added Left/Right Arrow navigation that skips disabled tabs, plus Home/End navigation and wraparound behavior.
+- Synchronized selected state and tab-panel semantics when the active tab changes.
+- Aligned tab typography, spacing and padding with `NativeTheme` tokens.
+- Added `tests/native/test_tabs_accessibility.py` for keyboard behavior, disabled states, callback behavior, panel synchronization and token consistency.
+- Validation status: regression tests authored but not executed locally; CI remains to be checked on the latest commit.
