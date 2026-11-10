@@ -341,6 +341,19 @@ The separate Linux/Xvfb SDL3 + Skia live-window integration job also completed s
 
 Workflow record: [Native desktop integration — 2026-11-10, run 42786336871](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42786336871).
 
+### Latest 3.4 development verification — accessibility semantics, commit `a8377a250d512994b7f44d42e664fbc8f46554e8`
+
+The expanded backend-neutral accessibility contract completed cross-platform verification on 2026-11-10:
+
+- 338 tests passed.
+- All 18 Windows/macOS/Ubuntu and Python 3.10–3.15 matrix jobs passed.
+- The coverage job reported 84% statement coverage (6,593 statements; 1,051 missed).
+- Wheel build, installation and installed-distribution import passed.
+- The SDL3/Skia native-window workflow passed on implementation commit `75eff12a420dabae7cb30798007cb8a8a34c7947`. The subsequent `a8377a2` change corrected only a test assertion; it did not change runtime, platform, renderer or layout source.
+
+Workflow records: [CI — run 42810744660](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42810744660) · [Native desktop integration — run 42810591159](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42810591159).
+
+
 ### Latest 3.4 development verification — commit `124ea27a12ab17d6dc2dc627d348dbd27ea202a4`
 
 The next verification run completed successfully on 2026-11-10:
