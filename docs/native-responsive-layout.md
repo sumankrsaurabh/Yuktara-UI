@@ -231,3 +231,26 @@ The default two-pane breakpoint is 840 logical units and can be changed with
 `min_expanded_width`. The selected item and its retained detail node remain
 active when the window crosses the breakpoint. The application owns the
 actual detail widgets and can bind their own state to application models.
+
+## Adaptive multi-pane workspace
+
+Use `AdaptiveWorkspace` for editors, dashboards and productivity tools that
+need a sidebar and an optional inspector. Compact windows prioritize the main
+content; medium windows add the sidebar; spacious windows show all three panes.
+Pane nodes are retained across these transitions.
+
+```python
+from novaui.native import AdaptiveWorkspace, Label
+
+workspace = AdaptiveWorkspace(
+    sidebar=Label("Files and tools"),
+    content=Label("Editor canvas"),
+    inspector=Label("Properties"),
+)
+```
+
+Defaults are 760 logical units for the sidebar layout and 1280 logical units
+plus 700 logical units of height for the inspector layout. Configure these
+with `min_two_pane_width`, `min_three_pane_width` and
+`min_three_pane_height`. The sidebar and inspector can be omitted. The
+application owns the content and any stateful models used by those panes.
