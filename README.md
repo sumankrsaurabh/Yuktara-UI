@@ -154,6 +154,11 @@ python scripts/native_runtime_smoke.py
 The cumulative feature and development record is maintained in
 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md).
 
+For adaptive layouts, high-DPI coordinate handling and window resize behavior,
+see [Responsive Layouts](docs/native-responsive-layout.md). Run
+`python examples/native/responsive_layout.py` to try compact, medium and
+expanded layouts in a resizable desktop window.
+
 ## Repository layout
 
 ```text
