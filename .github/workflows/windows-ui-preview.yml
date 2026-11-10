@@ -43,10 +43,12 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           $env:SDL_RENDER_DRIVER = "software"
-          $app = Start-Process -FilePath python -ArgumentList @("examples/native/design_system_gallery.py") -PassThru -WorkingDirectory $PWD
+          $app = Start-Process -FilePath python -ArgumentList @("examples/native/design_system_gallery.py") -PassThru -WorkingDirectory $PWD -RedirectStandardOutput "$PWD/artifacts/gallery-stdout.txt" -RedirectStandardError "$PWD/artifacts/gallery-stderr.txt"
           try {
             Start-Sleep -Seconds 12
             if ($app.HasExited) {
+              Get-Content "artifacts/gallery-stdout.txt" -ErrorAction SilentlyContinue
+              Get-Content "artifacts/gallery-stderr.txt" -ErrorAction SilentlyContinue
               throw "Yuktara gallery exited before a screenshot could be captured. Exit code: $($app.ExitCode)"
             }
             Add-Type -AssemblyName System.Windows.Forms
