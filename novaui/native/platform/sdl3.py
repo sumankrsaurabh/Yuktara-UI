@@ -251,7 +251,7 @@ class SDL3Window:
         # Width/height are public UI-unit dimensions. SDL window coordinates
         # are physical pixels on Windows/X11 but logical points on macOS/
         # Wayland, so convert the initial request using the same display scale.
-        if self.high_dpi and self._coordinate_scale != 1.0:
+        if self._coordinate_scale != 1.0:
             set_size = self._bind(
                 "SDL_SetWindowSize", ctypes.c_bool,
                 [ctypes.c_void_p, ctypes.c_int, ctypes.c_int],
