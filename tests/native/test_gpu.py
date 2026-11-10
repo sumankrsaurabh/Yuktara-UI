@@ -46,6 +46,7 @@ class FakeSkia:
 
     class Surfaces:
         calls = []
+        framebuffer_calls = []
 
         @classmethod
         def MakeRenderTarget(cls, context, budgeted, image_info, samples, origin):
@@ -53,12 +54,35 @@ class FakeSkia:
             cls.calls.append((context, budgeted, image_info, samples, origin, surface))
             return surface
 
+        @classmethod
+        def MakeFromBackendRenderTarget(cls, context, target, origin, color_type, color_space):
+            surface = FakeSurface()
+            cls.framebuffer_calls.append((context, target, origin, color_type, color_space, surface))
+            return surface
+
+    class GrGLFramebufferInfo:
+        def __init__(self, fbo_id, format):
+            self.fbo_id = fbo_id
+            self.format = format
+
+    class GrBackendRenderTarget:
+        def __init__(self, width, height, samples, stencil_bits, info):
+            self.width = width
+            self.height = height
+            self.samples = samples
+            self.stencil_bits = stencil_bits
+            self.info = info
+
+    class ColorType:
+        kRGBA_8888_ColorType = "rgba8888"
+
     class Budgeted:
         class kNo:
             pass
 
     class GrSurfaceOrigin:
         kTopLeft_GrSurfaceOrigin = "top-left"
+        kBottomLeft_GrSurfaceOrigin = "bottom-left"
 
 
 def test_gpu_renderer_creates_skia_opengl_render_target_and_scales_canvas():
@@ -109,3 +133,24 @@ def test_gpu_renderer_close_releases_surface_references_and_disables_resize():
     assert renderer.canvas is None
     with pytest.raises(RuntimeError, match="closed"):
         renderer.resize(RenderSize(20, 20))
+
+def test_gpu_renderer_can_wrap_default_framebuffer_for_direct_window_rendering():
+    FakeSkia.GrDirectContexts.calls = 0
+    FakeSkia.Surfaces.framebuffer_calls = []
+    renderer = SkiaGpuRenderer(
+        RenderSize(640, 480, scale=2.0),
+        skia_module=FakeSkia,
+        framebuffer=True,
+    )
+    assert renderer.backend == "opengl"
+    assert renderer.framebuffer is True
+    context, target, origin, color_type, color_space, surface = FakeSkia.Surfaces.framebuffer_calls[0]
+    assert target.width == 1280
+    assert target.height == 960
+    assert target.info.fbo_id == 0
+    assert target.info.format == 0x8058
+    assert origin == "bottom-left"
+    assert color_type == "rgba8888"
+    assert color_space is None
+    renderer.flush()
+    assert surface.flush_count == 1
