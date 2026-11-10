@@ -495,3 +495,13 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added regression coverage for breakpoint boundaries, density-independent classification, runtime resize updates and event coalescing.
 - The first CI run exposed legacy fake-window failures because optional display metadata could raise during resize synchronization. The sync path now treats display metadata as optional and keeps logical/backing-pixel resize operational.
 - Adaptive navigation scaffolds, multi-pane state transitions, GPU rendering and physical mixed-DPI/high-refresh certification remain unfinished.
+
+
+## 3.5 — Two-dimensional adaptive composition
+
+- Added `AdaptiveLayout` and `AdaptiveVariant` as public native widgets.
+- Extended retained layout nodes and the measure/arrange engine to select a variant using both available logical width and height.
+- Adaptive transitions occur during layout and preserve the existing component tree/build count.
+- Added tests for width/height selection, short-window fallback, resize transitions and invalid threshold ordering.
+- Added the API usage guide to `docs/native-responsive-layout.md`.
+- This is a composition primitive, not a full adaptive navigation system. Navigation scaffolds, pane-state restoration, previews and platform acceptance testing remain future work.
