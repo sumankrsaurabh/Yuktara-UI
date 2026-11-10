@@ -1,8 +1,6 @@
 """Interactive gallery for Yuktara UI's native overlay system."""
 from __future__ import annotations
 
-import time
-
 from novaui.native.dependencies import ensure_skia_python
 
 ensure_skia_python()
@@ -12,7 +10,7 @@ from novaui.native import (
     Badge, Button, Card, ContextMenu, Dialog, Label, MenuItem, NativeRuntime,
     NativeTheme, Popover, Toast, Tooltip, column, row,
 )
-from novaui.native.platform import EventType, SDL3Window
+from novaui.native.platform import SDL3Window
 from novaui.native.platform.skia_bridge import renderer_frame
 from novaui.native.renderer import RenderSize, SkiaRenderer
 
@@ -113,26 +111,10 @@ def main():
     runtime = NativeRuntime(lambda: root, renderer, width, height, clear_color=theme.background)
     runtime_ref["runtime"] = runtime
     window = SDL3Window("Yuktara UI — Overlay Gallery", width, height)
-    window.open()
-    runtime.start()
-    previous = time.monotonic()
-    running = True
-    try:
-        while running:
-            now = time.monotonic()
-            runtime.advance_time((now - previous) * 1000.0)
-            previous = now
-            for event in window.poll_input_events():
-                if event.type is EventType.QUIT:
-                    running = False
-                    break
-                runtime.dispatch(event)
-            if running:
-                runtime.render()
-                window.present(renderer_frame(renderer, skia_module=skia))
-    finally:
-        runtime.stop()
-        window.close()
+    window.run_runtime(
+        runtime,
+        lambda _runtime: renderer_frame(renderer, skia_module=skia),
+    )
 
 
 if __name__ == "__main__":
