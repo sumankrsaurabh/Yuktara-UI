@@ -18,8 +18,9 @@ from .events import (
 SDL_EVENT_QUIT = 0x100
 SDL_EVENT_WINDOW_RESIZED = 0x206
 SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED = 0x207
-SDL_EVENT_WINDOW_FOCUS_GAINED = 0x20B
-SDL_EVENT_WINDOW_FOCUS_LOST = 0x20C
+SDL_EVENT_WINDOW_FOCUS_GAINED = 0x20E
+SDL_EVENT_WINDOW_FOCUS_LOST = 0x20F
+SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED = 0x214
 SDL_EVENT_KEY_DOWN = 0x300
 SDL_EVENT_KEY_UP = 0x301
 SDL_EVENT_TEXT_EDITING = 0x302
@@ -175,6 +176,15 @@ class SDL3EventDecoder:
                 else EventType.WINDOW_PIXEL_SIZE_CHANGED,
                 timestamp,
                 window=WindowEvent(ev.data1, ev.data2, ev.windowID),
+                raw_type=kind,
+            )
+
+        if kind == SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+            ev = _Window.from_buffer_copy(raw)
+            return InputEvent(
+                EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+                timestamp,
+                window=WindowEvent(window_id=ev.windowID),
                 raw_type=kind,
             )
 
