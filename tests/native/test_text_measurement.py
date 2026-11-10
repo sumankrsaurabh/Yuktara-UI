@@ -48,3 +48,34 @@ def test_engine_uses_text_measurer_for_intrinsic_size_and_wrap():
 
 def test_node_rejects_invalid_text_alignment():
     with pytest.raises(ValueError): LayoutNode("text",text="x",text_align="justify")
+
+
+def test_text_layout_preserves_trailing_newline_and_empty_paragraphs():
+    layout = TextMeasurer(FakeSkia).measure("first\n\nlast\n", FontConfig(size=10), wrap=False)
+    assert [line.text for line in layout.lines] == ["first", "", "last", ""]
+    assert [line.start for line in layout.lines] == [0, 6, 7, 12]
+
+
+def test_text_layout_exposes_cluster_caret_and_selection_geometry():
+    layout = TextMeasurer(FakeSkia).measure("A😀B", FontConfig(size=10), wrap=False)
+    assert layout.caret_position(1) == (5.0, 0.0, 0)
+    assert layout.caret_position(2) == (10.0, 0.0, 0)
+    assert layout.offset_at(8.0, 0.0) == 2
+    assert layout.selection_rects(1, 3) == ((5.0, 0.0, 10.0, 10.0),)
+
+
+def test_wrapped_lines_keep_original_source_offsets():
+    layout = TextMeasurer(FakeSkia).measure("hello world", FontConfig(size=10), max_width=30)
+    assert [(line.text, line.start, line.end) for line in layout.lines] == [
+        ("hello", 0, 5), ("world", 6, 11)
+    ]
+
+
+def test_text_measurer_does_not_split_combining_marks_emoji_or_indic_conjuncts():
+    from novaui.native.text import grapheme_spans
+
+    samples = ["e\u0301", "👍🏽", "👨‍👩‍👧‍👦", "🇮🇳", "क्ष"]
+    for sample in samples:
+        spans = grapheme_spans(sample)
+        assert len(spans) == 1
+        assert sample[spans[0][0]:spans[0][1]] == sample

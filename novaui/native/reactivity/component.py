@@ -23,6 +23,7 @@ class Component:
         self.mounted = False
         self.dirty = True
         self._subscriptions: list[Subscription] = []
+        self._binding_deactivators: list[Callable[[], None]] = []
         self.build_count = 0
         self.last_reconcile: ReconcileResult | None = None
 
@@ -36,12 +37,29 @@ class Component:
     def bind_state(self, state: State, apply: Callable[[object, object], None] | None = None):
         if not isinstance(state, State):
             raise TypeError("bind_state expects a State instance")
+        active = [True]
+
         def changed(new, old):
-            if apply is not None:
-                apply(new, old)
-            self.invalidate()
+            if not active[0]:
+                return
+
+            def apply_and_invalidate():
+                # State subscribers may run on worker threads. Keep user-supplied
+                # apply callbacks on the scheduler's owner thread alongside the
+                # retained-tree rebuild they trigger.
+                if not active[0]:
+                    return
+                if apply is not None:
+                    apply(new, old)
+                self.invalidate()
+
+            # Use a unique queue key so each apply callback is delivered, while
+            # component invalidations themselves remain coalesced by `self`.
+            self.scheduler.schedule(object(), apply_and_invalidate)
+
         subscription = state.subscribe(changed)
         self._subscriptions.append(subscription)
+        self._binding_deactivators.append(lambda: active.__setitem__(0, False))
         return subscription
 
     def invalidate(self):
@@ -71,6 +89,9 @@ class Component:
         if not self.mounted and not self._subscriptions:
             return
         self.mounted = False
+        for deactivate in self._binding_deactivators:
+            deactivate()
+        self._binding_deactivators.clear()
         for subscription in self._subscriptions:
             subscription.cancel()
         self._subscriptions.clear()

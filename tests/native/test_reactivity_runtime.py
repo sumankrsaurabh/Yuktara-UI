@@ -68,3 +68,217 @@ def test_pointer_up_repaints_after_native_widget_mutates_node():
     assert runtime.frame_count == initial_frames + 1
     assert any(op[0] == "text" and "☑" in op[1][0] for op in renderer.ops)
     runtime.stop()
+
+
+def test_runtime_keeps_dispatcher_and_focus_across_component_rebuild():
+    state = State("before")
+    renderer = FakeRenderer()
+
+    def build():
+        return LayoutNode.column(
+            LayoutNode("box", key="action", accessibility_role="button",
+                       accessibility_label=state.value,
+                       on_click=lambda _event: None),
+            LayoutNode("text", text=state.value, key="label"),
+            key="root",
+        )
+
+    runtime = NativeRuntime(build, renderer, 240, 100)
+    runtime.component.bind_state(state)
+    runtime.start()
+    dispatcher = runtime.dispatcher
+    focused = runtime.root.children[0]
+    runtime.dispatcher._set_focus(focused)
+    state.value = "after"
+
+    assert runtime.dispatcher is dispatcher
+    assert runtime.dispatcher.focused is focused
+    assert focused.accessibility_focused is True
+    assert focused.accessibility_label == "after"
+    runtime.stop()
+
+
+def test_runtime_defers_background_state_updates_until_ui_thread_flush():
+    from threading import Thread, get_ident
+
+    state = State("before")
+    renderer = FakeRenderer()
+    runtime = NativeRuntime(lambda: LayoutNode("text", text=state.value),
+                            renderer, 200, 80)
+    runtime.component.bind_state(state)
+    runtime.start()
+    initial_frames = runtime.frame_count
+    errors = []
+
+    def update_from_worker():
+        try:
+            state.value = "after"
+        except Exception as exc:  # pragma: no cover - failure is asserted below
+            errors.append(exc)
+
+    worker = Thread(target=update_from_worker)
+    worker.start()
+    worker.join()
+
+    assert errors == []
+    assert runtime.root.text == "before"
+    assert runtime.frame_count == initial_frames
+    assert runtime.scheduler.pending_count == 1
+
+    runtime.process_pending()
+    assert runtime.root.text == "after"
+    assert runtime.frame_count == initial_frames + 1
+    runtime.stop()
+
+
+def test_runtime_scales_normalized_touch_coordinates_to_logical_pixels():
+    received = []
+    node = LayoutNode("box", on_pointer_down=lambda event: received.append(
+        (event.pointer.x, event.pointer.y,
+         event.pointer.delta_x, event.pointer.delta_y)
+    ))
+    runtime = NativeRuntime(lambda: node, FakeRenderer(), 300, 200)
+    runtime.start()
+    event = InputEvent(
+        EventType.POINTER_DOWN,
+        pointer=PointerEvent(
+            x=0.25, y=0.5, delta_x=0.1, delta_y=0.2,
+            source="touch", pointer_id=8, button=1,
+        ),
+    )
+    runtime.dispatch(event)
+    assert received == [(75.0, 100.0, 30.0, 40.0)]
+    runtime.stop()
+
+
+def test_runtime_handles_logical_and_pixel_resize_events_separately():
+    runtime = NativeRuntime(lambda: LayoutNode("box"), FakeRenderer(), 320, 200)
+    runtime.start()
+    runtime.handle_event(InputEvent(
+        EventType.WINDOW_RESIZED,
+        window=__import__("novaui.native.platform.events", fromlist=["WindowEvent"]).WindowEvent(800, 600),
+    ))
+    assert (runtime.width, runtime.height) == (800.0, 600.0)
+    assert (runtime.pixel_width, runtime.pixel_height) == (800, 600)
+    runtime.handle_event(InputEvent(
+        EventType.WINDOW_PIXEL_SIZE_CHANGED,
+        window=__import__("novaui.native.platform.events", fromlist=["WindowEvent"]).WindowEvent(1600, 1200),
+    ))
+    assert (runtime.pixel_width, runtime.pixel_height) == (1600, 1200)
+    assert runtime.scale_x == 2.0
+    assert runtime.scale_y == 2.0
+    runtime.stop()
+
+
+def test_runtime_resets_pointer_capture_and_focus_when_window_loses_focus():
+    from novaui.native.platform.events import WindowEvent
+
+    node = LayoutNode("box", accessibility_role="button", on_click=lambda _event: None)
+    runtime = NativeRuntime(lambda: node, FakeRenderer(), 100, 80)
+    runtime.start()
+    runtime.dispatcher._set_focus(node)
+    runtime.dispatcher._pressed[("mouse", 0)] = node
+    runtime.handle_event(InputEvent(EventType.WINDOW_FOCUS_LOST,
+                                    window=WindowEvent(window_id=1)))
+    assert runtime.window_focused is False
+    assert runtime.dispatcher.focused is None
+    assert runtime.dispatcher.has_capture is False
+    runtime.stop()
+
+
+def test_bind_state_apply_callback_is_marshaled_to_runtime_ui_thread():
+    from threading import Thread, get_ident
+
+    state = State("before")
+    renderer = FakeRenderer()
+    callback_threads = []
+    applied = []
+    runtime = NativeRuntime(
+        lambda: LayoutNode("text", text=state.value), renderer, 160, 60
+    )
+    runtime.component.bind_state(
+        state,
+        apply=lambda new, old: (callback_threads.append(get_ident()), applied.append((old, new))),
+    )
+    runtime.start()
+    owner = get_ident()
+
+    worker = Thread(target=lambda: setattr(state, "value", "after"))
+    worker.start()
+    worker.join()
+
+    assert applied == []
+    runtime.process_pending()
+    assert applied == [("before", "after")]
+    assert callback_threads == [owner]
+    assert runtime.root.text == "after"
+    runtime.stop()
+
+
+def test_runtime_can_restart_on_same_ui_thread_and_restores_managers():
+    from novaui.native import Toast
+
+    renderer = FakeRenderer()
+    runtime = NativeRuntime(lambda: LayoutNode("box"), renderer, 160, 80)
+    runtime.start()
+    first_dispatcher = runtime.dispatcher
+    runtime.stop()
+    runtime.start()
+
+    assert runtime.dispatcher is not None
+    assert runtime.dispatcher is not first_dispatcher
+    # Both manager callbacks were reattached during restart. A toast update
+    # must trigger a new frame rather than silently changing hidden state.
+    initial = runtime.frame_count
+    runtime.overlays.show_toast(Toast("Restarted"))
+    assert runtime.frame_count == initial + 1
+    runtime.stop()
+
+
+def test_scheduler_preserves_later_callbacks_when_one_callback_raises():
+    import pytest
+
+    scheduler = Scheduler()
+    seen = []
+
+    def fail():
+        raise RuntimeError("callback failed")
+
+    with pytest.raises(RuntimeError, match="callback failed"):
+        with scheduler.batch():
+            scheduler.schedule("fail", fail)
+            scheduler.schedule("later", lambda: seen.append("later"))
+
+    assert seen == []
+    assert scheduler.pending_count == 1
+    assert scheduler.flush() == 1
+    assert seen == ["later"]
+
+
+def test_runtime_start_does_not_claim_thread_when_scheduler_binding_fails():
+    import pytest
+    from threading import get_ident
+
+    scheduler = Scheduler()
+    scheduler.bind_owner_thread(get_ident() + 10_000)
+    runtime = NativeRuntime(lambda: LayoutNode("box"), FakeRenderer(), 100, 80,
+                            scheduler=scheduler)
+
+    with pytest.raises(RuntimeError, match="already bound"):
+        runtime.start()
+
+    assert runtime.owner_thread_id is None
+    assert runtime.root is None
+
+
+def test_runtime_restart_clears_quit_state_and_restores_window_focus():
+    runtime = NativeRuntime(lambda: LayoutNode("box"), FakeRenderer(), 100, 80)
+    runtime.start()
+    runtime.handle_event(InputEvent(EventType.QUIT))
+    runtime.window_focused = False
+    runtime.stop()
+    runtime.start()
+
+    assert runtime.quit_requested is False
+    assert runtime.window_focused is True
+    runtime.stop()

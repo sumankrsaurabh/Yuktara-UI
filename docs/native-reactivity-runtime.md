@@ -1,6 +1,7 @@
 # Yuktara UI native reactivity and runtime lifecycle
 
-This milestone adds pure-Python state, scheduling and component lifecycle primitives under `novaui.native.reactivity`, plus a small orchestration class at `novaui.native.runtime.NativeRuntime`.
+This module provides pure-Python state, a keyed invalidation scheduler,
+component lifecycle primitives and `NativeRuntime` orchestration.
 
 ## Observable state
 
@@ -13,32 +14,45 @@ count.update(lambda value: value + 1)
 subscription.cancel()
 ```
 
-`State` suppresses notifications when equality says the value has not changed. A subscription can be cancelled directly or used as a context manager.
+`State` suppresses notifications when equality says a value has not changed.
+Subscriptions can be cancelled directly or used as context managers.
 
-## Batching
+## Batching and scheduler ownership
 
 ```python
 from novaui.native.reactivity import Scheduler, State
 
 scheduler = Scheduler()
+a = State(0)
+b = State(0)
 with scheduler.batch():
-    # Components using this scheduler are invalidated once per component,
-    # even if several bound states change during this batch.
-    state_a.value = 10
-    state_b.value = 20
+    a.value = 10
+    b.value = 20
 ```
 
-The scheduler deduplicates pending callbacks by key and flushes at the end of the outermost batch.
+A standalone scheduler is synchronous by default. `NativeRuntime.start()` binds
+its scheduler to the thread that owns the native window. State changes on that
+thread rebuild synchronously; worker-thread state changes queue work until the
+host calls `runtime.process_pending()` on the UI thread. `bind_state(...,
+apply=...)` callbacks are marshalled through the same scheduler. Calling
+`flush()` from a non-owner thread raises `RuntimeError`. If a scheduled callback
+raises, later callbacks from the drained batch remain queued for the next flush.
 
-## Component lifecycle
+## Component lifecycle and retained-tree reconciliation
 
-A `Component` owns a builder, its current layout node and state subscriptions. `mount()` builds it; `bind_state()` subscribes to a state and invalidates/rebuilds the component when it changes; `unmount()` cancels subscriptions.
+A `Component` owns its builder, current `LayoutNode` and state subscriptions.
+`mount()` builds and reconciles its node tree; `bind_state()` subscribes to a
+state; `unmount()` deactivates bindings and cancels subscriptions. Compatible
+keyed nodes are updated in place. Declarative fields and callbacks are refreshed
+from the next build, while live focus and scroll offsets are retained. Derived
+layout geometry is invalidated for the next measure pass. Detached nodes are
+removed from dispatcher capture, hover, touch-scroll and focus-history state.
 
 ## Runtime orchestration
 
 ```python
 from novaui.native import NativeRuntime, SkiaRenderer, RenderSize
-from novaui.native.layout import LayoutNode, Rect, Size
+from novaui.native.layout import LayoutNode
 from novaui.native.reactivity import State
 
 message = State("Ready")
@@ -56,14 +70,24 @@ app = NativeRuntime(
 app.component.bind_state(message)
 app.start()
 # message.value = "Updated" triggers rebuild, layout and paint.
+app.stop()
 ```
 
-`NativeRuntime` coordinates build -> layout -> paint, maintains an input dispatcher for the current tree, and supports resize, event dispatch and stop. It accepts any renderer implementing `clear`, `draw_rect` and `draw_text`, so lifecycle tests do not require Skia.
+`NativeRuntime` coordinates build, layout, paint, overlays, animation time and
+input dispatch. Its rendering, input, resize, lifecycle and scheduler flush
+operations are restricted to the owner thread after start. Runtime start/stop
+can be repeated on the same owner thread. Background state updates are applied
+with `process_pending()`.
+
+For an SDL3-managed application loop, use `SDL3Window.run_runtime()`; see
+[`native-runtime-stabilization.md`](native-runtime-stabilization.md).
 
 ## Current boundaries
 
-- State is synchronous and intended for the UI thread; it is not a cross-thread UI dispatcher.
-- A component rebuild currently replaces its complete layout subtree. Fine-grained reconciliation and keyed diffing are future work.
-- Scheduler batching deduplicates component rebuilds, but this is not yet a full frame clock or animation scheduler.
-- The runtime does not create an SDL3 window or present frames itself; the SDL3 host remains a separate platform layer.
-- The retained `novaui` Python import namespace is used for compatibility while the product is branded Yuktara UI.
+- The scheduler marshals state invalidations; it is not a general async task
+  executor and does not provide an OS wake event. Custom hosts must call
+  `process_pending()` during their event loop.
+- Reconciliation updates `LayoutNode` trees; it is not a general virtual-DOM
+  reconciler with arbitrary per-widget component-local state or effects.
+- Runtime tests use injected renderers and platform doubles. Real SDL3/Skia
+  lifecycle and platform-specific behavior still require desktop smoke tests.

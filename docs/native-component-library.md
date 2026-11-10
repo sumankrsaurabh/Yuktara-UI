@@ -1,89 +1,137 @@
-# Native component library — 2.2 development
+# Yuktara UI native component library — 3.1 development
 
-Yuktara UI widgets are Python objects that build the framework's retained
-`LayoutNode` tree. They do not paint directly and do not depend on SDL3 or Skia.
-The existing layout engine, painter, hit tester, event dispatcher and renderer
-continue to own those responsibilities.
+Yuktara UI components are Python objects that produce a retained `LayoutNode`
+tree. Layout, painting, hit testing, event dispatch, animation and accessibility
+remain owned by the native framework. Components do not embed HTML, CSS,
+JavaScript, a browser or a WebView.
 
-## Basic composition
+## Public component catalog
+
+### Layout and composition
+
+| API | Purpose |
+|---|---|
+| `row(...)` | Horizontal composition with spacing, alignment and weighted children. |
+| `column(...)` | Vertical composition with spacing, alignment and weighted children. |
+| `stack(...)` | Layer multiple children in the same layout area. |
+| `Container(...)` | Generic content container with padding, margin, dimensions, fill, border and radius. |
+| `Card(...)` | Themed content surface. |
+| `Grid(...)` | Equal-track grid; `min_column_width` allows responsive column reflow. |
+| `ScrollView(...)` | Clipped vertical, horizontal or two-axis scrolling viewport. |
+| `Spacer(...)` | Flexible or fixed empty space. |
+| `Divider(...)` | Horizontal or vertical separator. |
+
+### Input and action controls
+
+`Button`, `TextField`, `TextArea`, `Checkbox`, `Switch`, `RadioGroup`,
+`Dropdown`, `Slider`, `Tabs`, `TabItem`, `SegmentedControl` and `DatePicker`
+are available. They expose native node semantics and their respective callbacks.
+
+### Data, navigation and hierarchy
+
+| API | Purpose |
+|---|---|
+| `Table(...)` | Header/body rows with weighted columns, cell padding, borders, stripes and table semantics. |
+| `NavigationDrawer(...)` | Selectable navigation entries, optional header/footer, badges and compact mode. |
+| `TreeView(...)` / `TreeItem(...)` | Expandable and selectable hierarchical items, including disabled entries. |
+| `Calendar(...)` | Month view with previous/next navigation and min/max date constraints. |
+
+### Visual and system integration
+
+| API | Purpose |
+|---|---|
+| `Image(...)` | Native Skia image view from a path, encoded bytes or decoded Skia image; `contain`, `cover`, `fill` and `none` fitting. |
+| `FilePicker(...)` | Button integration for open, save and folder selection through an injected dialog service. |
+| `Dialog`, `Popover`, `Tooltip`, `ContextMenu`, `Toast` | Native floating surfaces and notifications. |
+| `Label`, `RichText`, `Badge`, `ProgressBar` | Text and status presentation. |
+
+## Example
 
 ```python
 from novaui.native import (
-    Badge, Button, Card, Divider, Label, NativeTheme,
-    ProgressBar, column, row,
+    Button, Calendar, Container, DatePicker, Grid, Image,
+    NavigationDrawer, NavigationItem, ScrollView, Table,
+    TreeItem, TreeView, column, row,
 )
 
-theme = NativeTheme()
-root = column(
-    Label("Project overview", size=24, weight="bold", theme=theme),
-    row(Badge("Online", "success", theme), Badge("Build 2.2", "primary", theme)),
-    Card((
-        Label("Build status", weight="semibold", theme=theme),
-        ProgressBar(72, label="Build progress", theme=theme),
-        Divider(theme=theme),
-        Button("Open details", variant="primary", theme=theme),
-    ), theme=theme),
-    spacing=14,
-    padding=20,
-    background=theme.background,
+sidebar = NavigationDrawer([
+    NavigationItem("Home", key="home"),
+    NavigationItem("Settings", key="settings"),
+], selected="home")
+
+cards = Grid(
+    [Container(child=Button(f"Open {index}"), padding=12)
+     for index in range(6)],
+    columns=3,
+    min_column_width=180,
+    column_gap=12,
+    row_gap=12,
+)
+
+page = row(
+    sidebar,
+    ScrollView(column(
+        cards,
+        Table(headers=("Name", "Role"), rows=(("Ada", "Engineer"),)),
+        DatePicker(),
+        Calendar(),
+        TreeView([TreeItem("Documents", children=(TreeItem("Report"),))]),
+        spacing=16,
+    ), height=720),
+    spacing=16,
 )
 ```
 
-A widget's `build()` returns a `LayoutNode`; composition helpers such as
-`row`, `column` and `Card` accept either widgets or prebuilt layout nodes.
+## Responsive grid behavior
 
-## Components
+`Grid.columns` is the maximum number of columns. When `min_column_width` is
+provided and the parent supplies a finite width, the layout engine chooses the
+largest column count that fits the requested minimum width and configured gap.
+Without `min_column_width`, the requested `columns` value is used.
 
-| Component | API / behavior |
-|---|---|
-| `Label` | Typography size, weight, color, wrapping, maximum lines and alignment. |
-| `Button` | Primary, secondary, outline, ghost, danger and success variants; small, medium and large sizes; disabled state; click callback. |
-| `Card` | Vertical content container with padding, spacing, surface color, radius and optional border. |
-| `Badge` | Neutral, primary, success, warning, danger and info status treatments. |
-| `Divider` | Horizontal or vertical separator with configurable thickness and color. |
-| `Spacer` | Flexible empty space inside row and column layouts. |
-| `ProgressBar` | Determinate 0–100% progress with track, fill and semantic value. |
-| `Checkbox` | Toggle state, disabled state and `on_change(bool)` callback. |
-| `Switch` | Toggle state, live track/knob update and `on_change(bool)` callback. |
-| `RadioGroup` | Single selection, row/column direction and `on_change(value)` callback. |
+## Image behavior
 
-The first component set deliberately avoids advertising a text input field before
-the text editor has a complete keyboard, IME, selection and clipboard pipeline.
-Text fields, dropdowns, sliders, dialogs, menus and floating overlays are
-planned follow-on components.
+`Image.source` accepts a filesystem path, encoded image bytes, or an already
+decoded Skia image object. The renderer decodes encoded data using Skia and
+caches path-backed images by path, modification time and file size. The `alt`
+property supplies the accessibility label. Image decoding/painting requires the
+Skia runtime to be installed.
 
-## Themes
+## File picker integration
 
-`NativeTheme()` provides the Yuktara light palette. `NativeTheme.dark()` provides
-a corresponding dark palette. Both expose semantic ARGB tokens (surface,
-foreground, muted, border, primary, success, warning, danger, info, disabled,
-focus) and shape tokens for small, medium, large and pill radii.
+Pass an `SDL3Window` (or a compatible service object) to `FilePicker`:
 
-## Accessibility semantics
+```python
+picker = FilePicker(
+    window,
+    mode="open",              # "open", "save" or "folder"
+    filters=(("PDF files", "pdf"),),
+    on_change=lambda paths: print(paths),
+)
+```
 
-Widgets annotate their nodes with semantic roles, labels, values, disabled
-state and selection/toggle state. `build_accessibility_tree(root)` converts
-those annotations to immutable `SemanticNode` values. This is a platform-neutral
-semantic model; native OS bridges such as UI Automation, NSAccessibility and
-AT-SPI are not implemented in this milestone.
-
-## Interaction and rerendering
-
-The input dispatcher invokes a widget's click callback on pointer-up when the
-pointer is released over the same node that received pointer-down. Checkbox,
-switch and radio-group nodes update their visible text/track/selection metadata
-in place, so a normal frame render reflects the change. Application state can
-be connected through the framework's `State` and `Component.bind_state` APIs.
+SDL3 file dialogs are asynchronous. `SDL3Window` retains the C callback and
+marshals the completed paths to the window/event-polling thread. Results are
+delivered during `poll_events()` / `poll_input_events()` or by explicitly
+calling `process_file_dialog_results()` on the window thread. The SDL3 native
+file-dialog APIs require SDL 3.2 or newer; Yuktara's pinned runtime is newer.
+Cancellation is reported as an empty path tuple; an SDL error is reported as
+`None` and can be handled through `FilePicker.on_error`.
 
 ## Gallery
 
-Run `python examples/native/component_gallery.py` after `python -m novaui setup`
-to open an interactive SDL3 + Skia sample gallery.
+Run `python examples/native/advanced_component_gallery.py` after
+`python -m novaui setup`. Add `--image PATH` to preview an image with the native
+`Image` component. The gallery includes grid, containers, tables, navigation,
+tree, calendar, date picker and native file dialogs.
 
-## Current scope
+## Scope and validation
 
-This is an initial component foundation, not a finished complete control suite.
-The component model is backend-neutral and the gallery should be validated on
-real Windows, Linux and macOS SDL3/Skia runtimes. OS screen-reader integration,
-keyboard focus traversal for all controls, true overlay portals, and mobile
-renderers remain future work.
+This is an experimental desktop component library, not a claim that every
+platform integration is production-certified. Headless tests exercise component
+construction, layout, accessibility semantics and injected renderer/dialog
+services. Validate actual Skia image decoding/painting, SDL3 dialogs, window
+scaling, accessibility provider bridges and input behavior on each supported OS.
+Native accessibility semantics are represented in Yuktara's semantic tree;
+UI Automation, NSAccessibility and AT-SPI provider bridges are separate work.
+Mobile renderers are not included.

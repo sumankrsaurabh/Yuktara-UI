@@ -75,7 +75,7 @@ class _TextInput(ctypes.Structure):
         ("reserved", ctypes.c_uint32),
         ("timestamp", ctypes.c_uint64),
         ("windowID", ctypes.c_uint32),
-        ("text", ctypes.c_char * 32),
+        ("text", ctypes.c_void_p),
     ]
 
 
@@ -191,7 +191,7 @@ class SDL3EventDecoder:
 
         if kind == SDL_EVENT_TEXT_INPUT:
             ev = _TextInput.from_buffer_copy(raw)
-            value = bytes(ev.text).split(b"\\0", 1)[0].decode("utf-8", "replace")
+            value = ctypes.string_at(ev.text).decode("utf-8", "replace") if ev.text else ""
             return InputEvent(EventType.TEXT_INPUT, timestamp, text=value, raw_type=kind)
 
         if kind == SDL_EVENT_MOUSE_MOTION:

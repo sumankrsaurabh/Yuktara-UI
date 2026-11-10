@@ -17,15 +17,17 @@ class SemanticNode:
     checked: bool | None = None
     selected: bool | None = None
     expanded: bool | None = None
+    focused: bool = False
     bounds: Rect = Rect()
     children: tuple["SemanticNode", ...] = ()
 
 
-def build_accessibility_tree(root: LayoutNode | None) -> SemanticNode | None:
-    """Translate layout annotations into an immutable semantic tree.
+def build_accessibility_tree(root: LayoutNode | None, *, overlays=()) -> SemanticNode | None:
+    """Translate app and optional overlay trees into immutable semantics.
 
-    This is a platform-neutral representation. OS providers such as Windows
-    UI Automation, macOS NSAccessibility and Linux AT-SPI are separate adapters.
+    Pass ``runtime.overlays.roots`` to include active floating surfaces. This is
+    a platform-neutral representation; OS providers such as Windows UI
+    Automation, macOS NSAccessibility and Linux AT-SPI remain separate adapters.
     """
     if root is None:
         return None
@@ -44,11 +46,32 @@ def build_accessibility_tree(root: LayoutNode | None) -> SemanticNode | None:
             checked=node.accessibility_checked,
             selected=node.accessibility_selected,
             expanded=node.accessibility_expanded,
+            focused=node.accessibility_focused,
             bounds=node.bounds,
             children=children,
         )
 
-    return build(root)
+    base = build(root)
+    overlay_items = tuple(overlays)
+    modal_active = any(
+        bool(getattr(item, "modal", False)) or
+        (getattr(item.root if hasattr(item, "root") else item,
+                 "accessibility_role", None) == "dialog-overlay")
+        for item in overlay_items
+    )
+    overlay_nodes = tuple(
+        filter(None, (build(item.root if hasattr(item, "root") else item)
+                      for item in overlay_items))
+    )
+    if not overlay_nodes:
+        return base
+    # A modal dialog owns the active accessibility scope. Do not expose the
+    # obscured application tree as a sibling to screen readers.
+    children = overlay_nodes if modal_active else (((base,) if base is not None else ()) + overlay_nodes)
+    return SemanticNode(
+        role="application", label=root.accessibility_label, bounds=root.bounds,
+        children=children,
+    )
 
 
 __all__ = ["SemanticNode", "build_accessibility_tree"]

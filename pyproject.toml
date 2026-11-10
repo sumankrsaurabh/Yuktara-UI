@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yuktara-ui"
-version = "2.2.0.dev0"
+version = "3.3.0.dev0"
 description = "Native Python UI framework by Yuktara Technologies, using SDL3 and Skia"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,6 +14,7 @@ dependencies = []
 
 [project.optional-dependencies]
 native = ["skia-python==144.1"]
+shaping = ["uharfbuzz>=0.50"]
 dev = ["pytest==9.2.0", "build>=1.2"]
 
 [project.scripts]

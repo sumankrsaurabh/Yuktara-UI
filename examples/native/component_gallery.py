@@ -28,7 +28,7 @@ def main():
     content = column(
         Label("Yuktara UI", size=28, weight="bold", theme=theme),
         Label("Native component library", size=15, color=theme.muted, theme=theme),
-        row(Badge("2.2 development", "primary", theme), Badge("SDL3 + Skia", "success", theme), spacing=8),
+        row(Badge("2.5 development", "primary", theme), Badge("SDL3 + Skia", "success", theme), spacing=8),
         Card((
             Label("Buttons", size=18, weight="semibold", theme=theme),
             row(

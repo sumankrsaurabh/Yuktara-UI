@@ -49,13 +49,22 @@ def test_key_down_event():
     assert decoded.key.repeat
 
 
-def test_text_input_event():
+def test_text_input_event_uses_sdl3_utf8_pointer_field():
+    buffer = ctypes.create_string_buffer("नमस्ते 👋".encode("utf-8"))
     ev = _TextInput()
     ev.type = SDL_EVENT_TEXT_INPUT
-    ev.text = b"hello"
+    ev.text = ctypes.addressof(buffer)
     decoded = SDL3EventDecoder().decode(raw_event(ev))
     assert decoded.type is EventType.TEXT_INPUT
-    assert decoded.text == "hello"
+    assert decoded.text == "नमस्ते 👋"
+
+
+def test_text_input_event_handles_null_pointer():
+    ev = _TextInput()
+    ev.type = SDL_EVENT_TEXT_INPUT
+    ev.text = None
+    decoded = SDL3EventDecoder().decode(raw_event(ev))
+    assert decoded.text == ""
 
 
 def test_mouse_motion_event():
@@ -91,3 +100,16 @@ def test_touch_motion_event_uses_normalized_coordinates():
     assert decoded.pointer.source == "touch"
     assert decoded.pointer.pointer_id == 1234
     assert decoded.pointer.x == 0.25
+
+
+def test_window_pixel_size_changed_is_decoded_separately():
+    from novaui.native.platform.sdl3_events import SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
+
+    ev = _Window()
+    ev.type = SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
+    ev.windowID = 2
+    ev.data1 = 2560
+    ev.data2 = 1440
+    decoded = SDL3EventDecoder().decode(raw_event(ev))
+    assert decoded.type is EventType.WINDOW_PIXEL_SIZE_CHANGED
+    assert (decoded.window.width, decoded.window.height) == (2560, 1440)

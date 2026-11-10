@@ -89,6 +89,7 @@ class Alignment(str, Enum):
     CENTER="center"
     END="end"
     STRETCH="stretch"
+    BASELINE="baseline"
 
 class MainAxisAlignment(str, Enum):
     START="start"

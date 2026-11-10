@@ -48,3 +48,9 @@ def test_hit_test_returns_deepest_child():
 
 def test_invalid_constraints_rejected():
     with pytest.raises(ValueError): Constraints(20,10,0,10)
+
+
+def test_numeric_padding_is_normalized_to_insets():
+    root = LayoutNode.column(LayoutNode.box(intrinsic_size=Size(10, 10)), padding=8)
+    LayoutEngine().layout(root, Rect(0, 0, 100, 100))
+    assert root.content_bounds == Rect(8, 8, 84, 84)

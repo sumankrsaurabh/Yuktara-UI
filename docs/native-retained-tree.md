@@ -1,6 +1,8 @@
 # Native retained component tree
 
-Yuktara UI native `Component.rebuild()` now reconciles the newly built `LayoutNode` description with the previous tree. Matching nodes are updated in place, preserving object identity and their runtime geometry until the next layout pass.
+`Component.rebuild()` reconciles a newly built `LayoutNode` description with the
+previous tree. Matching nodes are updated in place, preserving their identity
+for input dispatch and other runtime state.
 
 ## Keyed children
 
@@ -14,16 +16,34 @@ component = Component(lambda: LayoutNode.column(*[
 ]))
 component.mount()
 
-# Reorder and rebuild: nodes with matching keys retain identity.
 items[:] = ["beta", "alpha"]
 component.invalidate()
 component.scheduler.flush()
 ```
 
-Keys must be unique among siblings. Keyed children match by key across reordering. Unkeyed children match by position when their node kinds are compatible. A kind change replaces that node and reports the old/new instances as removed/created.
+Keys must be unique among siblings. Keyed children match by key across
+reordering. Unkeyed children match by position when node kinds are compatible.
+A kind change replaces that node and reports the old/new instances as
+removed/created. `Component.last_reconcile` exposes `ReconcileResult` with
+`created`, `reused` and `removed` tuples.
 
-`Component.last_reconcile` exposes a `ReconcileResult` with `created`, `reused` and `removed` node tuples. The legacy 0.x runtime is not modified.
+## Reconciled versus runtime-owned fields
+
+Declarative `LayoutNode` dataclass fields are copied automatically, excluding
+child references and derived geometry. This includes visuals, typography,
+accessibility metadata, event callbacks, paint callbacks and grid settings.
+Text layout is invalidated after an update so it cannot be reused with stale
+text or style configuration. Live accessibility focus, scroll offsets and text
+scroll offsets remain attached to compatible reused nodes.
+
+The runtime keeps its dispatcher when the component rebuilds. It updates the
+root reference and drops detached nodes from pointer capture, hover, touch
+scroll and focus-history collections. This lets compatible state-driven
+rebuilds retain active focus and interactions without retaining removed nodes.
 
 ## Current boundaries
 
-This is a minimal reconciler for the native `LayoutNode` tree, not yet a general virtual-DOM diff. It does not implement component-local state preservation, lifecycle hooks per node, animation transitions, keyed state stores or fine-grained subtree scheduling. Those are separate follow-up work.
+This is a reconciler for the native `LayoutNode` tree, not a general virtual DOM.
+It does not provide arbitrary component-local state stores, per-node mount/unmount
+effects, keyed animation state or fine-grained subtree scheduling. Those can be
+added separately without changing the basic node identity contract.

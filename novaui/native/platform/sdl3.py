@@ -10,14 +10,26 @@ from __future__ import annotations
 import ctypes
 import ctypes.util
 import platform
+import threading
+from time import perf_counter
+from collections import deque
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Sequence
 
 
 SDL_INIT_VIDEO = 0x00000020
 SDL_WINDOW_RESIZABLE = 0x00000020
 SDL_TEXTUREACCESS_STREAMING = 1
 SDL_EVENT_QUIT = 0x100
+
+
+class _SDLDialogFileFilter(ctypes.Structure):
+    _fields_ = [("name", ctypes.c_char_p), ("pattern", ctypes.c_char_p)]
+
+
+_SDLDialogCallback = ctypes.CFUNCTYPE(
+    None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_int
+)
 
 def sys_byteorder_little() -> bool:
     return __import__("sys").byteorder == "little"
@@ -94,6 +106,10 @@ class SDL3Window:
         self._opened = False
         self._closed = False
         self._thread_id = None
+        self._dialog_lock = threading.Lock()
+        self._dialog_results = deque()
+        self._dialog_callbacks = {}
+        self._next_dialog_token = 1
 
     def _load_library(self):
         if self._lib is not None:
@@ -144,6 +160,7 @@ class SDL3Window:
 
     def open(self) -> "SDL3Window":
         if self._opened:
+            self._assert_open()
             return self
         if self._closed:
             raise SDL3Error("A closed SDL3Window cannot be reopened.")
@@ -211,6 +228,191 @@ class SDL3Window:
             raise SDL3Error(f"SDL_CreateTexture failed: {self._error()}")
         self._texture_size = (width, height)
 
+    def start_text_input(self) -> None:
+        """Activate SDL3 committed text input for this window."""
+        self._assert_open()
+        start = self._bind("SDL_StartTextInput", ctypes.c_bool, [ctypes.c_void_p])
+        if not start(self._window):
+            raise SDL3Error(f"SDL_StartTextInput failed: {self._error()}")
+
+    def stop_text_input(self) -> None:
+        """Deactivate SDL3 text input for this window."""
+        self._assert_open()
+        stop = self._bind("SDL_StopTextInput", ctypes.c_bool, [ctypes.c_void_p])
+        if not stop(self._window):
+            raise SDL3Error(f"SDL_StopTextInput failed: {self._error()}")
+
+    def get_clipboard_text(self) -> str:
+        """Read UTF-8 text from the OS clipboard through SDL3."""
+        self._assert_open()
+        getter = self._bind("SDL_GetClipboardText", ctypes.c_void_p, [])
+        free = self._bind("SDL_free", None, [ctypes.c_void_p])
+        pointer = getter()
+        if not pointer:
+            return ""
+        try:
+            return ctypes.string_at(pointer).decode("utf-8", "replace")
+        finally:
+            free(pointer)
+
+    def set_clipboard_text(self, text: str) -> None:
+        """Write UTF-8 text to the OS clipboard through SDL3."""
+        self._assert_open()
+        if not isinstance(text, str):
+            raise TypeError("clipboard text must be a string")
+        if "\0" in text:
+            raise ValueError("clipboard text cannot contain a NUL character")
+        setter = self._bind("SDL_SetClipboardText", ctypes.c_bool, [ctypes.c_char_p])
+        if not setter(text.encode("utf-8")):
+            raise SDL3Error(f"SDL_SetClipboardText failed: {self._error()}")
+
+    # TextField accepts a clipboard service with get_text()/set_text().
+    def get_text(self) -> str:
+        return self.get_clipboard_text()
+
+    def set_text(self, text: str) -> None:
+        self.set_clipboard_text(text)
+
+    def _start_file_dialog(self, function_name: str, callback: Callable,
+                           filters: Sequence[tuple[str, str]] = (), *,
+                           default_location: str | None = None,
+                           allow_many: bool = False, folder: bool = False) -> None:
+        """Start an SDL native file dialog and marshal completion to the UI thread."""
+        self._assert_open()
+        if not callable(callback):
+            raise TypeError("file dialog callback must be callable")
+        encoded_filters = []
+        for item in filters:
+            if (not isinstance(item, (tuple, list)) or len(item) != 2 or
+                    not all(isinstance(value, str) and value for value in item)):
+                raise ValueError("filters must be (display_name, extension_pattern) pairs")
+            name, pattern = item
+            if pattern != "*" and any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.;"
+                                       for ch in pattern):
+                raise ValueError("filter patterns may contain only extensions separated by semicolons")
+            encoded_filters.append((name.encode("utf-8"), pattern.encode("utf-8")))
+        filter_array = None
+        if encoded_filters:
+            filter_array = (_SDLDialogFileFilter * len(encoded_filters))(
+                *[_SDLDialogFileFilter(name, pattern) for name, pattern in encoded_filters]
+            )
+        location = default_location.encode("utf-8") if default_location else None
+        with self._dialog_lock:
+            token = self._next_dialog_token
+            self._next_dialog_token += 1
+            # Keep the C callback, filter array and encoded strings alive until
+            # SDL reports completion. The callback itself only queues data.
+            def completed(_userdata, filelist, selected_filter):
+                paths = None
+                if filelist:
+                    collected = []
+                    for index in range(4096):
+                        value = filelist[index]
+                        if value is None:
+                            break
+                        collected.append(value.decode("utf-8", "replace"))
+                    paths = tuple(collected)
+                with self._dialog_lock:
+                    pending = self._dialog_callbacks.pop(token, None)
+                    if pending is not None:
+                        self._dialog_results.append((pending[0], paths, int(selected_filter)))
+            c_callback = _SDLDialogCallback(completed)
+            self._dialog_callbacks[token] = (callback, c_callback, filter_array, encoded_filters)
+        try:
+            if folder:
+                fn = self._bind(
+                    function_name, None,
+                    [_SDLDialogCallback, ctypes.c_void_p, ctypes.c_void_p,
+                     ctypes.c_char_p, ctypes.c_bool],
+                )
+                fn(c_callback, None, self._window, location, bool(allow_many))
+            else:
+                fn = self._bind(
+                    function_name, None,
+                    [_SDLDialogCallback, ctypes.c_void_p, ctypes.c_void_p,
+                     ctypes.POINTER(_SDLDialogFileFilter), ctypes.c_int,
+                     ctypes.c_char_p] + ([ctypes.c_bool] if function_name.endswith("OpenFileDialog") else []),
+                )
+                fn(c_callback, None, self._window,
+                   ctypes.cast(filter_array, ctypes.POINTER(_SDLDialogFileFilter)) if filter_array else None,
+                   len(encoded_filters), location,
+                   *([bool(allow_many)] if function_name.endswith("OpenFileDialog") else []))
+        except Exception:
+            with self._dialog_lock:
+                self._dialog_callbacks.pop(token, None)
+            raise
+
+    def show_open_file_dialog(self, callback: Callable, *, filters=(),
+                              default_location: str | None = None,
+                              allow_many: bool = False) -> None:
+        """Open an OS-native file dialog; callback receives (paths, filter_index).
+
+        ``paths`` is ``None`` on an SDL error, an empty tuple on cancellation,
+        or a tuple of UTF-8 paths after acceptance. Results are delivered only
+        when :meth:`process_file_dialog_results` is called on the window thread.
+        """
+        self._start_file_dialog(
+            "SDL_ShowOpenFileDialog", callback, filters,
+            default_location=default_location, allow_many=allow_many,
+        )
+
+    def show_save_file_dialog(self, callback: Callable, *, filters=(),
+                              default_location: str | None = None) -> None:
+        """Open an OS-native save dialog; callback receives (paths, filter_index)."""
+        self._start_file_dialog(
+            "SDL_ShowSaveFileDialog", callback, filters,
+            default_location=default_location,
+        )
+
+    def show_open_folder_dialog(self, callback: Callable, *,
+                                default_location: str | None = None,
+                                allow_many: bool = False) -> None:
+        """Open an OS-native folder dialog; callback receives (paths, -1)."""
+        self._start_file_dialog(
+            "SDL_ShowOpenFolderDialog", callback,
+            default_location=default_location, allow_many=allow_many, folder=True,
+        )
+
+    def process_file_dialog_results(self) -> int:
+        """Deliver completed asynchronous file dialogs on the SDL window thread."""
+        self._assert_open()
+        results = []
+        with self._dialog_lock:
+            while self._dialog_results:
+                results.append(self._dialog_results.popleft())
+        for callback, paths, filter_index in results:
+            callback(paths, filter_index)
+        return len(results)
+
+    def get_sizes(self) -> tuple[tuple[int, int], tuple[int, int]]:
+        """Return ``(logical_size, pixel_size)`` for the opened SDL window.
+
+        SDL3 distinguishes window coordinates from the backing pixel size on
+        high-DPI displays. If the pixel-size query is unavailable in a test
+        double or older SDL build, the logical size is used as a safe fallback.
+        """
+        self._assert_open()
+        logical_w = ctypes.c_int()
+        logical_h = ctypes.c_int()
+        self._bind(
+            "SDL_GetWindowSize", None,
+            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+        )(self._window, ctypes.byref(logical_w), ctypes.byref(logical_h))
+        logical = (int(logical_w.value), int(logical_h.value))
+        pixel_w = ctypes.c_int(logical[0])
+        pixel_h = ctypes.c_int(logical[1])
+        try:
+            self._bind(
+                "SDL_GetWindowSizeInPixels", None,
+                [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+            )(self._window, ctypes.byref(pixel_w), ctypes.byref(pixel_h))
+        except AttributeError:
+            pass
+        if min(logical) <= 0 or min(pixel_w.value, pixel_h.value) <= 0:
+            raise SDL3Error("SDL returned an invalid window or pixel size.")
+        self.width, self.height = logical
+        return logical, (int(pixel_w.value), int(pixel_h.value))
+
     def present(self, frame: PixelFrame) -> None:
         self._assert_open()
         self._ensure_texture(frame.width, frame.height)
@@ -265,6 +467,7 @@ class SDL3Window:
                     raw=raw,
                 )
             )
+        self.process_file_dialog_results()
         return events
 
     def poll_input_events(self):
@@ -275,24 +478,87 @@ class SDL3Window:
         return [decoder.decode(event.raw) for event in self.poll_events()]
 
     def run(self, draw_frame: Callable[[], PixelFrame], *, on_event=None) -> None:
-        """Run a basic frame loop until SDL_QUIT or the window is closed."""
+        """Run a raw SDL event/presentation loop until SDL_QUIT."""
         self.open()
         running = True
         try:
             while running:
-                for event in self.poll_events():
+                events = self.poll_events()
+                for event in events:
                     if on_event is not None:
                         on_event(event)
                     if event.quit_requested:
                         running = False
                 if running:
                     self.present(draw_frame())
+                    if not events:
+                        self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
         finally:
             self.close()
+
+    def run_runtime(self, runtime, frame_provider: Callable, *,
+                    on_event: Callable | None = None,
+                    max_frames: int | None = None) -> None:
+        """Drive a :class:`NativeRuntime` from the SDL3 window lifecycle.
+
+        ``frame_provider(runtime)`` must return an RGBA :class:`PixelFrame`.
+        This keeps pixel readback strategy injectable while SDL owns the event
+        pump, logical/pixel resize synchronization, owner thread and teardown.
+        ``max_frames`` is intended for deterministic smoke tests.
+        """
+        if not callable(frame_provider):
+            raise TypeError("frame_provider must be callable")
+        if max_frames is not None and max_frames < 1:
+            raise ValueError("max_frames must be positive")
+        self.open()
+        runtime_started = False
+        frame_count = 0
+        previous = perf_counter()
+        try:
+            logical, pixels = self.get_sizes()
+            runtime.resize(*logical, pixel_width=pixels[0], pixel_height=pixels[1])
+            runtime.start()
+            runtime_started = True
+            running = True
+            while running and not runtime.quit_requested:
+                events = self.poll_input_events()
+                for event in events:
+                    if on_event is not None:
+                        on_event(event)
+                    if not runtime.handle_event(event):
+                        running = False
+                        break
+                runtime.process_pending()
+                now = perf_counter()
+                runtime.advance_time(max(0.0, (now - previous) * 1000.0))
+                previous = now
+                if not running or runtime.quit_requested:
+                    break
+                frame = frame_provider(runtime)
+                if not isinstance(frame, PixelFrame):
+                    raise TypeError("frame_provider must return a PixelFrame")
+                self.present(frame)
+                frame_count += 1
+                if max_frames is not None and frame_count >= max_frames:
+                    break
+                if not events:
+                    self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+        finally:
+            try:
+                if runtime_started:
+                    runtime.stop()
+            finally:
+                # Window resources must still be released if runtime teardown
+                # encounters an application callback or renderer exception.
+                self.close()
 
     def close(self) -> None:
         if self._closed:
             return
+        # SDL window, renderer and texture destruction are thread-affine. A
+        # partially opened window still records the thread that called open().
+        if self._thread_id is not None and threading.get_ident() != self._thread_id:
+            raise SDL3Error("SDL window resources must be closed on the opening thread.")
         if self._lib is not None:
             if self._texture:
                 self._bind("SDL_DestroyTexture", None, [ctypes.c_void_p])(self._texture)
