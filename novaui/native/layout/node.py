@@ -79,6 +79,7 @@ class LayoutNode:
     on_key_down: Optional[Callable] = None
     on_text_input: Optional[Callable] = None
     on_text_editing: Optional[Callable] = None
+    on_text_layout: Optional[Callable] = field(default=None, repr=False)
     on_focus: Optional[Callable] = None
     on_blur: Optional[Callable] = None
     paint_callback: Optional[Callable] = field(default=None, repr=False)
