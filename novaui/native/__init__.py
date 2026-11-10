@@ -3,6 +3,9 @@
 This package contains the native SDL3 + Skia runtime and no browser-rendering stack.
 """
 from .renderer import SkiaRenderer, RenderSize
+from .adaptive import (WindowAdaptiveInfo, WindowSizeBreakpoints,
+                       WindowWidthSizeClass, WindowHeightSizeClass,
+                       compute_window_adaptive_info)
 from .typography import (FontConfig, FontResolver, FontRun, DEFAULT_FONT_FAMILY)
 
 __all__ = [
@@ -12,6 +15,9 @@ __all__ = [
     "FontRun",
     "RenderSize",
     "SkiaRenderer",
+    "WindowAdaptiveInfo", "WindowSizeBreakpoints",
+    "WindowWidthSizeClass", "WindowHeightSizeClass",
+    "compute_window_adaptive_info",
 ]
 
 # SDL3 is imported explicitly from novaui.native.platform to keep it optional.
