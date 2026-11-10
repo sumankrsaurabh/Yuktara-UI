@@ -110,3 +110,57 @@ def test_sdl3_decoder_recognizes_display_scale_and_focus_events(raw_type, expect
     decoded = SDL3EventDecoder().decode(_window_event(raw_type))
     assert decoded.type is expected
     assert decoded.window.window_id == 9
+
+
+
+def test_poll_input_events_normalizes_mouse_and_window_coordinates():
+    from novaui.native.platform.sdl3_events import (
+        SDL_EVENT_MOUSE_MOTION,
+        SDL_EVENT_WINDOW_RESIZED,
+        _MouseMotion,
+        _Window,
+    )
+
+    motion = _MouseMotion()
+    motion.type = SDL_EVENT_MOUSE_MOTION
+    motion.x = 100
+    motion.y = 60
+    motion.xrel = 20
+    motion.yrel = 8
+    resize = _Window()
+    resize.type = SDL_EVENT_WINDOW_RESIZED
+    resize.data1 = 1200
+    resize.data2 = 800
+
+    raw_events = [
+        ctypes.string_at(ctypes.byref(motion), ctypes.sizeof(motion)).ljust(128, b"\\0"),
+        ctypes.string_at(ctypes.byref(resize), ctypes.sizeof(resize)).ljust(128, b"\\0"),
+    ]
+
+    class PollEvent:
+        def __init__(self):
+            self.index = 0
+            self.restype = None
+            self.argtypes = None
+
+        def __call__(self, destination):
+            if self.index >= len(raw_events):
+                return False
+            ctypes.memmove(destination, raw_events[self.index], 128)
+            self.index += 1
+            return True
+
+    window = SDL3Window()
+    window._lib = SimpleNamespace(SDL_PollEvent=PollEvent())
+    window._opened = True
+    window._closed = False
+    window._thread_id = get_ident()
+    window._coordinate_scale = 2.0
+
+    events = window.poll_input_events()
+
+    assert events[0].pointer.x == pytest.approx(50)
+    assert events[0].pointer.y == pytest.approx(30)
+    assert events[0].pointer.delta_x == pytest.approx(10)
+    assert events[0].pointer.delta_y == pytest.approx(4)
+    assert (events[1].window.width, events[1].window.height) == (600, 400)
