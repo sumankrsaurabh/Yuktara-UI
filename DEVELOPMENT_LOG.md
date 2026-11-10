@@ -516,3 +516,13 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Added tests for mode transitions, selection callbacks, cross-mode state retention, content-node identity and input validation.
 - Documented the scaffold and its application-owned page-switching responsibility.
 - This does not yet provide list-detail panes, multi-pane selection restoration, native OS navigation conventions or assistive-technology provider integration.
+
+
+## 3.6 — Adaptive navigation and list-detail patterns
+
+- Added `NavigationScaffold` with bottom-bar, navigation-rail and drawer modes, shared content retention and synchronized destination selection.
+- Added `ListDetailPane` and `ListDetailItem` for compact single-surface navigation and expanded side-by-side master-detail layouts.
+- Added compact back-to-list behavior and preserved the selected detail node across window resizing.
+- Added regression tests for scaffold mode changes, selection synchronization, list-detail transitions, disabled entries and retained content identity.
+- Documented both patterns and their application-owned navigation/content responsibilities.
+- These primitives are not yet a complete navigation framework: route stacks, deep links, restoration across process restarts, multi-pane inspector workflows and OS accessibility integration remain open.
