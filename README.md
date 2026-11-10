@@ -139,8 +139,9 @@ python -m compileall -q novaui
 ```
 
 The `CI` workflow runs the native tests, compilation and wheel checks across
-Windows, macOS and Linux on Python 3.10 through 3.15. An additional manual workflow
-(`Native desktop integration`) builds/provisions SDL3 and opens a real SDL3 +
+Windows, macOS and Linux on Python 3.10 through 3.15. The `Native desktop
+integration` workflow runs when platform/runtime/rendering code changes (or
+when manually dispatched); it provisions SDL3 and Skia and opens a real SDL3 +
 Skia window under a virtual X11 display.
 
 To run the bounded desktop smoke test locally after dependency preflight:
