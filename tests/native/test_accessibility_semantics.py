@@ -162,8 +162,10 @@ def test_standard_widgets_publish_range_read_only_and_action_metadata():
     assert button.actions == ("activate",)
 
     dropdown = build_accessibility_tree(Dropdown(("One", "Two")).build())
-    assert dropdown.role_description == "Option selector"
-    assert dropdown.actions == ("collapse", "expand", "set_value")
+    assert dropdown.role == "group"
+    assert dropdown.children[0].role == "combobox"
+    assert dropdown.children[0].role_description == "Option selector"
+    assert dropdown.children[0].actions == ("collapse", "expand", "set_value")
 
 
 def test_semantic_snapshot_excludes_content_behind_the_topmost_modal():
