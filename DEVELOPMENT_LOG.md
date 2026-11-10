@@ -535,3 +535,12 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Corrected compact list-detail and navigation test tree paths and changed the disabled-navigation assertion to verify that no click callback is installed.
 - Corrected the resize test to expect the one initial runtime-size synchronization plus one synchronization for the coalesced resize event batch.
 - These corrections are committed after the failing CI head. A CI run for the corrected latest commit has not yet been reported; do not treat this as a green test suite.
+
+
+## 3.7 — Adaptive multi-pane workspace
+
+- Added `AdaptiveWorkspace` with compact content-only, medium sidebar/content and expanded sidebar/content/inspector compositions.
+- Reused retained pane nodes across all variants and exposed configurable width/height thresholds.
+- Made sidebar and inspector optional for simpler workspace configurations.
+- Added regression tests for all three modes, pane identity retention, optional panes and breakpoint validation.
+- Documented the API and its application-owned content/state model.
