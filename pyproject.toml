@@ -15,8 +15,9 @@ dependencies = []
 [project.optional-dependencies]
 native = ["skia-python==144.1"]
 unicode = ["regex>=2023.12.25"]
+syntax = ["Pygments>=2.17"]
 shaping = ["uharfbuzz>=0.50", "regex>=2023.12.25"]
-dev = ["pytest==9.2.0", "build>=1.2", "hypothesis>=6.98"]
+dev = ["pytest==9.2.0", "build>=1.2", "hypothesis>=6.98", "Pygments>=2.17"]
 
 [project.scripts]
 yuktara-ui = "novaui.cli:main"
