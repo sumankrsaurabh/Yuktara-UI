@@ -315,7 +315,7 @@ def _try_install_linux_build_tools() -> bool:
              "libxext-dev", "libxrandr-dev", "libxcursor-dev", "libxfixes-dev",
              "libxi-dev", "libxss-dev", "libxkbcommon-dev", "libdrm-dev", "libgbm-dev",
              "libegl1-mesa-dev", "libgl1-mesa-dev", "libibus-1.0-dev", "libudev-dev",
-             "libdbus-1-dev"],
+             "libdbus-1-dev", "libxtst-dev"],
         ),
         (
             "dnf", [],
@@ -324,14 +324,14 @@ def _try_install_linux_build_tools() -> bool:
              "libXext-devel", "libXrandr-devel", "libXcursor-devel", "libXfixes-devel",
              "libXi-devel", "libXScrnSaver-devel", "libxkbcommon-devel", "libdrm-devel",
              "mesa-libgbm-devel", "mesa-libEGL-devel", "mesa-libGL-devel", "ibus-devel",
-             "systemd-devel", "dbus-devel"],
+             "systemd-devel", "dbus-devel", "libXtst-devel"],
         ),
         (
             "pacman", [],
             ["pacman", "-Sy", "--noconfirm", "base-devel", "pkgconf", "cmake", "alsa-lib",
              "libpulse", "wayland", "libx11", "libxext", "libxrandr", "libxcursor",
              "libxfixes", "libxi", "libxss", "libxkbcommon", "libdrm", "mesa", "libglvnd",
-             "ibus", "systemd-libs", "dbus"],
+             "ibus", "systemd-libs", "dbus", "libxtst"],
         ),
         (
             "zypper", [],
@@ -339,14 +339,14 @@ def _try_install_linux_build_tools() -> bool:
              "cmake", "alsa-devel", "libpulse-devel", "wayland-devel", "libX11-devel",
              "libXext-devel", "libXrandr-devel", "libXcursor-devel", "libXfixes-devel",
              "libXi-devel", "libXScrnSaver-devel", "libxkbcommon-devel", "libdrm-devel",
-             "Mesa-libEGL-devel", "Mesa-libGL-devel", "ibus-devel", "systemd-devel", "dbus-1-devel"],
+             "Mesa-libEGL-devel", "Mesa-libGL-devel", "ibus-devel", "systemd-devel", "dbus-1-devel", "libXtst-devel"],
         ),
         (
             "apk", [],
             ["apk", "add", "build-base", "pkgconf", "cmake", "alsa-lib-dev", "pulseaudio-dev",
              "wayland-dev", "libx11-dev", "libxext-dev", "libxrandr-dev", "libxcursor-dev",
              "libxfixes-dev", "libxi-dev", "libxss-dev", "libxkbcommon-dev", "libdrm-dev",
-             "mesa-dev", "mesa-egl-dev", "mesa-gl-dev", "ibus-dev", "eudev-dev", "dbus-dev"],
+             "mesa-dev", "mesa-egl-dev", "mesa-gl-dev", "ibus-dev", "eudev-dev", "dbus-dev", "libxtst-dev"],
         ),
     ]
     for executable, update, install in package_managers:
