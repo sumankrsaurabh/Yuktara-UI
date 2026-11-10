@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=78", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yuktara-ui"
+version = "2.2.0.dev0"
+description = "Native Python UI framework by Yuktara Technologies, using SDL3 and Skia"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary - project source distribution" }
+authors = [{ name = "Yuktara Technologies" }]
+dependencies = []
+
+[project.optional-dependencies]
+native = ["skia-python==144.1"]
+dev = ["pytest==9.2.0", "build>=1.2"]
+
+[project.scripts]
+yuktara-ui = "novaui.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["novaui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
