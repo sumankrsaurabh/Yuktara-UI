@@ -251,3 +251,59 @@ def test_open_treats_initial_window_size_as_ui_units_on_high_dpi_windows():
 def test_sdl3_window_rejects_invalid_dimension_and_flag_types(kwargs, error):
     with pytest.raises(error):
         SDL3Window(**kwargs)
+
+
+def test_get_display_metrics_reads_active_resolution_and_fractional_refresh_rate():
+    from novaui.native.platform.sdl3 import _SDLDisplayMode
+
+    mode = _SDLDisplayMode()
+    mode.displayID = 12
+    mode.w = 2560
+    mode.h = 1440
+    mode.pixel_density = 1.5
+    mode.refresh_rate = 143.97
+    mode.refresh_rate_numerator = 143970
+    mode.refresh_rate_denominator = 1000
+    library = SimpleNamespace(
+        SDL_GetDisplayForWindow=_Function(lambda _window: 12),
+        SDL_GetCurrentDisplayMode=_Function(lambda _display: ctypes.pointer(mode)),
+    )
+    window = SDL3Window()
+    window._lib = library
+    window._window = 7
+    window._opened = True
+    window._closed = False
+    window._thread_id = get_ident()
+
+    metrics = window.get_display_metrics()
+
+    assert metrics.display_id == 12
+    assert (metrics.width, metrics.height) == (2560, 1440)
+    assert metrics.pixel_density == pytest.approx(1.5)
+    assert metrics.refresh_rate == pytest.approx(143.97)
+    assert metrics.refresh_rate_numerator == 143970
+    assert metrics.refresh_rate_denominator == 1000
+
+
+@pytest.mark.parametrize("vsync", [-1, 0, 1, 2, 3])
+def test_window_accepts_supported_vsync_intervals(vsync):
+    assert SDL3Window(vsync=vsync).requested_vsync == vsync
+
+
+@pytest.mark.parametrize("vsync,error", [(True, TypeError), (1.5, TypeError), (-2, ValueError)])
+def test_window_rejects_invalid_vsync_intervals(vsync, error):
+    with pytest.raises(error):
+        SDL3Window(vsync=vsync)
+
+
+def test_unsynchronized_loop_yields_but_vsync_loop_does_not_sleep():
+    calls = []
+    window = SDL3Window()
+    window._lib = SimpleNamespace(SDL_Delay=_Function(lambda ms: calls.append(ms)))
+    window.actual_vsync = 1
+    window._idle_if_unsynchronized()
+    assert calls == []
+
+    window.actual_vsync = 0
+    window._idle_if_unsynchronized()
+    assert calls == [1]
