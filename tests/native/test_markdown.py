@@ -15,9 +15,7 @@ def test_markdown_parser_maps_blocks_inline_styles_and_links():
     document = parse_markdown(source)
     assert document.text.startswith("Heading\nA bold word")
     assert "first item" in document.text and "second item" in document.text
-    assert document.links == (
-        document.links[0],
-    )
+    assert len(document.links) == 1
     link = document.links[0]
     assert document.text[link.start:link.end] == "Yuktara"
     assert link.url == "https://example.com"
