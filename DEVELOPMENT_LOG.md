@@ -466,3 +466,20 @@ For every future development batch:
 7. Update the recorded source baseline and review date.
 
 This file is intended to be the central, cumulative implementation record. Release-specific README files and subsystem guides remain the detailed API references.
+
+### Display and presentation hardening — 3.4 development
+
+- `SDL3Window.get_display_metrics()` exposes the active monitor ID, current
+  mode resolution, pixel density and refresh-rate fraction.
+- SDL renderer VSync is requested by default and can be configured as disabled,
+  adaptive, or an every-N-refresh interval. Unsupported modes degrade to
+  unsynchronized presentation rather than preventing the application from
+  opening.
+- The host avoids an additional 1 ms sleep when VSync is active, allowing the
+  renderer's vertical-refresh synchronization to act as the presentation clock.
+- Display metrics are refreshed after monitor and display-scale migration.
+- Regression coverage added for display-mode metadata, VSync configuration
+  validation and the synchronized/unsynchronized idle policy.
+- The renderer remains CPU-raster Skia. GPU rendering, measured frame-time
+  profiling, physical multi-monitor validation and end-to-end refresh-rate
+  verification remain separate work; do not claim them as completed.
