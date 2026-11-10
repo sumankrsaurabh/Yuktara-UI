@@ -281,3 +281,18 @@ Run the backend-neutral layout example with:
 ```bash
 python examples/native/advanced_layout.py
 ```
+
+
+## Desktop display and platform parity
+
+The SDL3 host tracks logical UI dimensions separately from backing pixels,
+recreates the Skia raster surface at the current pixel size, and uses
+aspect-fit presentation to avoid stretching. Renderer VSync is requested by
+default and follows the active display refresh when supported. Active display
+resolution, density and refresh metadata are available through
+`SDL3Window.get_display_metrics()`.
+
+See [Native platform parity roadmap](docs/native-platform-parity-roadmap.md)
+for the current gaps against mature adaptive UI toolkits and the physical
+multi-monitor/high-refresh acceptance matrix. GPU rendering and physical
+multi-platform certification remain unfinished.
