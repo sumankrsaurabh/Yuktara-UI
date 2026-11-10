@@ -85,7 +85,8 @@ class LayoutEngine:
                     break
             selected_child = node.responsive_variants[active_index][1]
             if (node.responsive_active_index != active_index
-                    or node.children != [selected_child]):
+                    or len(node.children) != 1
+                    or node.children[0] is not selected_child):
                 node.children = [selected_child]
                 node.responsive_active_index = active_index
             content = self._measure_box(node, content_constraints)
