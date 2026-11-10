@@ -19,6 +19,7 @@ from typing import Callable, Sequence
 
 SDL_INIT_VIDEO = 0x00000020
 SDL_WINDOW_RESIZABLE = 0x00000020
+SDL_WINDOW_HIGH_PIXEL_DENSITY = 0x00002000
 SDL_TEXTUREACCESS_STREAMING = 1
 SDL_EVENT_QUIT = 0x100
 SDL_HINT_IME_IMPLEMENTED_UI = b"SDL_IME_IMPLEMENTED_UI"
@@ -34,6 +35,15 @@ class _SDLRect(ctypes.Structure):
         ("y", ctypes.c_int),
         ("w", ctypes.c_int),
         ("h", ctypes.c_int),
+    ]
+
+
+class _SDLFRect(ctypes.Structure):
+    _fields_ = [
+        ("x", ctypes.c_float),
+        ("y", ctypes.c_float),
+        ("w", ctypes.c_float),
+        ("h", ctypes.c_float),
     ]
 
 
@@ -100,15 +110,31 @@ class SDL3Window:
         height: int = 720,
         *,
         resizable: bool = True,
+        high_dpi: bool = True,
+        min_width: int = 320,
+        min_height: int = 240,
+        preserve_aspect: bool = True,
         library_path: str | None = None,
     ) -> None:
         if width <= 0 or height <= 0:
             raise ValueError("Window dimensions must be positive.")
+        if min_width < 0 or min_height < 0 or (min_width == 0) != (min_height == 0):
+            raise ValueError("minimum window dimensions must both be zero or positive")
+        if not isinstance(high_dpi, bool) or not isinstance(preserve_aspect, bool):
+            raise TypeError("high_dpi and preserve_aspect must be booleans")
         self.title = title
         self.width = width
         self.height = height
         self.resizable = resizable
+        self.high_dpi = high_dpi
+        self.min_width = min_width
+        self.min_height = min_height
+        self.preserve_aspect = preserve_aspect
+        self.letterbox_color = (0, 0, 0, 255)
         self.library_path = library_path
+        self._coordinate_scale = 1.0
+        self._pixel_density = 1.0
+        self._display_scale = 1.0
         self._lib = None
         self._window = None
         self._renderer = None
@@ -200,12 +226,22 @@ class SDL3Window:
             [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint64],
         )
         flags = SDL_WINDOW_RESIZABLE if self.resizable else 0
+        if self.high_dpi:
+            flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY
         self._window = create_window(
             self.title.encode("utf-8"), self.width, self.height, flags
         )
         if not self._window:
             self.close()
             raise SDL3Error(f"SDL_CreateWindow failed: {self._error()}")
+        if self.min_width and self.min_height:
+            set_minimum = self._bind(
+                "SDL_SetWindowMinimumSize", ctypes.c_bool,
+                [ctypes.c_void_p, ctypes.c_int, ctypes.c_int],
+            )
+            if not set_minimum(self._window, self.min_width, self.min_height):
+                self.close()
+                raise SDL3Error(f"SDL_SetWindowMinimumSize failed: {self._error()}")
 
         create_renderer = self._bind(
             "SDL_CreateRenderer",
@@ -436,34 +472,87 @@ class SDL3Window:
             callback(paths, filter_index)
         return len(results)
 
-    def get_sizes(self) -> tuple[tuple[int, int], tuple[int, int]]:
-        """Return ``(logical_size, pixel_size)`` for the opened SDL window.
+    @property
+    def coordinate_scale(self) -> float:
+        """Scale native window coordinates into device-independent UI units."""
+        return self._coordinate_scale
 
-        SDL3 distinguishes window coordinates from the backing pixel size on
-        high-DPI displays. If the pixel-size query is unavailable in a test
-        double or older SDL build, the logical size is used as a safe fallback.
+    def get_sizes(self) -> tuple[tuple[int, int], tuple[int, int]]:
+        """Return UI logical dimensions and backing pixel dimensions.
+
+        SDL window coordinates are physical pixels on some platforms and
+        logical points on others. SDL display scale and pixel density are
+        combined to normalize both cases into a stable UI coordinate space.
+        The resulting renderer scale is the SDL window display scale.
         """
         self._assert_open()
         logical_w = ctypes.c_int()
         logical_h = ctypes.c_int()
         self._bind(
-            "SDL_GetWindowSize", None,
+            "SDL_GetWindowSize", ctypes.c_bool,
             [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
         )(self._window, ctypes.byref(logical_w), ctypes.byref(logical_h))
-        logical = (int(logical_w.value), int(logical_h.value))
-        pixel_w = ctypes.c_int(logical[0])
-        pixel_h = ctypes.c_int(logical[1])
-        try:
-            self._bind(
-                "SDL_GetWindowSizeInPixels", None,
-                [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
-            )(self._window, ctypes.byref(pixel_w), ctypes.byref(pixel_h))
-        except AttributeError:
-            pass
-        if min(logical) <= 0 or min(pixel_w.value, pixel_h.value) <= 0:
+        window_size = (int(logical_w.value), int(logical_h.value))
+
+        pixel_w = ctypes.c_int(window_size[0])
+        pixel_h = ctypes.c_int(window_size[1])
+        self._bind(
+            "SDL_GetWindowSizeInPixels", ctypes.c_bool,
+            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+        )(self._window, ctypes.byref(pixel_w), ctypes.byref(pixel_h))
+        pixel_size = (int(pixel_w.value), int(pixel_h.value))
+        if min(*window_size, *pixel_size) <= 0:
             raise SDL3Error("SDL returned an invalid window or pixel size.")
-        self.width, self.height = logical
-        return logical, (int(pixel_w.value), int(pixel_h.value))
+
+        get_pixel_density = self._bind(
+            "SDL_GetWindowPixelDensity", ctypes.c_float, [ctypes.c_void_p]
+        )
+        get_display_scale = self._bind(
+            "SDL_GetWindowDisplayScale", ctypes.c_float, [ctypes.c_void_p]
+        )
+        pixel_density = float(get_pixel_density(self._window))
+        display_scale = float(get_display_scale(self._window))
+        if pixel_density <= 0:
+            pixel_density = pixel_size[0] / window_size[0]
+        if display_scale <= 0:
+            display_scale = pixel_density
+        coordinate_scale = display_scale / pixel_density
+        if coordinate_scale <= 0:
+            coordinate_scale = 1.0
+
+        self._pixel_density = pixel_density
+        self._display_scale = display_scale
+        self._coordinate_scale = coordinate_scale
+        ui_size = (
+            max(1, round(window_size[0] / coordinate_scale)),
+            max(1, round(window_size[1] / coordinate_scale)),
+        )
+        self.width, self.height = ui_size
+        return ui_size, pixel_size
+
+    def sync_runtime_size(self, runtime) -> None:
+        """Synchronize a NativeRuntime with the current logical and pixel sizes."""
+        logical, pixels = self.get_sizes()
+        runtime.resize(
+            *logical, pixel_width=pixels[0], pixel_height=pixels[1]
+        )
+
+    @staticmethod
+    def _aspect_fit_rect(
+        frame_width: int, frame_height: int, output_width: int, output_height: int
+    ) -> tuple[float, float, float, float]:
+        """Return a centered destination rectangle without distorting a frame."""
+        if min(frame_width, frame_height, output_width, output_height) <= 0:
+            raise ValueError("frame and output dimensions must be positive")
+        scale = min(output_width / frame_width, output_height / frame_height)
+        width = frame_width * scale
+        height = frame_height * scale
+        return (
+            (output_width - width) / 2,
+            (output_height - height) / 2,
+            width,
+            height,
+        )
 
     def present(self, frame: PixelFrame) -> None:
         self._assert_open()
@@ -492,11 +581,30 @@ class SDL3Window:
             [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p],
         )
         present = self._bind("SDL_RenderPresent", None, [ctypes.c_void_p])
-        if not set_color(self._renderer, 0, 0, 0, 255):
+        if not set_color(self._renderer, *self.letterbox_color):
             raise SDL3Error(f"SDL_SetRenderDrawColor failed: {self._error()}")
         if not clear(self._renderer):
             raise SDL3Error(f"SDL_RenderClear failed: {self._error()}")
-        if not render_texture(self._renderer, self._texture, None, None):
+
+        destination = None
+        if self.preserve_aspect:
+            output_width = ctypes.c_int()
+            output_height = ctypes.c_int()
+            get_output_size = self._bind(
+                "SDL_GetRenderOutputSize", ctypes.c_bool,
+                [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)],
+            )
+            if not get_output_size(
+                self._renderer, ctypes.byref(output_width), ctypes.byref(output_height)
+            ):
+                raise SDL3Error(f"SDL_GetRenderOutputSize failed: {self._error()}")
+            x, y, width, height = self._aspect_fit_rect(
+                frame.width, frame.height, output_width.value, output_height.value
+            )
+            destination_rect = _SDLFRect(x, y, width, height)
+            destination = ctypes.byref(destination_rect)
+
+        if not render_texture(self._renderer, self._texture, None, destination):
             raise SDL3Error(f"SDL_RenderTexture failed: {self._error()}")
         present(self._renderer)
 
@@ -523,11 +631,43 @@ class SDL3Window:
         return events
 
     def poll_input_events(self):
-        """Poll and decode raw SDL events into backend-neutral Yuktara UI events."""
+        """Poll SDL events and normalize pointer/window coordinates to UI units."""
+        from dataclasses import replace
+        from .events import EventType
         from .sdl3_events import SDL3EventDecoder
 
         decoder = SDL3EventDecoder()
-        return [decoder.decode(event.raw) for event in self.poll_events()]
+        decoded = []
+        for raw_event in self.poll_events():
+            event = decoder.decode(raw_event.raw)
+            if event.type in {
+                EventType.WINDOW_PIXEL_SIZE_CHANGED,
+                EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+            }:
+                self.get_sizes()
+            coordinate_scale = self._coordinate_scale
+            if event.type == EventType.WINDOW_RESIZED and event.window is not None:
+                event = replace(
+                    event,
+                    window=replace(
+                        event.window,
+                        width=max(1, round(event.window.width / coordinate_scale)),
+                        height=max(1, round(event.window.height / coordinate_scale)),
+                    ),
+                )
+            elif event.pointer is not None and event.pointer.source != "touch":
+                event = replace(
+                    event,
+                    pointer=replace(
+                        event.pointer,
+                        x=event.pointer.x / coordinate_scale,
+                        y=event.pointer.y / coordinate_scale,
+                        delta_x=event.pointer.delta_x / coordinate_scale,
+                        delta_y=event.pointer.delta_y / coordinate_scale,
+                    ),
+                )
+            decoded.append(event)
+        return decoded
 
     def run(self, draw_frame: Callable[[], PixelFrame], *, on_event=None) -> None:
         """Run a raw SDL event/presentation loop until SDL_QUIT."""
@@ -567,16 +707,19 @@ class SDL3Window:
         frame_count = 0
         previous = perf_counter()
         try:
-            logical, pixels = self.get_sizes()
-            runtime.resize(*logical, pixel_width=pixels[0], pixel_height=pixels[1])
+            self.sync_runtime_size(runtime)
             runtime.start()
             runtime_started = True
             running = True
             while running and not runtime.quit_requested:
                 events = self.poll_input_events()
+                from .events import EventType
                 for event in events:
                     if on_event is not None:
                         on_event(event)
+                    if event.type == EventType.WINDOW_DISPLAY_SCALE_CHANGED:
+                        self.sync_runtime_size(runtime)
+                        continue
                     if not runtime.handle_event(event):
                         running = False
                         break
