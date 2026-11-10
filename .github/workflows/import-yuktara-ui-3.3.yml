@@ -35,17 +35,17 @@ jobs:
           import tomllib
 
           stage = pathlib.Path(".yuktara-import-3.3")
-          parts = [stage / f"payload-{i:02d}.b64" for i in range(1, 9)]
+          parts = [stage / f"payload-{i:02d}.b64" for i in range(1, 12)]
           encoded = "".join(p.read_text(encoding="ascii").strip() for p in parts)
           raw = base64.b64decode(encoded, validate=True)
-          expected = "743c8a459e52fe7a7480b11279c3ac62783a43e1f25cecbf9379698b54d3752e"
+          expected = "ebc11f68187c770e580d67f24025e78b2da055c1e6214f8d97958e7d7c77cfdc"
           actual = hashlib.sha256(raw).hexdigest()
           if actual != expected:
               raise SystemExit(f"Archive SHA-256 mismatch: {actual}")
 
           target = pathlib.Path("/tmp/yuktara-ui-3.3").resolve()
           target.mkdir(parents=True, exist_ok=True)
-          with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as archive:
+          with tarfile.open(fileobj=io.BytesIO(raw), mode="r:xz") as archive:
               members = archive.getmembers()
               for member in members:
                   path = pathlib.PurePosixPath(member.name)
