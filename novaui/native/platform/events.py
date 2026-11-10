@@ -10,6 +10,7 @@ class EventType(Enum):
     QUIT = auto()
     WINDOW_RESIZED = auto()
     WINDOW_PIXEL_SIZE_CHANGED = auto()
+    WINDOW_DISPLAY_CHANGED = auto()
     WINDOW_DISPLAY_SCALE_CHANGED = auto()
     WINDOW_FOCUS_GAINED = auto()
     WINDOW_FOCUS_LOST = auto()
