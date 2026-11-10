@@ -127,7 +127,7 @@ class SDL3Error(RuntimeError):
 
 
 class SDL3Window:
-    """SDL3 window that presents RGBA frames through a streaming texture.
+    """SDL3 window using either a streaming texture or an OpenGL context.
 
     SDL calls and presentation must remain on the thread that opens the window.
     The event API intentionally exposes raw SDL_Event bytes for the next input
@@ -279,7 +279,9 @@ class SDL3Window:
             # context supported by the Skia OpenGL backend.
             for attribute, value in ((17, 3), (18, 3), (21, 1), (5, 1)):
                 if not set_gl_attribute(attribute, value):
-                    raise SDL3Error(f"SDL_GL_SetAttribute({attribute}) failed: {self._error()}")
+                    error = self._error()
+                    self.close()
+                    raise SDL3Error(f"SDL_GL_SetAttribute({attribute}) failed: {error}")
 
         create_window = self._bind(
             "SDL_CreateWindow",
@@ -310,6 +312,8 @@ class SDL3Window:
             )
             if set_swap_interval(self.requested_vsync):
                 self.actual_vsync = self.requested_vsync
+            elif self.requested_vsync == -1 and set_swap_interval(1):
+                self.actual_vsync = 1
             elif self.requested_vsync != 0 and set_swap_interval(0):
                 self.actual_vsync = 0
             else:
