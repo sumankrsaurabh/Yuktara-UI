@@ -200,7 +200,7 @@ def main() -> None:
             background=theme.background,
         ),
         axis="vertical",
-    )
+    ).build()
     renderer = SkiaRenderer(RenderSize(1120, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1120, 820, clear_color=theme.background)
     window = SDL3Window(
