@@ -29,7 +29,7 @@ def main():
     ).build()
     name_field = TextField(
         "Yuktara Technologies", placeholder="Application name",
-        width=860, clipboard=window, font_size=16,
+        width=860, clipboard=window, text_input=window, font_size=16,
     )
     editor = TextArea(
         "Native text editing with measured caret geometry.\n"
@@ -38,7 +38,7 @@ def main():
         "Emoji: 👨‍👩‍👧‍👦  👍🏽  🇮🇳\n"
         "Use the mouse to select text and the keyboard to edit.",
         placeholder="Start writing…", width=860, height=270,
-        clipboard=window, font_size=16, font_family="Inter",
+        clipboard=window, text_input=window, font_size=16, font_family="Inter",
     )
 
     def clear_editor(_event=None):
