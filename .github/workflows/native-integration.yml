@@ -1,6 +1,17 @@
 name: Native desktop integration
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "novaui/native/platform/**"
+      - "novaui/native/widgets/core.py"
+      - "novaui/native/rendering/**"
+      - "novaui/native/layout/**"
+      - "novaui/native/runtime.py"
+      - "novaui/native/dependencies/**"
+      - "scripts/native_runtime_smoke.py"
+      - ".github/workflows/native-integration.yml"
   workflow_dispatch:
 
 permissions:
