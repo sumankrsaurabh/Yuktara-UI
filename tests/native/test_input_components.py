@@ -2,7 +2,7 @@ import pytest
 
 from novaui.native import (
     Dropdown, SegmentedControl, Slider, TabItem, Tabs, TextArea, TextField,
-    build_accessibility_tree, column,
+    build_accessibility_tree, column, OverlayManager,
 )
 from novaui.native.layout import LayoutEngine, Rect
 from novaui.native.platform.dispatcher import InputDispatcher
@@ -543,3 +543,94 @@ def test_text_field_focus_activates_and_blur_deactivates_platform_text_input():
     field._focus()
     field._blur()
     assert services.calls == ["start", "stop"]
+
+
+def test_dropdown_uses_runtime_overlay_manager_for_floating_menu():
+    changes = []
+    manager = OverlayManager()
+    dropdown = Dropdown(
+        ("Daily", "Weekly", "Monthly"),
+        value="Daily",
+        on_change=changes.append,
+    ).attach_overlay_manager(manager)
+    root = layout(dropdown.build(), 480, 360)
+    dispatcher = InputDispatcher(root, overlays=manager)
+    header = root.children[0]
+
+    click(dispatcher, root, header.bounds.x + 8, header.bounds.y + 8)
+
+    assert dropdown.is_open is True
+    assert header.accessibility_expanded is True
+    assert len(root.children) == 1
+    assert len(manager.entries) == 1
+    assert manager.top.kind == "popover"
+    manager.layout(LayoutEngine(), 480, 360)
+
+    option_list = manager.top.node.children[0].children[0]
+    option = option_list.children[1]
+    dispatcher.dispatch(pointer(EventType.POINTER_DOWN, option.bounds.x + 8, option.bounds.y + 8))
+    dispatcher.dispatch(pointer(EventType.POINTER_UP, option.bounds.x + 8, option.bounds.y + 8))
+
+    assert dropdown.value == "Weekly"
+    assert dropdown.is_open is False
+    assert header.accessibility_expanded is False
+    assert manager.entries == ()
+    assert changes == ["Weekly"]
+
+
+def test_dropdown_overlay_dismisses_on_outside_click_and_escape():
+    manager = OverlayManager()
+    dropdown = Dropdown(("A", "B", "C")).attach_overlay_manager(manager)
+    root = layout(dropdown.build(), 480, 360)
+    dispatcher = InputDispatcher(root, overlays=manager)
+    header = root.children[0]
+
+    click(dispatcher, root, header.bounds.x + 8, header.bounds.y + 8)
+    assert dropdown.is_open is True
+    dispatcher.dispatch(pointer(EventType.POINTER_DOWN, 450, 330))
+    dispatcher.dispatch(pointer(EventType.POINTER_UP, 450, 330))
+    assert dropdown.is_open is False
+    assert manager.entries == ()
+
+    click(dispatcher, root, header.bounds.x + 8, header.bounds.y + 8)
+    assert dropdown.is_open is True
+    dispatcher.dispatch(key(KEY_ESCAPE))
+    assert dropdown.is_open is False
+    assert manager.entries == ()
+
+
+def test_dropdown_overlay_supports_keyboard_navigation_and_keeps_focus():
+    manager = OverlayManager()
+    dropdown = Dropdown(("A", "B", "C"), value="A").attach_overlay_manager(manager)
+    root = layout(dropdown.build(), 480, 360)
+    dispatcher = InputDispatcher(root, overlays=manager)
+    header = root.children[0]
+
+    click(dispatcher, root, header.bounds.x + 8, header.bounds.y + 8)
+    assert dispatcher.focused is header
+    dispatcher.dispatch(key(KEY_DOWN))
+    dispatcher.dispatch(key(KEY_RETURN))
+
+    assert dropdown.value == "B"
+    assert dropdown.is_open is False
+    assert manager.entries == ()
+    dispatcher._normalize_focus()
+    assert dispatcher.focused is header
+
+
+def test_dropdown_can_attach_or_detach_overlay_manager_while_open():
+    manager = OverlayManager()
+    dropdown = Dropdown(("A", "B"))
+    root = layout(dropdown.build(), 480, 360)
+    dropdown._set_open(True)
+    assert len(root.children) == 3
+
+    dropdown.attach_overlay_manager(manager)
+    assert dropdown.is_open is True
+    assert len(root.children) == 1
+    assert len(manager.entries) == 1
+
+    dropdown.attach_overlay_manager(None)
+    assert dropdown.is_open is True
+    assert len(root.children) == 3
+    assert manager.entries == ()

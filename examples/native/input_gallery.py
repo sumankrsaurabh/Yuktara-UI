@@ -89,6 +89,7 @@ def main():
 
     renderer = SkiaRenderer(RenderSize(1000, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1000, 820, clear_color=theme.background)
+    period.attach_overlay_manager(runtime.overlays)
     window.run_runtime(
         runtime,
         lambda _runtime: renderer_frame(renderer, skia_module=skia),

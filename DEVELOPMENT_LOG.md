@@ -266,7 +266,7 @@ The repository includes native examples for the following workflows:
 | `examples/native/runtime_window.py` | Integrated SDL3 + Skia runtime host loop. |
 | `examples/native/sdl3_skia_window.py` | Lower-level SDL3/Skia window and renderer smoke path. |
 | `examples/native/component_gallery.py` | Core component gallery. |
-| `examples/native/input_gallery.py` | Text and input controls. |
+| `examples/native/input_gallery.py` | Text and input controls, including a dropdown menu hosted by the overlay manager. |
 | `examples/native/overlay_gallery.py` | Dialogs, popovers, tooltips, menus and toast overlays. |
 | `examples/native/animation_gallery.py` | Animation and accessibility interaction. |
 | `examples/native/text_editor_gallery.py` | Native text editing. |
@@ -390,7 +390,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 The following items are **not** to be treated as completed features in the 3.3 baseline:
 
 - End-to-end IME behavior with physical keyboards and real input methods has not yet been validated on Windows, macOS and Linux. The 3.4 development code now decodes SDL3 text-editing events, routes them through the runtime, displays temporary pre-edit text with an underline without mutating committed text, handles commit and Escape/blur cancellation, and positions SDL's candidate area from measured caret geometry. See the regression tests in `tests/native/test_ime_composition.py`.
-- Migration of `Dropdown` from its inline option list to the overlay manager.
+- The dropdown now supports the overlay manager when attached to `runtime.overlays`; a legacy inline presentation is retained for unattached standalone widgets.
 - Full Unicode Standard Annex #29 segmentation and complete Unicode line breaking.
 - Complete bidirectional text, Arabic joining, Indic shaping, ligature-aware caret geometry and complex-script shaping across all platforms. Optional HarfBuzz support is available, but it does not make the entire text pipeline fully certified.
 - Native accessibility provider bridges for Windows UI Automation, macOS NSAccessibility and Linux AT-SPI; screen-reader behavior is not certified.

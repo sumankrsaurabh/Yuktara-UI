@@ -58,6 +58,14 @@ changes the active option; Enter selects; Escape closes. The 2.4 overlay manager
 is available for application-built floating surfaces, but Dropdown has not yet
 been migrated from its inline option-list implementation.
 
+
+To render the options in the floating overlay layer, attach the runtime manager
+before the runtime is started:
+
+```python
+dropdown.attach_overlay_manager(runtime.overlays)
+```
+
 ## Slider
 
 ```python

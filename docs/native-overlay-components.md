@@ -100,5 +100,21 @@ do not certify native window behavior on each OS. Real SDL3 + Skia rendering,
 display scaling, accessibility provider integration and platform-specific
 screen reader behavior still require validation on target systems.
 
-The 2.3 `Dropdown` continues to render its option list inline. It is not yet
-ported to the floating overlay manager.
+## Dropdown integration
+
+A `Dropdown` can use the runtime-owned overlay manager so its options float
+above surrounding content, remain anchored to the control, flip/clamp to the
+viewport and dismiss on outside click or Escape:
+
+```python
+period = Dropdown(("Daily", "Weekly", "Monthly"), value="Weekly")
+runtime = NativeRuntime(build_root, renderer, 900, 600)
+period.attach_overlay_manager(runtime.overlays)
+runtime.start()
+```
+
+The option list is rendered in a bounded scroll view for long lists. Keyboard
+Up/Down navigation and Enter/Space selection remain available. Selection,
+outside dismissal, Escape and runtime teardown all close the overlay. For
+backward compatibility, a dropdown without an attached manager continues to
+use its inline option list; attaching the manager opts into the floating menu.

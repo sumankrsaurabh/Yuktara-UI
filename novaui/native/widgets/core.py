@@ -886,32 +886,110 @@ class Dropdown:
     disabled: bool = False
     on_change: Callable[[str], None] | None = None
     theme: NativeTheme = field(default_factory=NativeTheme)
+    overlay_manager: object | None = None
 
     def __post_init__(self):
         self.options = tuple(self.options)
         if not self.options:
             raise ValueError("Dropdown requires at least one option")
+        if any(not isinstance(option, str) or not option for option in self.options):
+            raise ValueError("Dropdown options must be non-empty strings")
         if len(set(self.options)) != len(self.options):
             raise ValueError("Dropdown options must be unique")
         if self.value is not None and self.value not in self.options:
             raise ValueError("Dropdown value must match an option")
-        if self.width <= 0:
-            raise ValueError("Dropdown width must be positive")
+        if (isinstance(self.width, bool) or not isinstance(self.width, (int, float))
+                or not isfinite(float(self.width)) or self.width <= 0):
+            raise ValueError("Dropdown width must be finite and positive")
         self.is_open = False
         self._active_index = self.options.index(self.value) if self.value in self.options else 0
         self._root: LayoutNode | None = None
         self._header: LayoutNode | None = None
+        self._overlay_handle = None
+        self._overlay_option_nodes: list[LayoutNode] = []
+        if self.overlay_manager is not None:
+            self._validate_overlay_manager(self.overlay_manager)
+
+    @staticmethod
+    def _validate_overlay_manager(manager):
+        if (not callable(getattr(manager, "show_popover", None))
+                or not callable(getattr(manager, "dismiss", None))):
+            raise TypeError("overlay_manager must provide show_popover() and dismiss()")
+
+    def attach_overlay_manager(self, manager):
+        """Bind this dropdown to a runtime's OverlayManager.
+
+        When attached, the menu is rendered as a floating, viewport-clamped
+        popover anchored to the control. Without a manager the legacy inline
+        option-list behavior is retained for standalone layout compatibility.
+        """
+        if manager is not None:
+            self._validate_overlay_manager(manager)
+        was_open = self.is_open
+        if was_open:
+            self._set_open(False)
+        self.overlay_manager = manager
+        if was_open:
+            self._set_open(True)
+        return self
 
     def _header_text(self):
         return f"{self.value if self.value is not None else self.placeholder}  ▾"
 
+    def _overlay_dismissed(self, _reason="programmatic"):
+        self._overlay_handle = None
+        self.is_open = False
+        if self._header is not None:
+            self._header.accessibility_expanded = False
+
     def _set_open(self, opened):
+        opened = bool(opened)
         if self.disabled:
             return
-        self.is_open = bool(opened)
-        if self._root is not None:
-            self._root.children = [self._header] + (self._option_nodes() if self.is_open else [])
-            self._header.accessibility_expanded = self.is_open
+        if opened == self.is_open:
+            return
+        if self.overlay_manager is None:
+            self.is_open = opened
+            if self._root is not None:
+                self._root.children = [self._header] + (self._option_nodes() if opened else [])
+                self._header.accessibility_expanded = opened
+            return
+
+        if opened:
+            from .overlays import Popover
+
+            self.is_open = True
+            self._header.accessibility_expanded = True
+            self._overlay_option_nodes = self._option_nodes()
+            option_list = LayoutNode.column(
+                *self._overlay_option_nodes, spacing=2, width=self.width,
+                accessibility_role="listbox", accessibility_label=self.placeholder,
+            )
+            visible_height = min(280.0, max(40.0, len(self.options) * 38.0))
+            scroll = LayoutNode.scroll(
+                option_list, width=self.width, height=visible_height,
+                scroll_axis="vertical",
+                accessibility_role="list", accessibility_label=self.placeholder,
+            )
+            popover = Popover(
+                scroll, width=self.width, padding=6, spacing=0, theme=self.theme
+            )
+            try:
+                self._overlay_handle = self.overlay_manager.show_popover(
+                    popover, anchor=self._header, placement="bottom",
+                    on_dismiss=self._overlay_dismissed,
+                )
+            except Exception:
+                self._overlay_dismissed("show-failed")
+                raise
+        else:
+            self.is_open = False
+            self._header.accessibility_expanded = False
+            handle = self._overlay_handle
+            self._overlay_handle = None
+            if handle is not None:
+                self.overlay_manager.dismiss(handle, reason="programmatic")
+            self._overlay_option_nodes = []
 
     def _toggle(self, _event=None):
         self._set_open(not self.is_open)
@@ -930,9 +1008,10 @@ class Dropdown:
             self.on_change(option)
 
     def _update_option_visuals(self):
-        if self._root is None:
-            return
-        for index, node in enumerate(self._root.children[1:]):
+        nodes = (self._overlay_option_nodes if self.overlay_manager is not None
+                 and self.is_open else
+                 self._root.children[1:] if self._root is not None else [])
+        for index, node in enumerate(nodes):
             option = self.options[index]
             active = index == self._active_index
             selected = option == self.value
@@ -985,6 +1064,9 @@ class Dropdown:
         return False
 
     def build(self):
+        was_open = self.is_open
+        if self._overlay_handle is not None and self.overlay_manager is not None:
+            self._set_open(False)
         self._header = _text_node(
             self._header_text(), color=self.theme.foreground, size=14,
             padding=Insets.symmetric(horizontal=12, vertical=10),
@@ -996,13 +1078,20 @@ class Dropdown:
         self._header.width = self.width
         self._header.border_color = self.theme.border
         self._header.border_width = 1
-        self._header.accessibility_expanded = self.is_open
+        self._header.accessibility_expanded = False
         self._header.on_key_down = None if self.disabled else self._key_down
+        self.is_open = False
+        self._overlay_handle = None
+        self._overlay_option_nodes = []
         self._root = LayoutNode.column(
-            self._header, *(self._option_nodes() if self.is_open else []),
+            self._header, *(self._option_nodes() if was_open and self.overlay_manager is None else []),
             spacing=3, width=self.width,
             accessibility_role="group", accessibility_label=self.placeholder,
         )
+        if was_open and self.overlay_manager is not None:
+            self._set_open(True)
+        else:
+            self.is_open = was_open
         return self._root
 
 
