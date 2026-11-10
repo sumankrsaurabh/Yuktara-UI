@@ -22,8 +22,13 @@ class SkiaGpuRenderer(SkiaRenderer):
     The existing :class:`SkiaRenderer` remains the portable CPU fallback.
     """
 
-    def __init__(self, size: RenderSize, *, skia_module: Any = None) -> None:
+    def __init__(
+        self, size: RenderSize, *, skia_module: Any = None,
+        framebuffer: bool = False,
+    ) -> None:
         self._gpu_context = None
+        self.framebuffer = bool(framebuffer)
+        self._backend_target = None
         super().__init__(size, skia_module=skia_module)
 
     def _create_surface(self) -> None:
@@ -50,10 +55,42 @@ class SkiaGpuRenderer(SkiaRenderer):
                 "and ensure an OpenGL context is current on this thread."
             )
 
+        surface_factory = getattr(skia, "Surfaces", None)
+        if self.framebuffer:
+            # Wrap the default double-buffered framebuffer owned by SDL. This
+            # avoids a GPU-to-CPU readback and a second texture upload per frame.
+            try:
+                framebuffer_info = skia.GrGLFramebufferInfo(0, 0x8058)  # GL_RGBA8
+                self._backend_target = skia.GrBackendRenderTarget(
+                    self.size.pixel_width, self.size.pixel_height, 0, 0,
+                    framebuffer_info,
+                )
+                make_from_target = getattr(surface_factory, "MakeFromBackendRenderTarget", None)
+                if not callable(make_from_target):
+                    raise RuntimeError("Skia lacks MakeFromBackendRenderTarget.")
+                surface = make_from_target(
+                    self._gpu_context,
+                    self._backend_target,
+                    skia.GrSurfaceOrigin.kBottomLeft_GrSurfaceOrigin,
+                    skia.ColorType.kRGBA_8888_ColorType,
+                    None,
+                )
+            except Exception as exc:
+                raise RuntimeError(
+                    "Could not wrap SDL's default OpenGL framebuffer with Skia. "
+                    "Verify an RGBA8 double-buffered framebuffer and a Skia wheel "
+                    "that exposes backend render targets."
+                ) from exc
+            if surface is None:
+                raise RuntimeError("Skia could not wrap the active OpenGL framebuffer.")
+            self._surface = surface
+            self._canvas = surface.getCanvas()
+            self._canvas.scale(self.size.scale, self.size.scale_y or self.size.scale)
+            return
+
         image_info = skia.ImageInfo.MakeN32Premul(
             self.size.pixel_width, self.size.pixel_height
         )
-        surface_factory = getattr(skia, "Surfaces", None)
         make_target = getattr(surface_factory, "MakeRenderTarget", None)
         if not callable(make_target):
             raise RuntimeError(
@@ -102,12 +139,16 @@ class SkiaGpuRenderer(SkiaRenderer):
         """Release Skia surfaces; the host remains responsible for its GL context."""
         self._surface = None
         self._canvas = None
+        self._backend_target = None
         self._image_cache.clear()
         self._gpu_context = None
 
     def resize(self, size: RenderSize) -> None:
         if self._gpu_context is None:
             raise RuntimeError("GPU renderer is closed.")
+        self._surface = None
+        self._canvas = None
+        self._backend_target = None
         self.size = size
         self._create_surface()
 
