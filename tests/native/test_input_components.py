@@ -278,14 +278,14 @@ def test_tabs_select_panel_and_keyboard_navigation():
     tabs = Tabs((TabItem("General", "general panel"), TabItem("Advanced", "advanced panel")),
                 on_change=changes.append)
     root = tabs.build()
-    assert root.children[1].text == "general panel"
+    assert root.children[1].children[0].text == "general panel"
     tablist = root.children[0]
     node = tablist.children[1]
     layout(root, 400, 160)
     dispatcher = InputDispatcher(root)
     click(dispatcher, root, node.bounds.x + 4, node.bounds.y + 4)
     assert tabs.value == "Advanced"
-    assert root.children[1].text == "advanced panel"
+    assert root.children[1].children[0].text == "advanced panel"
     assert node.accessibility_selected is True
     assert changes == ["Advanced"]
     dispatcher.dispatch(key(KEY_LEFT))
@@ -295,7 +295,8 @@ def test_tabs_select_panel_and_keyboard_navigation():
 def test_tabs_support_widget_content_and_disabled_tabs():
     tabs = Tabs((TabItem("One", TextField("text")), TabItem("Two", "two", disabled=True)))
     root = tabs.build()
-    assert root.children[1].accessibility_role == "textbox"
+    assert root.children[1].accessibility_role == "tabpanel"
+    assert root.children[1].children[0].accessibility_role == "textbox"
     assert root.children[0].children[1].on_click is None
     with pytest.raises(ValueError):
         Tabs(("A", "A"))
