@@ -39,17 +39,68 @@ Lines retain absolute source offsets. Layout helpers provide:
 - `offset_at(x, y)` — nearest insertion boundary for a pointer position.
 - `selection_rects(start, end)` — line-specific native selection rectangles.
 
-The dependency-free grapheme segmenter keeps common combining-mark sequences,
-emoji variation/modifier sequences, ZWJ emoji, regional-indicator flags and
-Indic virama conjuncts together during keyboard editing. It is a practical
-editing boundary implementation, not a complete Unicode Standard Annex #29
-implementation; uncommon scripts and sequences should be validated with the
-application's target fonts.
+Grapheme segmentation uses the optional `regex` package's Unicode `\X`
+extended-grapheme implementation when installed. Add it with
+`python -m pip install 'yuktara-ui[unicode]'`. The base installation retains a
+dependency-free fallback for combining marks, emoji variation/modifier
+sequences, ZWJ emoji, regional-indicator flags and common Indic virama
+conjuncts. For production multilingual editing, install the `unicode` or
+`shaping` extra so keyboard movement, deletion and selection use a maintained
+Unicode grapheme segmenter.
 
 Word wrapping preserves source offsets and trailing empty lines. It currently
 uses simple whitespace and hyphen break opportunities; full Unicode line
 breaking, soft hyphen handling, ellipsis, rich inline spans and paragraph style
 runs are not included.
+
+## Syntax highlighting
+
+Install the optional Pygments adapter:
+
+```bash
+python -m pip install 'yuktara-ui[syntax]'
+```
+
+Pygments tokenizes source code; Yuktara maps tokens to grapheme-safe
+`TextStyleSpan` ranges and keeps all painting in Skia:
+
+```python
+from novaui.native import RichText, highlight_code
+
+source = "def greet(name):\\n    return 'hello'\\n"
+editor_preview = RichText(source, spans=highlight_code(source, "python"))
+```
+
+The lexer alias is supplied by Pygments (for example, `python`, `json`,
+`javascript` or `bash`). The package is loaded lazily, so applications that
+do not use syntax highlighting do not need it installed. The default palette
+can be replaced with `SyntaxPalette`.
+
+## Markdown import
+
+Install the optional Mistune adapter:
+
+```bash
+python -m pip install 'yuktara-ui[markdown]'
+```
+
+Parse Markdown into plain source text, source-indexed native style spans,
+paragraph layout styles and link ranges:
+
+```python
+from novaui.native import parse_markdown
+
+document = parse_markdown("# Notes\\n\\nA **native** paragraph with [a link](https://example.com).")
+widget = document.to_rich_text(size=16)
+# document.links retains URL targets and source offsets for app-owned actions.
+```
+
+The adapter supports headings, paragraphs, ordered/unordered lists, block
+quotes, code blocks, code spans, strong text, emphasis, links and image alt
+text. Emphasis is currently represented as underline because the native text
+style model does not yet expose italic. Links are metadata, not automatic
+navigation: the application decides whether and how to open them. Parsing does
+not add HTML, CSS or a browser renderer.
 
 ## Text input, selection and clipboard
 

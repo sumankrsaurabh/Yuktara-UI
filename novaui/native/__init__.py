@@ -65,13 +65,17 @@ from .text import (ParagraphStyle, TextCluster, TextLayout, TextLine, TextMeasur
                    ShapedCluster, ShapedGlyphRun, ShapedText, grapheme_spans,
                    next_grapheme_boundary, normalize_grapheme_boundary,
                    previous_grapheme_boundary, can_break_between,
-                   is_nonbreaking_boundary, line_break_offsets)
+                   is_nonbreaking_boundary, line_break_offsets,
+                   DEFAULT_SYNTAX_PALETTE, SyntaxPalette, highlight_code,
+                   MarkdownDocument, MarkdownLink, parse_markdown)
 __all__ += ["ParagraphStyle", "TextCluster", "TextLayout", "TextLine", "TextMeasurer",
             "TextPaintRun", "TextParagraph", "TextStyleSpan",
             "HarfBuzzShaper", "ShapedCluster", "ShapedGlyphRun", "ShapedText",
             "grapheme_spans", "next_grapheme_boundary",
             "normalize_grapheme_boundary", "previous_grapheme_boundary",
-            "can_break_between", "is_nonbreaking_boundary", "line_break_offsets"]
+            "can_break_between", "is_nonbreaking_boundary", "line_break_offsets",
+            "DEFAULT_SYNTAX_PALETTE", "SyntaxPalette", "highlight_code",
+            "MarkdownDocument", "MarkdownLink", "parse_markdown"]
 
 from .document import (PageSize, PageMargins, PageBreak, DocumentParagraph, PageTemplate,
                        PositionedPageText, ParagraphFragment, DocumentPage,

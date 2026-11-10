@@ -20,8 +20,11 @@ For a cumulative inventory of implemented features, development milestones, exam
 - **Native typography and editing** — Inter-first glyph fallback runs,
   cluster-aware text metrics, selection/caret painting, text scrolling,
   SDL3-backed system clipboard access, paragraph-aware Unicode line wrapping
-  and source-indexed rich inline text styling. Optional HarfBuzz shaping is
-  available through the `shaping` extra and explicit font-file configuration.
+  and source-indexed rich inline text styling. Optional Pygments-based syntax
+  highlighting is available through the `syntax` extra. Markdown import is\n  available through the optional `markdown` extra. Optional Unicode extended
+  grapheme segmentation is available through the `unicode` extra; optional
+  HarfBuzz shaping is available through the `shaping` extra and explicit
+  font-file configuration.
 - **Native component library** — responsive `Responsive`/`ResponsiveVariant` layouts, labels, buttons, containers, cards, badges,
   dividers, progress bars, checkboxes, switches, radio groups, text inputs,
   dropdowns, sliders, tabs, segmented controls, responsive grids, scroll views,
@@ -155,7 +158,7 @@ python scripts/native_runtime_smoke.py
 The cumulative feature and development record is maintained in
 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md).
 
-For adaptive layouts, high-DPI coordinate handling and window resize behavior,
+For the Python-only dependency policy and reusable library decisions, see\n[Python library reuse strategy](docs/python-library-reuse.md).\n\nFor adaptive layouts, high-DPI coordinate handling and window resize behavior,
 see [Responsive Layouts](docs/native-responsive-layout.md). Run
 `python examples/native/responsive_layout.py` to try compact, medium and
 expanded layouts in a resizable desktop window.
