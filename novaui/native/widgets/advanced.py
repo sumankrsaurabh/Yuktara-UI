@@ -81,6 +81,73 @@ class Responsive:
         )
 
 
+@dataclass(frozen=True)
+class AdaptiveVariant:
+    """A composition selected when both minimum logical window dimensions fit."""
+
+    min_width: float
+    min_height: float
+    child: object
+
+    def __post_init__(self):
+        for value, name in ((self.min_width, "min_width"), (self.min_height, "min_height")):
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or value < 0):
+                raise ValueError(f"AdaptiveVariant {name} must be a non-negative number")
+        if self.child is None:
+            raise ValueError("AdaptiveVariant child cannot be None")
+
+
+@dataclass
+class AdaptiveLayout:
+    """Choose a retained layout variant using available width AND height.
+
+    Variants must be ordered by non-decreasing minimum width and height.
+    The first variant is the fallback. Thresholds use logical window units,
+    so display scaling and backing resolution do not change composition.
+    """
+
+    variants: Sequence[AdaptiveVariant | tuple[float, float, object]]
+    padding: float | Insets = 0
+    align: Alignment = Alignment.STRETCH
+    key: str | None = None
+
+    def build(self) -> LayoutNode:
+        if not self.variants:
+            raise ValueError("AdaptiveLayout requires at least one variant")
+        normalized = []
+        previous = (-1.0, -1.0)
+        for variant in self.variants:
+            if isinstance(variant, AdaptiveVariant):
+                minimum_width, minimum_height, child = (
+                    variant.min_width, variant.min_height, variant.child
+                )
+            elif isinstance(variant, (tuple, list)) and len(variant) == 3:
+                minimum_width, minimum_height, child = variant
+            else:
+                raise TypeError(
+                    "adaptive variants must be AdaptiveVariant or (min_width, min_height, child) triples"
+                )
+            values = (minimum_width, minimum_height)
+            if any(isinstance(value, bool) or not isinstance(value, (int, float))
+                   or value < 0 for value in values):
+                raise ValueError("adaptive variant minimum dimensions must be non-negative")
+            current = (float(minimum_width), float(minimum_height))
+            if current[0] < previous[0] or current[1] < previous[1] or current == previous:
+                raise ValueError(
+                    "adaptive variant thresholds must be ordered by non-decreasing width and height"
+                )
+            if child is None:
+                raise ValueError("adaptive variant children cannot be None")
+            normalized.append((current[0], current[1], _node(child)))
+            previous = current
+        return LayoutNode(
+            "adaptive", adaptive_variants=tuple(normalized),
+            padding=_insets(self.padding, "padding"), align=self.align,
+            key=self.key, accessibility_role="group",
+        )
+
+
 @dataclass
 class Container:
     """A styled native container with padding, margin, border and alignment."""
@@ -831,8 +898,8 @@ class TreeView:
 
 
 __all__ = [
-    "Calendar", "Container", "DatePicker", "Grid", "GridItem", "Image",
-    "Responsive", "ResponsiveVariant",
+    "AdaptiveLayout", "AdaptiveVariant", "Calendar", "Container", "DatePicker",
+    "Grid", "GridItem", "Image", "Responsive", "ResponsiveVariant",
     "NavigationDrawer", "NavigationItem", "Positioned", "ScrollView", "Table",
     "TreeItem", "TreeView", "FilePicker",
 ]
