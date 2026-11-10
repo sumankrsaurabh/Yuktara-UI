@@ -858,7 +858,7 @@ class SDL3Window:
                 if running:
                     self.present(draw_frame())
                     if not events:
-                        self._bind("SDL_Delay", None, [ctypes.c_uint32])(1)
+                        self._idle_if_unsynchronized()
         finally:
             self.close()
 
