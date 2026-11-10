@@ -581,3 +581,14 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Expanded the interactive gallery and component catalogue documentation.
 - Added `tests/native/test_content_components.py` for component semantics, sizing, validation and interaction.
 - Validation status: tests are authored but have not been executed locally; latest-head CI remains to be checked.
+
+
+## 4.0 — Application chrome, feedback and surface consistency
+
+- Added `AppBar` with compact, regular and prominent sizes; flat, surface and outlined treatments; optional leading widget, subtitle and trailing actions.
+- Added `Alert` with info, success, warning and danger roles, semantic live-region announcements and shared theme colors.
+- Standardized `Card` with outlined, filled, flat and elevated semantic surface variants while preserving the legacy `bordered`, `background`, `radius` and padding API.
+- Added validation for card variants, spacing, radius, padding and border flags.
+- Extended the design-system gallery with toolbar and alert examples.
+- Added `tests/native/test_app_bar_alert.py` and card variant/compatibility tests in `tests/native/test_design_system.py`.
+- Validation status: tests have been authored but not executed locally; CI status must be checked on the latest head. The elevated card variant uses a surface-container role; shadow compositing remains unimplemented.
