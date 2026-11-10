@@ -254,7 +254,7 @@ def parse_markdown(
             text_parts.append("\n")
             offset += 1
         text_parts.append(block_text)
-        paragraph_styles.append(paragraph_style)
+        paragraph_styles.extend([paragraph_style] * (block_text.count("\\n") + 1))
         for start, end, style in local_spans:
             span = _style_span(offset + start, offset + end, style)
             if span is not None:
