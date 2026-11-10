@@ -86,3 +86,16 @@ positioning, subgrid and constraint-based breakpoint rules are not included.
 Intrinsic text measurement requires a configured `TextMeasurer`; without one,
 text uses a deterministic fallback size. SDL3/Skia are not needed to run the
 layout tests.
+
+
+## Responsive breakpoints
+
+For a different component arrangement at different viewport widths, use the
+`Responsive` component described in
+[native-responsive-layout.md](native-responsive-layout.md). The layout engine
+selects a width variant during measurement, and selects a new variant
+automatically after a window resize. The threshold is evaluated in
+device-independent UI units.
+
+For fluid composition without changing the hierarchy, use flex wrapping or
+`Grid(min_column_width=...)`.
