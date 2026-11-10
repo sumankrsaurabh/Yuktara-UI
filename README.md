@@ -20,7 +20,8 @@ For a cumulative inventory of implemented features, development milestones, exam
 - **Native typography and editing** — Inter-first glyph fallback runs,
   cluster-aware text metrics, selection/caret painting, text scrolling,
   SDL3-backed system clipboard access, paragraph-aware Unicode line wrapping
-  and source-indexed rich inline text styling. Optional Pygments-based syntax\n  highlighting is available through the `syntax` extra. Optional Unicode extended
+  and source-indexed rich inline text styling. Optional Pygments-based syntax
+  highlighting is available through the `syntax` extra. Optional Unicode extended
   grapheme segmentation is available through the `unicode` extra; optional
   HarfBuzz shaping is available through the `shaping` extra and explicit
   font-file configuration.
