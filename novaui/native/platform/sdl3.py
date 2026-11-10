@@ -894,34 +894,49 @@ class SDL3Window:
             while running and not runtime.quit_requested:
                 events = self.poll_input_events()
                 from .events import EventType
+                metrics_dirty = False
+                display_changed = False
+                metrics_events = {
+                    EventType.WINDOW_RESIZED,
+                    EventType.WINDOW_PIXEL_SIZE_CHANGED,
+                    EventType.WINDOW_DISPLAY_CHANGED,
+                    EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+                }
                 for event in events:
                     if on_event is not None:
                         on_event(event)
-                    if event.type in {
-                        EventType.WINDOW_DISPLAY_CHANGED,
-                        EventType.WINDOW_DISPLAY_SCALE_CHANGED,
-                    }:
-                        self.sync_runtime_size(runtime)
-                        # Re-apply after monitor migration; drivers can differ.
-                        try:
-                            set_vsync = self._bind(
-                                "SDL_SetRenderVSync", ctypes.c_bool,
-                                [ctypes.c_void_p, ctypes.c_int],
-                            )
-                            if set_vsync(self._renderer, self.requested_vsync):
-                                self.actual_vsync = self.requested_vsync
-                            elif self.requested_vsync != SDL_RENDERER_VSYNC_DISABLED and set_vsync(
-                                self._renderer, SDL_RENDERER_VSYNC_DISABLED
-                            ):
-                                self.actual_vsync = SDL_RENDERER_VSYNC_DISABLED
-                            else:
-                                self.actual_vsync = None
-                        except AttributeError:
-                            self.actual_vsync = None
+                    if event.type in metrics_events:
+                        # Coalesce every resize/DPI/display event in this SDL
+                        # batch. Query the final window metrics once, then do
+                        # one surface recreation and one layout/render pass.
+                        metrics_dirty = True
+                        display_changed = display_changed or event.type in {
+                            EventType.WINDOW_DISPLAY_CHANGED,
+                            EventType.WINDOW_DISPLAY_SCALE_CHANGED,
+                        }
                         continue
                     if not runtime.handle_event(event):
                         running = False
                         break
+                if running and metrics_dirty:
+                    self.sync_runtime_size(runtime)
+                if running and display_changed:
+                    # Re-apply after monitor migration; drivers can differ.
+                    try:
+                        set_vsync = self._bind(
+                            "SDL_SetRenderVSync", ctypes.c_bool,
+                            [ctypes.c_void_p, ctypes.c_int],
+                        )
+                        if set_vsync(self._renderer, self.requested_vsync):
+                            self.actual_vsync = self.requested_vsync
+                        elif self.requested_vsync != SDL_RENDERER_VSYNC_DISABLED and set_vsync(
+                            self._renderer, SDL_RENDERER_VSYNC_DISABLED
+                        ):
+                            self.actual_vsync = SDL_RENDERER_VSYNC_DISABLED
+                        else:
+                            self.actual_vsync = None
+                    except AttributeError:
+                        self.actual_vsync = None
                 runtime.process_pending()
                 now = perf_counter()
                 runtime.advance_time(max(0.0, (now - previous) * 1000.0))
