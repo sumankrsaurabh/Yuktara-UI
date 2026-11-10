@@ -296,3 +296,11 @@ See [Native platform parity roadmap](docs/native-platform-parity-roadmap.md)
 for the current gaps against mature adaptive UI toolkits and the physical
 multi-monitor/high-refresh acceptance matrix. GPU rendering and physical
 multi-platform certification remain unfinished.
+
+
+Adaptive runtime information is available through `NativeRuntime.adaptive_info`.
+It classifies the actual logical application window independently on width and
+height (compact, medium, expanded, large and extra-large width classes), while
+preserving backing-pixel dimensions for sharp rendering. Resize events are
+coalesced per SDL event batch to avoid repeated surface recreation while the
+user drags a window edge. See [responsive layout documentation](docs/native-responsive-layout.md).
