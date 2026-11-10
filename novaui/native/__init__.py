@@ -3,12 +3,14 @@
 This package contains the native SDL3 + Skia runtime and no browser-rendering stack.
 """
 from .renderer import SkiaRenderer, RenderSize
+from .preview import (AdaptivePreviewHarness, NodeLayoutSnapshot, ViewportPreview, ViewportProfile)
 from .adaptive import (WindowAdaptiveInfo, WindowSizeBreakpoints,
                        WindowWidthSizeClass, WindowHeightSizeClass,
                        compute_window_adaptive_info)
 from .typography import (FontConfig, FontResolver, FontRun, DEFAULT_FONT_FAMILY)
 
 __all__ = [
+    "AdaptivePreviewHarness", "NodeLayoutSnapshot", "ViewportPreview", "ViewportProfile",
     "DEFAULT_FONT_FAMILY",
     "FontConfig",
     "FontResolver",
