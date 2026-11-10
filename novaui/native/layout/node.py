@@ -154,18 +154,18 @@ class LayoutNode:
         if self.kind == "adaptive":
             if not self.adaptive_variants:
                 raise ValueError("adaptive nodes require at least one width/height variant")
-            previous = (-1.0, -1.0)
+            seen_thresholds = set()
             for minimum_width, minimum_height, child in self.adaptive_variants:
                 values = (minimum_width, minimum_height)
                 if any(isinstance(value, bool) or not isinstance(value, (int, float))
                        or not isfinite(float(value)) or value < 0 for value in values):
                     raise ValueError("adaptive variant minimum dimensions must be finite and non-negative")
                 current = (float(minimum_width), float(minimum_height))
-                if current[0] < previous[0] or current[1] < previous[1] or current == previous:
-                    raise ValueError("adaptive variants must be ordered by non-decreasing width and height")
+                if current in seen_thresholds:
+                    raise ValueError("adaptive variant thresholds must be unique")
+                seen_thresholds.add(current)
                 if not isinstance(child, LayoutNode):
                     raise TypeError("adaptive variant children must be LayoutNode instances")
-                previous = current
             if self.children:
                 raise ValueError("adaptive node children are selected from adaptive_variants")
         elif self.adaptive_variants:
