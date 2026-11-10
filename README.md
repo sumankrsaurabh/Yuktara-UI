@@ -10,7 +10,7 @@ only through a planned compatibility release.
 > Linux/Xvfb SDL3 + Skia live-window smoke test also passes; physical-device,
 > mixed-DPI monitor and platform-specific IME/accessibility validation remains ongoing.
 
-For a cumulative inventory of implemented features, development milestones, examples and known limitations, see [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md).
+For a cumulative inventory of implemented features, development milestones, examples and known limitations, see [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md). See the [native accessibility semantics guide](docs/native-accessibility.md) for semantic metadata and current platform limitations.
 
 ## Native stack
 

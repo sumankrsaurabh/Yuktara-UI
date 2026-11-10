@@ -171,6 +171,7 @@ class Button:
             accessibility_role="button", accessibility_label=self.label,
             accessibility_disabled=self.disabled, accessibility_hint=self.accessibility_hint,
             on_click=None if self.disabled else self.on_click,
+            accessibility_actions=("activate",),
         )
 
 
@@ -278,7 +279,11 @@ class ProgressBar:
         row = LayoutNode.row(filled, rest, height=self.height, spacing=0,
                              accessibility_role="progressbar",
                              accessibility_label=self.label or "Progress",
-                             accessibility_value=f"{self.value:g}%")
+                             accessibility_value=f"{self.value:g}%",
+                             accessibility_read_only=True,
+                             accessibility_range_min=0,
+                             accessibility_range_max=100,
+                             accessibility_range_value=self.value)
         return row
 
 
@@ -566,6 +571,7 @@ class TextField:
             accessibility_label=self.placeholder or ("Text area" if self.multiline else "Text field"),
             accessibility_value=self.value,
             accessibility_disabled=self.disabled,
+            accessibility_read_only=self.read_only,
             on_pointer_down=self._pointer_down,
             on_pointer_move=self._pointer_move,
             on_pointer_up=self._pointer_up,
@@ -1097,6 +1103,8 @@ class Dropdown:
             label=self.placeholder, value=self.value,
             disabled=self.disabled, on_click=None if self.disabled else self._toggle,
         )
+        self._header.accessibility_role_description = "Option selector"
+        self._header.accessibility_actions = ("collapse", "expand", "set_value")
         self._header.width = self.width
         self._header.border_color = self.theme.border
         self._header.border_width = 1
@@ -1155,6 +1163,7 @@ class Slider:
         self.value = value
         if self._node is not None:
             self._node.accessibility_value = f"{self.value:g}"
+            self._node.accessibility_range_value = self.value
         if self.on_change is not None:
             self.on_change(self.value)
         return True
@@ -1210,6 +1219,11 @@ class Slider:
             accessibility_role="slider", accessibility_label=self.label,
             accessibility_value=f"{self.value:g}",
             accessibility_disabled=self.disabled,
+            accessibility_orientation="horizontal",
+            accessibility_range_min=self.minimum,
+            accessibility_range_max=self.maximum,
+            accessibility_range_value=self.value,
+            accessibility_actions=("decrement", "increment", "set_value"),
             on_pointer_down=None if self.disabled else self._pointer_value,
             on_pointer_move=None if self.disabled else self._pointer_value,
             on_key_down=None if self.disabled else self._key_down,
@@ -1384,6 +1398,7 @@ class SegmentedControl:
             *nodes, spacing=3, padding=Insets.all(3),
             background=self.theme.surface_variant, radius=self.theme.radius_medium,
             accessibility_role="radiogroup", accessibility_label="Selection",
+            accessibility_orientation="horizontal",
         )
 
 
@@ -1432,7 +1447,10 @@ class RadioGroup:
             self._built_nodes[option] = node
             children.append(node)
         factory = LayoutNode.row if self.direction == "row" else LayoutNode.column
-        return factory(*children, spacing=12, accessibility_role="radiogroup")
+        return factory(
+            *children, spacing=12, accessibility_role="radiogroup",
+            accessibility_orientation="horizontal" if self.direction == "row" else "vertical",
+        )
 
 
 @dataclass

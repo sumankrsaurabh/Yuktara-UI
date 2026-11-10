@@ -229,6 +229,16 @@ Applications using a custom host loop are responsible for processing pending wor
 
 ### Accessibility model
 
+The backend-neutral semantic tree supports:
+
+- Stable per-node identifiers with duplicate detection in the currently exposed snapshot.
+- Hidden-subtree pruning and modal-scope construction before identifier checks.
+- Role descriptions, horizontal/vertical orientation and polite/assertive live-region hints.
+- Read-only, required and invalid states; numeric range minimum, maximum and current-value metadata.
+- A validated standard action vocabulary for platform adapters, plus logical-pixel node bounds and focus/state metadata.
+
+These properties are semantic data for an operating-system provider to consume. They do not themselves announce live-region changes, expose a native accessibility object, or invoke actions through a platform accessibility API.
+
 - Native semantic-tree representation for components.
 - Documented roles, labels, values and states such as disabled, checked, selected, expanded and focused.
 - Visible keyboard focus rings.
@@ -298,7 +308,7 @@ This timeline records the documented source milestones retained in the repositor
 | 3.1 — general-purpose component library | Responsive Grid, Container, ScrollView, Image, Table, NavigationDrawer, Calendar, DatePicker, TreeView and SDL3-backed FilePicker. |
 | 3.2 — runtime stabilization | Retained-tree reconciliation, UI-thread scheduling, runtime/window lifecycle, logical/backing-pixel sizing, touch-coordinate conversion and integrated SDL3 host loop. |
 | 3.3 — advanced layout | Percentage dimensions and constraints, row/column flex wrapping, flex basis, baseline alignment, absolute positioning, GridItem placement and spans. |
-| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops, responsive galleries, defensive dimension validation for runtime/window resize entry points, and optional overlay-backed Dropdown menus. Regression tests, the permanent cross-platform CI matrix and the Linux/Xvfb SDL3/Skia live-window smoke test are passing. Package metadata remains at 3.3.0.dev0 until a release decision. |
+| 3.4 — development in progress (not released) | Permanent cross-platform CI, SDL3/Skia desktop smoke workflow, SDL3 IME composition path, responsive width-breakpoint layouts, high-DPI logical/pixel coordinate separation, initial window-size normalization, aspect-preserving presentation, display/monitor-change synchronization, resize-aware example host loops, responsive galleries, defensive dimension validation for runtime/window resize entry points, and optional overlay-backed Dropdown menus, and an expanded backend-neutral accessibility semantic contract. Regression tests, the permanent cross-platform CI matrix and the Linux/Xvfb SDL3/Skia live-window smoke test are passing. Package metadata remains at 3.3.0.dev0 until a release decision. |
 
 ## 11. Verification record
 
@@ -420,7 +430,7 @@ The following items are **not** to be treated as completed features in the 3.3 b
 - The dropdown supports the overlay manager when attached to `runtime.overlays`; a legacy inline presentation is retained for unattached standalone widgets. Its menu integration is covered by selection, keyboard, active-option scrolling, outside-dismissal and attach/detach regression tests.
 - Full Unicode Standard Annex #29 segmentation and complete Unicode line breaking.
 - Complete bidirectional text, Arabic joining, Indic shaping, ligature-aware caret geometry and complex-script shaping across all platforms. Optional HarfBuzz support is available, but it does not make the entire text pipeline fully certified.
-- Native accessibility provider bridges for Windows UI Automation, macOS NSAccessibility and Linux AT-SPI; screen-reader behavior is not certified.
+- Native accessibility provider bridges for Windows UI Automation, macOS NSAccessibility and Linux AT-SPI; screen-reader behavior is not certified. The backend-neutral semantic data model is available, but no OS accessibility tree/actions/events are exposed yet.
 - End-to-end SDL3 window, mixed-DPI monitor movement, clipboard, file-dialog, font fallback and image decoding verification on every supported OS/configuration. A Linux/Xvfb smoke run does not certify all platform-native behavior.
 - Direct GPU Skia surfaces; the documented renderer path is CPU raster content presented through SDL3.
 - Mobile backends for Android/iOS.

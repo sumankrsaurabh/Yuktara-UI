@@ -5,6 +5,11 @@ from math import isfinite
 from typing import Callable, Optional
 from .geometry import Alignment, Insets, MainAxisAlignment, Rect, Size
 
+ACCESSIBILITY_ACTIONS = frozenset({
+    "activate", "collapse", "decrement", "dismiss", "expand", "focus",
+    "scroll_backward", "scroll_forward", "set_value", "show_menu",
+})
+
 @dataclass
 class LayoutNode:
     kind: str = "box"
@@ -92,6 +97,18 @@ class LayoutNode:
     accessibility_selected: Optional[bool] = None
     accessibility_expanded: Optional[bool] = None
     accessibility_focused: bool = False
+    accessibility_identifier: Optional[str] = None
+    accessibility_role_description: Optional[str] = None
+    accessibility_orientation: Optional[str] = None
+    accessibility_live: Optional[str] = None
+    accessibility_hidden: bool = False
+    accessibility_read_only: Optional[bool] = None
+    accessibility_required: Optional[bool] = None
+    accessibility_invalid: Optional[bool] = None
+    accessibility_range_min: Optional[float] = None
+    accessibility_range_max: Optional[float] = None
+    accessibility_range_value: Optional[float] = None
+    accessibility_actions: tuple[str, ...] = ()
     bounds: Rect = field(default_factory=Rect, init=False)
     content_bounds: Rect = field(default_factory=Rect, init=False)
     measured_size: Size = field(default_factory=Size, init=False)
@@ -197,6 +214,57 @@ class LayoutNode:
             raise ValueError("baseline must be finite and non-negative")
         if not isinstance(self.flex_wrap, bool):
             raise TypeError("flex_wrap must be a bool")
+        if self.accessibility_identifier is not None and (
+            not isinstance(self.accessibility_identifier, str)
+            or not self.accessibility_identifier.strip()
+        ):
+            raise ValueError("accessibility_identifier must be a non-empty string or None")
+        if self.accessibility_role_description is not None and (
+            not isinstance(self.accessibility_role_description, str)
+            or not self.accessibility_role_description.strip()
+        ):
+            raise ValueError("accessibility_role_description must be a non-empty string or None")
+        if self.accessibility_orientation not in (None, "horizontal", "vertical"):
+            raise ValueError("accessibility_orientation must be horizontal, vertical or None")
+        if self.accessibility_live not in (None, "off", "polite", "assertive"):
+            raise ValueError("accessibility_live must be off, polite, assertive or None")
+        for name in ("accessibility_hidden", "accessibility_focused", "accessibility_disabled"):
+            if not isinstance(getattr(self, name), bool):
+                raise TypeError(f"{name} must be a bool")
+        for name in ("accessibility_read_only", "accessibility_required", "accessibility_invalid",
+                     "accessibility_checked", "accessibility_selected", "accessibility_expanded"):
+            value = getattr(self, name)
+            if value is not None and not isinstance(value, bool):
+                raise TypeError(f"{name} must be a bool or None")
+        for name in ("accessibility_range_min", "accessibility_range_max",
+                     "accessibility_range_value"):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, (int, float))
+                or not isfinite(float(value))
+            ):
+                raise ValueError(f"{name} must be a finite number or None")
+        if (self.accessibility_range_min is not None
+                and self.accessibility_range_max is not None
+                and self.accessibility_range_min > self.accessibility_range_max):
+            raise ValueError("accessibility_range_min cannot exceed accessibility_range_max")
+        if self.accessibility_range_value is not None:
+            if (self.accessibility_range_min is not None
+                    and self.accessibility_range_value < self.accessibility_range_min):
+                raise ValueError("accessibility_range_value is below accessibility_range_min")
+            if (self.accessibility_range_max is not None
+                    and self.accessibility_range_value > self.accessibility_range_max):
+                raise ValueError("accessibility_range_value exceeds accessibility_range_max")
+        try:
+            actions = tuple(self.accessibility_actions)
+        except TypeError as exc:
+            raise TypeError("accessibility_actions must be an iterable of action names") from exc
+        if any(not isinstance(action, str) or action not in ACCESSIBILITY_ACTIONS
+               for action in actions):
+            raise ValueError(f"accessibility_actions must use supported actions: {sorted(ACCESSIBILITY_ACTIONS)}")
+        if len(actions) != len(set(actions)):
+            raise ValueError("accessibility_actions must not contain duplicates")
+        self.accessibility_actions = actions
         if self.grid_row is not None and (not isinstance(self.grid_row, int) or self.grid_row < 0):
             raise ValueError("grid_row must be a non-negative integer")
         if self.grid_column is not None and (not isinstance(self.grid_column, int) or self.grid_column < 0):
