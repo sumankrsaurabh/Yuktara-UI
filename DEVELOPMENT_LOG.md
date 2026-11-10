@@ -321,7 +321,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 
 - `.github/workflows/ci.yml` runs the existing native suite and Python compilation on Ubuntu, Windows and macOS with Python 3.10 through 3.15. Python 3.10 remains tested because it is the declared minimum, although it reached upstream end of life on 2026-10-01.
 - The workflow also builds and installs the wheel, verifies the installed package outside the source checkout, and measures package coverage.
-- `.github/workflows/native-integration.yml` is an opt-in Linux/Xvfb job that installs SDL3 build prerequisites, provisions Skia/SDL3 through `python -m novaui setup`, opens a real SDL3 window and presents Skia frames.
+- `.github/workflows/native-integration.yml` runs on main-branch changes to platform, runtime, rendering, layout, dependency or smoke-test code, and can also be dispatched manually. Its Linux/Xvfb job installs SDL3 build prerequisites, provisions Skia/SDL3 through `python -m novaui setup`, opens a real SDL3 window and presents Skia frames.
 - `scripts/native_runtime_smoke.py` is the bounded three-frame desktop smoke application.
 - The ordinary test matrix is backend-neutral by design; the opt-in job is the first actual SDL3 + Skia window smoke check. The new workflows must be observed completing successfully before their results are recorded as passing.
 
