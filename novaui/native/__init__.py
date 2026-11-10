@@ -38,7 +38,7 @@ from .widgets import (Badge, Button, Card, Checkbox, Divider, Dropdown, Label,
                       ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip,
                       Calendar, Container, DatePicker, Grid, GridItem, Image, NavigationDrawer,
                       NavigationItem, Positioned, ScrollView, Table, TreeItem, TreeView, FilePicker,
-                      Responsive, ResponsiveVariant)
+                      Responsive, ResponsiveVariant, AdaptiveLayout, AdaptiveVariant)
 __all__ += [
     "SemanticNode", "build_accessibility_tree", "Badge", "Button", "Card",
     "Checkbox", "Divider", "Dropdown", "Label", "ProgressBar", "RadioGroup", "RichText",
@@ -47,7 +47,7 @@ __all__ += [
     "Dialog", "MenuItem", "Popover", "Toast", "Tooltip", "Calendar",
     "Container", "DatePicker", "Grid", "GridItem", "Image", "NavigationDrawer",
     "NavigationItem", "Positioned", "ScrollView", "Table", "TreeItem", "TreeView", "FilePicker",
-    "Responsive", "ResponsiveVariant",
+    "Responsive", "ResponsiveVariant", "AdaptiveLayout", "AdaptiveVariant",
 ]
 
 from .theme import NativeTheme
