@@ -130,3 +130,27 @@ def test_grapheme_spans_properties_cover_source_text():
         assert "".join(source[start:end] for start, end in spans) == source
 
     check()
+
+
+def test_pygments_highlighting_returns_grapheme_safe_rich_text_spans():
+    from novaui.native import RichText, highlight_code
+    from novaui.native.text import TextStyleSpan
+
+    source = "def greet(name):\n    return 'hello'\n"
+    spans = highlight_code(source, "python")
+    assert spans
+    assert all(isinstance(span, TextStyleSpan) for span in spans)
+    assert all(source[span.start:span.end] for span in spans)
+    assert any(source[span.start:span.end] == "def" for span in spans)
+    assert any(source[span.start:span.end] == "greet" for span in spans)
+
+    node = RichText(source, spans=spans).build()
+    assert node.text == source
+    assert node.text_style_spans == spans
+
+
+def test_pygments_highlighting_rejects_unknown_language():
+    from novaui.native import highlight_code
+
+    with pytest.raises(ValueError, match="Unknown syntax highlighting language"):
+        highlight_code("text", "not-a-real-language")
