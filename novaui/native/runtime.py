@@ -327,6 +327,12 @@ class NativeRuntime:
 
         scale_x = pixel_width / width
         scale_y = pixel_height / height
+        if (
+            width == self.width and height == self.height
+            and pixel_width == self.pixel_width and pixel_height == self.pixel_height
+            and scale_x == self.scale_x and scale_y == self.scale_y
+        ):
+            return
         self.width = width
         self.height = height
         self.pixel_width = pixel_width
