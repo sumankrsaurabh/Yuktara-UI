@@ -207,3 +207,27 @@ selected `NavigationItem`; disabled destinations cannot be selected.
 The scaffold provides navigation chrome and selection state, while the
 application remains responsible for switching page content in response to
 the callback.
+
+## Responsive list-detail panes
+
+Use `ListDetailPane` for mailboxes, project lists, settings categories and
+other master-detail interfaces. Compact windows show one surface at a time:
+select an item to open its detail and use the built-in back action to return
+to the list. Wider windows keep the list and detail visible side by side.
+
+```python
+from novaui.native import Label, ListDetailItem, ListDetailPane
+
+screen = ListDetailPane(
+    items=(
+        ListDetailItem("Overview", Label("Project overview"), key="overview"),
+        ListDetailItem("Activity", Label("Recent project activity"), key="activity"),
+    ),
+    on_select=lambda item: print("Selected:", item.key),
+)
+```
+
+The default two-pane breakpoint is 840 logical units and can be changed with
+`min_expanded_width`. The selected item and its retained detail node remain
+active when the window crosses the breakpoint. The application owns the
+actual detail widgets and can bind their own state to application models.
