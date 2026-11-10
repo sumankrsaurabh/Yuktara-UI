@@ -62,6 +62,7 @@ The following catalog is the documented native component surface in the 3.3 sour
 - `Spacer` — fixed or flexible space.
 - `Divider` — horizontal or vertical separator.
 - `Positioned` — absolute-positioned child.
+- `Responsive` / `ResponsiveVariant` — minimum-width breakpoint variants for switching between compact, medium and expanded compositions.
 
 ### Text, status and visual content
 
@@ -273,6 +274,7 @@ The repository includes native examples for the following workflows:
 | `examples/native/document_pagination.py` | A4 document pagination/raster preview. |
 | `examples/native/advanced_component_gallery.py` | Grid, containers, tables, navigation, tree, calendar, date picker, images and file dialogs. |
 | `examples/native/advanced_layout.py` | Percentage sizing, wrapping, positioning and grid spans. |
+| `examples/native/responsive_layout.py` | Live compact, medium and expanded breakpoint layouts in a resizable SDL3 window. |
 | `examples/native/harfbuzz_shaping.py` | Optional HarfBuzz shaping with an explicitly supplied font. |
 | `scripts/native_runtime_smoke.py` | Short real-window SDL3 + Skia presentation smoke test used by the manual native integration workflow. |
 
@@ -329,6 +331,19 @@ The separate Linux/Xvfb SDL3 + Skia live-window integration job also completed s
 
 Workflow record: [Native desktop integration — 2026-11-10, run 42786336871](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42786336871).
 
+### Latest 3.4 development verification — commit `124ea27a12ab17d6dc2dc627d348dbd27ea202a4`
+
+The next verification run completed successfully on 2026-11-10:
+
+- 323 tests passed.
+- All 18 Windows/macOS/Ubuntu and Python 3.10–3.15 matrix jobs passed.
+- The coverage job reported 84% statement coverage (6,444 statements; 1,037 missed).
+- Wheel build, installation and installed-distribution import passed.
+- The independent Linux/Xvfb integration job provisioned SDL3 3.4.20 and Skia Python 144.1, opened an SDL3 window and presented Skia frames.
+
+Workflow records: [CI — run 42793002537](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42793002537) · [Native desktop integration — run 42793002651](https://github.com/sumankrsaurabh/Yuktara-UI/actions/runs/42793002651).
+
+
 The automated tests primarily validate Python-side behavior using backend-injected services, normalized events and recording renderers. They are not a substitute for testing actual desktop hardware, drivers, system dialogs, input methods, high-DPI displays or accessibility tools.
 
 ## 11A. Current 3.4 development work (not yet a release)
@@ -357,7 +372,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 - Existing row flex wrapping and `Grid(min_column_width=...)` remain the preferred fluid-layout tools when changing the component hierarchy is unnecessary.
 - All interactive native galleries were moved onto `SDL3Window.run_runtime()` so resize, pixel-size and display-scale events reach `NativeRuntime` consistently.
 - Added `examples/native/responsive_layout.py` and the responsive/high-DPI guides.
-- Added breakpoint/reflow tests in `tests/native/test_responsive_layout.py`, high-DPI/window-coordinate/letterbox/monitor-event tests in `tests/native/test_window_metrics.py`, and scaled IME candidate-window tests in `tests/native/test_ime_composition.py`; all are included in the successful 306-test CI run.
+- Added breakpoint/reflow tests in `tests/native/test_responsive_layout.py`, high-DPI/window-coordinate/letterbox/monitor-event tests in `tests/native/test_window_metrics.py`, and scaled IME candidate-window tests in `tests/native/test_ime_composition.py`; all pass in the subsequent successful 323-test CI run.
 
 ### IME composition path
 
@@ -368,7 +383,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as unr
 - Text input/IME operations are injectable through a dedicated `text_input` service; the existing `clipboard` adapter remains a backward-compatible fallback. OS clipboard access stays separately injectable.
 - SDL3 `SDL_SetTextInputArea` and `SDL_ClearComposition` are exposed through `SDL3Window`; the candidate area is updated from measured caret geometry after layout.
 - Committed `TEXT_INPUT` replaces the original selected range; Escape/blur cancels the pre-edit state.
-- Added eight targeted tests in `tests/native/test_ime_composition.py`, covering SDL event decode, preview, commit, cancellation, runtime routing, candidate-area binding and independent input/clipboard services; they pass in the verified 306-test CI run.
+- Added eight targeted tests in `tests/native/test_ime_composition.py`, covering SDL event decode, preview, commit, cancellation, runtime routing, candidate-area binding and independent input/clipboard services; they pass in the verified 323-test CI run.
 
 ## 12. Known limitations and unfinished integration
 
