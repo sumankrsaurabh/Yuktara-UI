@@ -15,7 +15,8 @@ runtime.
 | 2D rendering | skia-python | Adopted | Python renderer, paint dispatch and retained-tree painter |
 | Text shaping | uharfbuzz | Optional shaping extra | Python shaping adapter, source offsets and Skia glyph painting |
 | Grapheme segmentation | regex (Unicode \X) | Optional unicode extra; used automatically when installed | Python fallback, source-index mapping and editing behavior |
-| Unit/integration tests | pytest | Development dependency | Test architecture and fixtures |
+| Syntax tokenization | Pygments | Optional `syntax` extra; used by the native RichText adapter | Yuktara maps tokens to grapheme-safe spans and paints them with Skia |
+| Unit/integration tests | pytest + Hypothesis | Development dependencies | Test architecture, fixtures and property-based invariants |
 
 Install the optional text capabilities:
 
@@ -34,7 +35,7 @@ regex is absent, Yuktara uses its dependency-free grapheme fallback.
 | python-bidi | Unicode Bidirectional Algorithm for mixed RTL/LTR paragraphs | Evaluate for source-index-preserving visual ordering before adopting |
 | fonttools | Font metadata, cmap coverage, variable-font inspection and subsetting | Evaluate for typography tooling and font diagnostics |
 | mistune | Markdown parsing into a structured Python AST | Adopt for a future Markdown/document import adapter if the AST maps cleanly to Yuktara RichText |
-| Pygments | Python-side syntax tokenization and highlighting | Adopt for code-editor/document code blocks; keep painting in Skia |
+| python-bidi | Unicode Bidirectional Algorithm for mixed RTL/LTR paragraphs | Evaluate for source-index-preserving visual ordering before adopting |
 | platformdirs | Cross-platform cache/config/data directories | Evaluate against the current small, tested cache-path implementation |
 | hypothesis | Property-based tests for layout, Unicode editing and geometry | Development-only dependency; use to expand regression coverage |
 
