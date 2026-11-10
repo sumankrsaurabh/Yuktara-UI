@@ -13,11 +13,14 @@ ensure_skia_python()
 import skia
 
 from novaui.native import (
+    Avatar,
     Badge,
     Button,
-    Card,
+    Chip,
+    FloatingActionButton,
     IconButton,
     Label,
+    ListTile,
     NativeRuntime,
     NativeTheme,
     RenderSize,
@@ -97,6 +100,52 @@ def main() -> None:
         theme=theme,
     )
 
+    content = Surface(
+        variant="low",
+        children=(
+            Label("Content components", size=18, weight="semibold", theme=theme),
+            row(
+                Avatar("Suman Kumar", initials="SK", size="large", theme=theme),
+                Avatar("Design team", initials="DT", variant="tertiary", theme=theme),
+                Chip("All items", selected=True, theme=theme),
+                Chip("Archived", variant="neutral", theme=theme),
+                Chip("Synced", variant="success", theme=theme),
+                spacing=10,
+                wrap=True,
+            ),
+            ListTile(
+                "Project overview",
+                subtitle="Last updated just now",
+                leading=Avatar("Project", initials="P", theme=theme),
+                trailing=Badge("Active", "success", theme=theme),
+                theme=theme,
+            ),
+            ListTile(
+                "Design resources",
+                subtitle="18 files · Shared with your team",
+                leading=Avatar("Design", initials="D", variant="tertiary", theme=theme),
+                trailing=Chip("Shared", theme=theme),
+                theme=theme,
+            ),
+        ),
+        theme=theme,
+    )
+
+    floating_actions = Surface(
+        variant="base",
+        children=(
+            Label("Floating actions", size=18, weight="semibold", theme=theme),
+            row(
+                FloatingActionButton("Create", size="small", theme=theme),
+                FloatingActionButton("Create", size="regular", theme=theme),
+                FloatingActionButton("New document", icon="+", extended=True, theme=theme),
+                spacing=12,
+                wrap=True,
+            ),
+        ),
+        theme=theme,
+    )
+
     root = ScrollView(
         column(
             heading,
@@ -104,6 +153,8 @@ def main() -> None:
             actions,
             surfaces,
             inputs,
+            content,
+            floating_actions,
             spacing=theme.space_4,
             padding=theme.space_6,
             background=theme.background,
