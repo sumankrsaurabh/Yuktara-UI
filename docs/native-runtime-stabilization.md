@@ -120,3 +120,48 @@ On Debian/Ubuntu systems, the automatic SDL3 source-build prerequisites include
 `libxtst-dev` (XTest headers) in addition to the X11/Wayland, audio, graphics,
 CMake and compiler development packages. Equivalent package names are included
 for the supported Fedora, Arch, openSUSE and Alpine bootstrap paths.
+
+## Active display metrics and refresh-synchronized presentation
+
+`SDL3Window.get_display_metrics()` reports the monitor currently hosting
+the window: display ID, current mode dimensions, pixel density and refresh rate
+(including SDL's precise numerator/denominator when supplied). The values are
+refreshed after display migration and scale-change events. Refresh rate is
+diagnostic metadata; applications must not hard-code a 60 Hz timer or use it
+as a substitute for the renderer's presentation clock.
+
+`SDL3Window` requests renderer VSync by default (`vsync=1`). SDL3 synchronizes
+presentation with vertical refresh where the selected backend supports it, so
+60, 90, 120, 144 Hz and other supported display rates are handled by the
+graphics backend rather than by a fixed sleep interval. Use `vsync=-1` to
+request adaptive VSync, `vsync=0` to disable it, or a positive integer for
+every-N-refresh synchronization. Unsupported requests fall back to
+unsynchronized presentation; inspect `window.actual_vsync` to see the applied
+setting. When VSync is active, the host does not add a redundant 1 ms sleep
+after presenting.
+
+## Quality and resize invariants
+
+- Layout and hit testing remain in logical UI units.
+- Skia raster dimensions are recreated from the actual SDL backing-pixel size,
+  with independent X/Y scales. The framework does not enlarge a previous
+  screenshot to fake a higher-resolution render.
+- A window resize triggers a new layout pass and a newly sized Skia surface.
+  A display-scale or monitor migration re-queries logical size, backing pixels,
+  display density, display scale and active display metrics.
+- SDL texture presentation uses aspect-fit letterboxing by default. It never
+  stretches a frame to a different aspect ratio. The frame should already be
+  rendered at the current window's backing-pixel dimensions; letterboxing is a
+  safety behavior for transient or custom frame-provider mismatches.
+- The current renderer remains CPU-raster Skia. VSync improves presentation
+  pacing; it does not turn the renderer into a GPU renderer or guarantee a
+  particular frame rate when rendering takes longer than the refresh interval.
+
+Example:
+
+```python
+window = SDL3Window("Yuktara UI", 1280, 800, vsync=1)
+window.run_runtime(runtime, frame_provider)
+print(window.display_metrics)
+print("Applied VSync:", window.actual_vsync)
+```
