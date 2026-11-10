@@ -27,6 +27,15 @@ class _SDLDialogFileFilter(ctypes.Structure):
     _fields_ = [("name", ctypes.c_char_p), ("pattern", ctypes.c_char_p)]
 
 
+class _SDLRect(ctypes.Structure):
+    _fields_ = [
+        ("x", ctypes.c_int),
+        ("y", ctypes.c_int),
+        ("w", ctypes.c_int),
+        ("h", ctypes.c_int),
+    ]
+
+
 _SDLDialogCallback = ctypes.CFUNCTYPE(
     None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_char_p), ctypes.c_int
 )
@@ -241,6 +250,35 @@ class SDL3Window:
         stop = self._bind("SDL_StopTextInput", ctypes.c_bool, [ctypes.c_void_p])
         if not stop(self._window):
             raise SDL3Error(f"SDL_StopTextInput failed: {self._error()}")
+
+    def set_text_input_area(
+        self, x: int, y: int, width: int, height: int, cursor: int = 0
+    ) -> None:
+        """Position the native IME candidate window near the current text caret.
+
+        Coordinates are logical window coordinates as required by SDL3.
+        The cursor is the horizontal offset from the input rectangle's x edge.
+        """
+        self._assert_open()
+        values = (x, y, width, height, cursor)
+        if any(not isinstance(value, int) or isinstance(value, bool) for value in values):
+            raise TypeError("text input area coordinates and cursor must be integers")
+        if width <= 0 or height <= 0 or cursor < 0:
+            raise ValueError("text input area must have positive dimensions and a non-negative cursor")
+        rect = _SDLRect(int(x), int(y), int(width), int(height))
+        set_area = self._bind(
+            "SDL_SetTextInputArea", ctypes.c_bool,
+            [ctypes.c_void_p, ctypes.POINTER(_SDLRect), ctypes.c_int],
+        )
+        if not set_area(self._window, ctypes.byref(rect), int(cursor)):
+            raise SDL3Error(f"SDL_SetTextInputArea failed: {self._error()}")
+
+    def clear_composition(self) -> None:
+        """Ask SDL3 to dismiss the active platform input-method composition."""
+        self._assert_open()
+        clear = self._bind("SDL_ClearComposition", ctypes.c_bool, [ctypes.c_void_p])
+        if not clear(self._window):
+            raise SDL3Error(f"SDL_ClearComposition failed: {self._error()}")
 
     def get_clipboard_text(self) -> str:
         """Read UTF-8 text from the OS clipboard through SDL3."""
