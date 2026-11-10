@@ -119,3 +119,13 @@ compositions; selected destination state is synchronized across every
 navigation presentation. This is a first navigation scaffold, not yet a full
 multi-pane navigation framework or a substitute for platform navigation
 patterns and accessibility-provider integration.
+
+
+## Progress update: master-detail composition
+
+The native widget set now includes `ListDetailPane` and `ListDetailItem`.
+Compact windows show a list and a back-navigable detail surface; expanded
+windows show both panes together. The selected detail node remains retained
+across width transitions. This provides a common responsive master-detail
+pattern, while route stacks, process-death restoration and richer multi-pane
+workspaces remain future work.
