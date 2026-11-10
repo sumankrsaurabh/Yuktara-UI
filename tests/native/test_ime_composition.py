@@ -267,3 +267,43 @@ def test_text_input_service_is_independent_from_clipboard_service():
     assert text_input.stopped == 1
     assert text_input.cleared == 1
     assert field._clipboard_get() == "from clipboard"
+
+
+
+def test_sdl3_ime_candidate_area_scales_to_native_window_coordinates():
+    captured = {}
+
+    class SDLFunction:
+        restype = None
+        argtypes = None
+
+        def __call__(self, window, rect_pointer, cursor):
+            class Rect(ctypes.Structure):
+                _fields_ = [
+                    ("x", ctypes.c_int),
+                    ("y", ctypes.c_int),
+                    ("w", ctypes.c_int),
+                    ("h", ctypes.c_int),
+                ]
+
+            rect = ctypes.cast(rect_pointer, ctypes.POINTER(Rect)).contents
+            captured.update(
+                rect=(rect.x, rect.y, rect.w, rect.h),
+                cursor=cursor,
+            )
+            return True
+
+    window = SDL3Window()
+    window._lib = SimpleNamespace(SDL_SetTextInputArea=SDLFunction())
+    window._window = 77
+    window._opened = True
+    window._closed = False
+    window._thread_id = get_ident()
+    window._coordinate_scale = 2.0
+
+    window.set_text_input_area(12, 34, 200, 24, 56)
+
+    assert captured == {
+        "rect": (24, 68, 400, 48),
+        "cursor": 112,
+    }
