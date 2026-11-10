@@ -60,7 +60,7 @@ def test_list_detail_selection_survives_resizing_between_modes():
     engine = LayoutEngine()
 
     engine.layout(root, Rect(0, 0, 390, 844))
-    root.children[0].children[1].on_click(None)
+    root.children[0].children[0].children[1].on_click(None)
     selected_content = pane._detail_body.children[0]
 
     engine.layout(root, Rect(0, 0, 1200, 800))
