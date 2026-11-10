@@ -422,6 +422,11 @@ class TextField:
         self.anchor = self.cursor
         self._focused = False
         self._selecting = False
+        self._composition_text = ""
+        self._composition_range = (self.cursor, self.cursor)
+        self._composition_original_selection = (self.anchor, self.cursor)
+        self._composition_cursor = 0
+        self._composition_selection_length = 0
         self._built_node: LayoutNode | None = None
 
     @property
@@ -429,9 +434,31 @@ class TextField:
         return (min(self.anchor, self.cursor), max(self.anchor, self.cursor))
 
     def _display_text(self) -> str:
+        if self._composition_text:
+            start, end = self._composition_range
+            return self.value[:start] + self._composition_text + self.value[end:]
         if not self.value and not self._focused:
             return self.placeholder
         return self.value
+
+    def _visual_cursor(self) -> int:
+        if self._composition_text:
+            return self._composition_range[0] + self._composition_cursor
+        return self.cursor
+
+    def _clear_composition(self, *, restore_selection: bool = True) -> bool:
+        if not self._composition_text:
+            return False
+        if restore_selection:
+            self.anchor, self.cursor = self._composition_original_selection
+        self._composition_text = ""
+        self._composition_range = (self.cursor, self.cursor)
+        self._composition_original_selection = (self.anchor, self.cursor)
+        self._composition_cursor = 0
+        self._composition_selection_length = 0
+        if self._built_node is not None:
+            self._built_node.text_composition = None
+        return True
 
     def _sync_node(self):
         node = self._built_node
@@ -442,11 +469,37 @@ class TextField:
                            self.theme.muted if not self.value else self.theme.foreground)
         node.accessibility_value = self.value
         node.accessibility_focused = self._focused
-        node.text_cursor = self.cursor if self._focused else None
-        node.text_selection = self.selection if self._focused and self.selection[0] != self.selection[1] else None
+
+        visual_cursor = min(len(node.text or ""), self._visual_cursor())
+        if self._composition_text:
+            composition_start = self._composition_range[0]
+            node.text_composition = (
+                composition_start, composition_start + len(self._composition_text)
+            )
+            if self._composition_selection_length:
+                selection_start = composition_start + self._composition_cursor
+                node.text_selection = (
+                    selection_start, selection_start + self._composition_selection_length
+                )
+            else:
+                node.text_selection = None
+        else:
+            node.text_composition = None
+            node.text_selection = (
+                self.selection if self._focused and self.selection[0] != self.selection[1]
+                else None
+            )
+        node.text_cursor = visual_cursor if self._focused else None
+
         layout = node.text_layout
-        if self._focused and layout is not None and callable(getattr(layout, "caret_position", None)):
-            caret_x, caret_y, _line = layout.caret_position(self.cursor)
+        caret_x = visual_cursor * self.font_size * 0.55
+        caret_y = 0.0
+        line_height = max(self.font_size * 1.35, 1.0)
+        if layout is not None and callable(getattr(layout, "caret_position", None)):
+            caret_x, caret_y, line_index = layout.caret_position(visual_cursor)
+            if getattr(layout, "lines", None):
+                line_height = layout.lines[line_index].height or layout.line_height
+        if self._focused:
             visible_width = node.content_bounds.width
             visible_height = node.content_bounds.height
             if caret_x - node.text_scroll_x > visible_width - 3:
@@ -454,10 +507,23 @@ class TextField:
             elif caret_x < node.text_scroll_x:
                 node.text_scroll_x = caret_x
             if self.multiline:
-                if caret_y + layout.line_height - node.text_scroll_y > visible_height:
-                    node.text_scroll_y = max(0.0, caret_y + layout.line_height - visible_height)
+                if caret_y + line_height - node.text_scroll_y > visible_height:
+                    node.text_scroll_y = max(0.0, caret_y + line_height - visible_height)
                 elif caret_y < node.text_scroll_y:
                     node.text_scroll_y = caret_y
+
+            set_input_area = getattr(self.clipboard, "set_text_input_area", None)
+            if callable(set_input_area) and node.content_bounds.width > 0:
+                area = node.content_bounds
+                area_x = round(area.x)
+                area_y = round(area.y + caret_y - node.text_scroll_y)
+                area_width = max(1, round(area.width))
+                area_height = max(1, round(line_height))
+                cursor_offset = max(0, round(caret_x - node.text_scroll_x))
+                set_input_area(
+                    area_x, area_y, area_width, area_height,
+                    min(cursor_offset, area_width),
+                )
 
     def build(self) -> LayoutNode:
         node = LayoutNode(
@@ -482,6 +548,7 @@ class TextField:
             on_pointer_up=self._pointer_up,
             on_key_down=self._key_down,
             on_text_input=self._text_input,
+            on_text_editing=self._text_editing,
             on_focus=self._focus,
             on_blur=self._blur,
         )
@@ -491,6 +558,7 @@ class TextField:
             node.on_pointer_up = None
             node.on_key_down = None
             node.on_text_input = None
+            node.on_text_editing = None
         self._built_node = node
         return node
 
@@ -504,10 +572,14 @@ class TextField:
             self._built_node.border_color = self.theme.focus
 
     def _blur(self, _event=None):
+        self._clear_composition(restore_selection=True)
         self._focused = False
         stop_text_input = getattr(self.clipboard, "stop_text_input", None)
         if callable(stop_text_input):
             stop_text_input()
+        clear_composition = getattr(self.clipboard, "clear_composition", None)
+        if callable(clear_composition):
+            clear_composition()
         self.anchor = self.cursor
         self._sync_node()
         if self._built_node is not None:
@@ -549,6 +621,7 @@ class TextField:
     def _pointer_down(self, event):
         if self.disabled:
             return
+        self._clear_composition(restore_selection=True)
         self.cursor = self._offset_from_pointer(event)
         self.anchor = self.cursor
         self._selecting = True
@@ -593,9 +666,46 @@ class TextField:
             self.on_change(self.value)
         return True
 
+    def _text_editing(self, event):
+        """Update the temporary IME pre-edit string without mutating the value."""
+        if self.disabled or self.read_only:
+            return False
+        text = getattr(event, "text", None) or ""
+        if not text:
+            changed = self._clear_composition(restore_selection=True)
+            if changed:
+                self._sync_node()
+            return True
+
+        if not self._composition_text:
+            self._composition_original_selection = (self.anchor, self.cursor)
+            self._composition_range = self.selection
+
+        try:
+            start = int(getattr(event, "text_start", -1))
+        except (TypeError, ValueError):
+            start = -1
+        try:
+            length = int(getattr(event, "text_length", -1))
+        except (TypeError, ValueError):
+            length = -1
+        if start < 0:
+            start = len(text)
+        start = normalize_grapheme_boundary(
+            text, min(len(text), start), forward=False
+        )
+        end = start if length <= 0 else min(len(text), start + length)
+        end = normalize_grapheme_boundary(text, end, forward=True)
+        self._composition_text = text
+        self._composition_cursor = start
+        self._composition_selection_length = max(0, end - start)
+        self._sync_node()
+        return True
+
     def _text_input(self, event):
         if self.disabled or self.read_only:
             return False
+        self._clear_composition(restore_selection=True)
         text = getattr(event, "text", None) or ""
         if not self.multiline:
             text = text.replace("\r", "").replace("\n", "")
@@ -608,6 +718,16 @@ class TextField:
         if key is None:
             return False
         code = key.keycode
+        if self._composition_text:
+            if code == _KEY_ESCAPE:
+                self._clear_composition(restore_selection=True)
+                clear_composition = getattr(self.clipboard, "clear_composition", None)
+                if callable(clear_composition):
+                    clear_composition()
+                self._sync_node()
+                return True
+            self._clear_composition(restore_selection=True)
+            self._sync_node()
         shift = bool(key.modifiers & _MOD_SHIFT)
         control = bool(key.modifiers & _MOD_CTRL)
         if control and code in (ord("a"), ord("A")):
