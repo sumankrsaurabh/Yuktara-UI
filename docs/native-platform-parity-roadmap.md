@@ -95,3 +95,15 @@ Do not describe Yuktara UI as equivalent to Compose, Flutter or Qt until the
 adaptive composition, GPU rendering, text, accessibility and physical display
 validation gaps above are closed. Keep implementation status and platform
 certification status separate in release notes.
+
+
+## Progress update: adaptive window foundation
+
+The development branch now provides `WindowAdaptiveInfo`, independently
+classifies logical window width and height, exposes compact/medium/expanded/
+large/extra-large width classes, and updates `NativeRuntime.adaptive_info`
+after a resize. The SDL runtime host coalesces resize and DPI events per event
+batch and skips identical runtime resizes. This closes the initial window-size
+classification gap, but adaptive navigation scaffolds, state-preserving
+navigation transitions, multi-pane layouts and physical-device validation are
+still open work.
