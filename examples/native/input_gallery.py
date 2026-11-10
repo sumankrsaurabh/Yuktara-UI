@@ -16,8 +16,9 @@ from novaui.native.renderer import RenderSize, SkiaRenderer
 
 def main():
     theme = NativeTheme()
-    name = TextField(placeholder="Your name", width=300)
-    notes = TextArea("Write a few lines...", width=420, height=112)
+    window = SDL3Window("Yuktara UI — Input Components", 1000, 820)
+    name = TextField(placeholder="Your name", width=300, clipboard=window, text_input=window)
+    notes = TextArea("Write a few lines...", width=420, height=112, clipboard=window, text_input=window)
     period = Dropdown(("Daily", "Weekly", "Monthly"), value="Weekly", width=240)
     zoom = Slider(value=70, minimum=0, maximum=100, step=5, label="Zoom", width=320)
     density = SegmentedControl(("Compact", "Comfortable", "Spacious"), value="Comfortable")
@@ -70,7 +71,6 @@ def main():
 
     renderer = SkiaRenderer(RenderSize(1000, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1000, 820, clear_color=theme.background)
-    window = SDL3Window("Yuktara UI — Input Components", 1000, 820)
     window.open()
     runtime.start()
     running = True
