@@ -25,6 +25,62 @@ def _insets(value: float | Insets, name: str) -> Insets:
     return Insets.all(float(value))
 
 
+@dataclass(frozen=True)
+class ResponsiveVariant:
+    """A layout tree selected when its parent reaches a minimum UI width."""
+
+    min_width: float
+    child: object
+
+
+@dataclass
+class Responsive:
+    """Select compact, medium or expanded composition from available width.
+
+    Variants are ordered by strictly increasing minimum width. The first
+    variant is the fallback below its threshold. The active child is selected
+    during layout, so a window resize can switch variants without rebuilding
+    the application component.
+    """
+
+    variants: Sequence[ResponsiveVariant | tuple[float, object]]
+    padding: float | Insets = 0
+    align: Alignment = Alignment.STRETCH
+    key: str | None = None
+
+    def build(self) -> LayoutNode:
+        if not self.variants:
+            raise ValueError("Responsive requires at least one variant")
+        normalized = []
+        previous_width = -1.0
+        for variant in self.variants:
+            if isinstance(variant, ResponsiveVariant):
+                minimum_width, child = variant.min_width, variant.child
+            elif isinstance(variant, (tuple, list)) and len(variant) == 2:
+                minimum_width, child = variant
+            else:
+                raise TypeError("responsive variants must be ResponsiveVariant or (min_width, child) pairs")
+            if (not isinstance(minimum_width, (int, float))
+                    or isinstance(minimum_width, bool)
+                    or minimum_width < 0):
+                raise ValueError("responsive variant min_width must be non-negative")
+            minimum_width = float(minimum_width)
+            if minimum_width <= previous_width:
+                raise ValueError("responsive variant min_width values must be strictly increasing")
+            if child is None:
+                raise ValueError("responsive variant children cannot be None")
+            normalized.append((minimum_width, _node(child)))
+            previous_width = minimum_width
+        return LayoutNode(
+            "responsive",
+            responsive_variants=tuple(normalized),
+            padding=_insets(self.padding, "padding"),
+            align=self.align,
+            key=self.key,
+            accessibility_role="group",
+        )
+
+
 @dataclass
 class Container:
     """A styled native container with padding, margin, border and alignment."""
@@ -776,6 +832,7 @@ class TreeView:
 
 __all__ = [
     "Calendar", "Container", "DatePicker", "Grid", "GridItem", "Image",
+    "Responsive", "ResponsiveVariant",
     "NavigationDrawer", "NavigationItem", "Positioned", "ScrollView", "Table",
     "TreeItem", "TreeView", "FilePicker",
 ]
