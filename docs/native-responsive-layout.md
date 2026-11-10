@@ -254,3 +254,47 @@ plus 700 logical units of height for the inspector layout. Configure these
 with `min_two_pane_width`, `min_three_pane_width` and
 `min_three_pane_height`. The sidebar and inspector can be omitted. The
 application owns the content and any stateful models used by those panes.
+
+
+## Multi-viewport adaptive preview harness
+
+Use `AdaptivePreviewHarness` to exercise the production layout engine at
+several logical viewport sizes without opening an SDL window or creating a
+Skia surface. Each profile has a unique name, logical width and height, and
+optional display scale:
+
+```python
+from novaui.native import (
+    AdaptiveLayout, AdaptivePreviewHarness, AdaptiveVariant,
+    ViewportProfile, column, row,
+)
+
+screen = AdaptiveLayout((
+    AdaptiveVariant(0, 0, column(sidebar, content)),
+    AdaptiveVariant(840, 0, row(sidebar, content, spacing=16)),
+)).build()
+
+profiles = (
+    ViewportProfile("phone", 390, 844),
+    ViewportProfile("tablet", 900, 1200, scale=2),
+    ViewportProfile("desktop", 1440, 900, scale=1.5),
+)
+for preview in AdaptivePreviewHarness(screen, profiles).run():
+    print(preview.profile.name, preview.active_variant_index)
+    print("Backing pixels:", preview.backing_pixel_size)
+    for node in preview.nodes:
+        print(node.path, node.kind, node.bounds)
+```
+
+The harness uses logical dimensions for layout and uses `scale` only to
+report the expected backing-pixel size. Results include active adaptive
+variant indices, visible-tree node bounds, accessibility labels and grid
+column counts. The same retained tree is re-laid out at each profile, matching
+the resize behavior of the runtime. It is a deterministic layout regression
+tool, not a substitute for SDL/Skia rendering or physical display testing.
+
+Run its regression suite with:
+
+```bash
+pytest tests/native/test_adaptive_preview.py
+```
