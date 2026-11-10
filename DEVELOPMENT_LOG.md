@@ -78,7 +78,7 @@ The following catalog is the documented native component surface in the 3.3 sour
 - `Checkbox`.
 - `Switch`.
 - `RadioGroup`.
-- `Dropdown).
+- `Dropdown`.
 - `Slider).
 - `Tabs` and `TabItem`.
 - `SegmentedControl).
@@ -93,11 +93,11 @@ The following catalog is the documented native component surface in the 3.3 sour
 
 ### Overlays and notifications
 
-- `Dialog) — centered modal surface and scrim.
-- `Popover) — anchored floating content.
+- `Dialog` — centered modal surface and scrim.
+- `Popover` — anchored floating content.
 - `Tooltip) — pointer-transparent anchored hint.
 - `ContextMenu` and `MenuItem`.
-- `Toast) — timed or persistent notification.
+- `Toast` — timed or persistent notification.
 - `OverlayManager` and `OverlayHandle` — stacking, placement, dismissal and lifecycle management.
 
 ### Operating-system integration
