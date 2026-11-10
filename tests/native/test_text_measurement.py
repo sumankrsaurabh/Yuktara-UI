@@ -111,3 +111,22 @@ def test_grapheme_spans_falls_back_when_regex_is_unavailable(monkeypatch):
     monkeypatch.setitem(sys.modules, "regex", None)
     sample = "e\u0301"
     assert grapheme_spans(sample) == ((0, 2),)
+
+
+def test_grapheme_spans_properties_cover_source_text():
+    from hypothesis import given, strategies as st
+    from novaui.native.text import grapheme_spans
+
+    @given(st.text())
+    def check(source):
+        spans = grapheme_spans(source)
+        if not source:
+            assert spans == ()
+            return
+        assert spans[0][0] == 0
+        assert spans[-1][1] == len(source)
+        assert all(start < end for start, end in spans)
+        assert all(left[1] == right[0] for left, right in zip(spans, spans[1:]))
+        assert "".join(source[start:end] for start, end in spans) == source
+
+    check()
