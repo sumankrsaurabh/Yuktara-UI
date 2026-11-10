@@ -22,9 +22,12 @@ def _variants():
         LayoutNode("text", text="medium-side"),
         key="medium-content",
     )
-    expanded = LayoutNode.grid(
-        LayoutNode("text", text="expanded-a"),
-        LayoutNode("text", text="expanded-b"),
+    expanded = LayoutNode(
+        "grid",
+        [
+            LayoutNode("text", text="expanded-a"),
+            LayoutNode("text", text="expanded-b"),
+        ],
         grid_columns=2,
         key="expanded-content",
     )
