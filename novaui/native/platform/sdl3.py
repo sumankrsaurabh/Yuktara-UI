@@ -253,17 +253,6 @@ class SDL3Window:
         self._lib = self._load_library()
         self._thread_id = __import__("threading").get_ident()
 
-        if self.graphics_backend == "opengl":
-            set_gl_attribute = self._bind(
-                "SDL_GL_SetAttribute", ctypes.c_bool, [ctypes.c_int, ctypes.c_int]
-            )
-            # SDL_GL_CONTEXT_MAJOR_VERSION=17, MINOR_VERSION=18,
-            # PROFILE_MASK=21, CORE_PROFILE=1. Request a conservative 3.3 core
-            # context supported by the Skia OpenGL backend.
-            for attribute, value in ((17, 3), (18, 3), (21, 1), (5, 1)):
-                if not set_gl_attribute(attribute, value):
-                    raise SDL3Error(f"SDL_GL_SetAttribute({attribute}) failed: {self._error()}")
-
         # The framework paints SDL text-editing pre-edit strings itself;
         # keep candidate-list presentation native to the operating system.
         try:
@@ -280,6 +269,17 @@ class SDL3Window:
         init = self._bind("SDL_Init", ctypes.c_bool, [ctypes.c_uint])
         if not init(SDL_INIT_VIDEO):
             raise SDL3Error(f"SDL_Init failed: {self._error()}")
+
+        if self.graphics_backend == "opengl":
+            set_gl_attribute = self._bind(
+                "SDL_GL_SetAttribute", ctypes.c_bool, [ctypes.c_int, ctypes.c_int]
+            )
+            # SDL_GL_CONTEXT_MAJOR_VERSION=17, MINOR_VERSION=18,
+            # PROFILE_MASK=21, CORE_PROFILE=1. Request a conservative 3.3 core
+            # context supported by the Skia OpenGL backend.
+            for attribute, value in ((17, 3), (18, 3), (21, 1), (5, 1)):
+                if not set_gl_attribute(attribute, value):
+                    raise SDL3Error(f"SDL_GL_SetAttribute({attribute}) failed: {self._error()}")
 
         create_window = self._bind(
             "SDL_CreateWindow",
