@@ -35,6 +35,9 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip install pillow
 
+      - name: Run native test suite
+        run: python -m pytest -q tests/native
+
       - name: Provision Skia and SDL3 for Windows
         run: python -m novaui setup
 
