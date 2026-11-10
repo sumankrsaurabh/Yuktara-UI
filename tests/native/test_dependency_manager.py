@@ -141,6 +141,7 @@ def test_linux_bootstrap_uses_real_apt_package_command(monkeypatch):
     assert "build-essential" in commands[1]
     assert "libx11-dev" in commands[1]
     assert "libwayland-dev" in commands[1]
+    assert "libxtst-dev" in commands[1]
 
 
 def test_linux_bootstrap_does_not_open_hidden_sudo_prompt(monkeypatch):
