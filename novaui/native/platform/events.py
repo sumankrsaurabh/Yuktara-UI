@@ -15,6 +15,7 @@ class EventType(Enum):
     KEY_DOWN = auto()
     KEY_UP = auto()
     TEXT_INPUT = auto()
+    TEXT_EDITING = auto()
     POINTER_MOTION = auto()
     POINTER_DOWN = auto()
     POINTER_UP = auto()
@@ -61,3 +62,5 @@ class InputEvent:
     window: WindowEvent | None = None
     text: str | None = None
     raw_type: int = 0
+    text_start: int = -1
+    text_length: int = -1
