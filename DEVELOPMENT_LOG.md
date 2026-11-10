@@ -544,3 +544,14 @@ This file is intended to be the central, cumulative implementation record. Relea
 - Made sidebar and inspector optional for simpler workspace configurations.
 - Added regression tests for all three modes, pane identity retention, optional panes and breakpoint validation.
 - Documented the API and its application-owned content/state model.
+
+
+## 3.8 — Multi-viewport adaptive preview and regression harness
+
+- Added `ViewportProfile` for named logical viewport dimensions and display-scale metadata.
+- Added `AdaptivePreviewHarness`, which runs the production `LayoutEngine` against the same retained tree at multiple profiles without initializing SDL or Skia.
+- Added immutable per-viewport snapshots with selected root variant, visible node paths/bounds, accessibility labels and responsive-grid column counts.
+- Exported the preview API from `novaui.native`.
+- Added validation and regression tests for adaptive transitions, nested responsive variants, logical-to-backing-pixel calculations, repeated preview determinism and invalid profiles.
+- Added `examples/native/adaptive_preview.py` and documented how to run the preview suite.
+- Validation status: tests were authored and reviewed through repository source, but were not executed locally in this environment. No CI workflow run is attached to the latest PR head yet. Rendering, SDL integration and physical mixed-DPI/high-refresh validation remain outstanding.
