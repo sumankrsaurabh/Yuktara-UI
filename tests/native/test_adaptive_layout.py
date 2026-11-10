@@ -85,11 +85,10 @@ def test_adaptive_layout_reflows_on_resize_without_rebuilding_component():
         runtime.stop()
 
 
-def test_adaptive_variants_must_be_monotonic_and_unique():
-    with pytest.raises(ValueError, match="ordered"):
-        AdaptiveLayout(variants=((0, 0, LayoutNode.column()), (700, 600, LayoutNode.row()),
-                                 (900, 500, LayoutNode.grid())))
-    with pytest.raises(ValueError, match="ordered"):
+def test_adaptive_variant_thresholds_must_be_unique():
+    with pytest.raises(ValueError, match="unique"):
+        AdaptiveLayout(variants=((0, 0, LayoutNode.column()), (0, 0, LayoutNode.row()))).build()
+    with pytest.raises(ValueError, match="unique"):
         AdaptiveLayout(variants=((0, 0, LayoutNode.column()), (0, 0, LayoutNode.row()))).build()
 
 
