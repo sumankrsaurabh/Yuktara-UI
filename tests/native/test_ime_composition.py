@@ -169,7 +169,7 @@ def test_native_runtime_routes_text_editing_event_to_focused_text_field():
             pass
 
     field = TextField("start")
-    runtime = NativeRuntime(lambda: field, RecordingRenderer(), 320, 120)
+    runtime = NativeRuntime(lambda: field.build(), RecordingRenderer(), 320, 120)
     runtime.start()
     try:
         runtime.dispatcher._set_focus(runtime.root)
