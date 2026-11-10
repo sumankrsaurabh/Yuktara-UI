@@ -87,3 +87,23 @@ texture. GPU surfaces, native screen-reader bridges and mobile platform backends
 remain future work. The 3.2 regression suite validates the backend-injected
 lifecycle and coordinate contracts; it is not a substitute for real desktop
 smoke tests on each supported OS and display-scaling configuration.
+
+
+## Window resize and display-scale lifecycle
+
+Use `SDL3Window.run_runtime(runtime, frame_provider)` as the standard desktop
+host loop. It synchronizes logical UI size and backing pixel size at startup,
+on window resize, on pixel-size changes, and when a window moves to a display
+with a different content scale.
+
+The framework uses device-independent UI units for layout, pointer hit testing
+and component dimensions. The Skia surface uses the backing pixel dimensions.
+The SDL host converts mouse coordinates and IME candidate-window rectangles
+between the native window coordinate space and UI units. Touch input remains
+normalized until NativeRuntime scales it against the current UI viewport.
+
+Manual event loops must process window lifecycle events, not just dispatch
+pointer and keyboard events. Prefer the standard host loop; if a custom host is
+required, call `window.get_sizes()` / `window.sync_runtime_size(runtime)`
+when window metrics change, pass events through `runtime.handle_event(event)`,
+and advance time and process pending work on the UI thread.
