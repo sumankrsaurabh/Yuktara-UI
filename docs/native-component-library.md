@@ -253,3 +253,47 @@ row = ListTile(
 The interactive design-system gallery demonstrates these components. Tests in
 `tests/native/test_content_components.py` cover semantics, dimensions,
 selection, disabled activation and composition.
+
+
+### Application chrome, feedback and card variants (4.0)
+
+`AppBar` provides a consistent application toolbar with optional leading
+content, title, subtitle and trailing actions. Its compact, regular and
+prominent sizes use shared typography, spacing and surface tokens; flat,
+surface and outlined treatments keep the same layout contract.
+
+```python
+from novaui.native import AppBar, IconButton
+
+toolbar = AppBar(
+    "Workspace",
+    subtitle="Your projects",
+    leading=IconButton("←", "Back"),
+    actions=(IconButton("＋", "Create"),),
+    size="regular",
+)
+```
+
+`Alert` is an inline feedback surface with info, success, warning and danger
+semantics. It exposes a live-region role and uses assertive announcement
+semantics for danger messages.
+
+```python
+from novaui.native import Alert
+
+notice = Alert(
+    "Your changes were saved.",
+    title="Saved",
+    variant="success",
+)
+```
+
+`Card` supports `outlined`, `filled`, `flat` and `elevated` surface
+variants. Existing `bordered`, `background`, `radius` and padding
+arguments remain compatible. The elevated variant currently communicates
+hierarchy through a higher surface-container role; the renderer's shadow
+compositor is still future work.
+
+The design-system gallery now includes application bars, alerts, content
+components and card surfaces. New regression coverage is in
+`tests/native/test_app_bar_alert.py` and `tests/native/test_design_system.py`.
