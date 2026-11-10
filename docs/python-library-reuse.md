@@ -23,6 +23,7 @@ Install the optional text capabilities:
 ```bash
 python -m pip install 'yuktara-ui[unicode]'
 python -m pip install 'yuktara-ui[shaping]'
+python -m pip install 'yuktara-ui[syntax]'
 ```
 
 The base installation remains usable without these optional packages. When
