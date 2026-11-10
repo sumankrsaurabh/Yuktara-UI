@@ -795,8 +795,13 @@ class ListDetailPane:
         if self._compact_detail_header is not None:
             title_node = self._compact_detail_header.children[-1]
             title_node.text = label
+            title_node.accessibility_label = label
+            title_node.text_layout = None
         if self._wide_detail_header is not None:
-            self._wide_detail_header.children[0].text = label
+            title_node = self._wide_detail_header.children[0]
+            title_node.text = label
+            title_node.accessibility_label = label
+            title_node.text_layout = None
 
     def _select(self, item: ListDetailItem):
         if item.disabled:
@@ -824,7 +829,7 @@ class ListDetailPane:
             selected = self.selected in {key, item.label}
             label = item.label
             if item.subtitle:
-                label += "\\n" + item.subtitle
+                label += "\n" + item.subtitle
             node = LayoutNode(
                 "text", text=label, font_size=14,
                 text_color=t.disabled_text if item.disabled else (t.primary if selected else t.foreground),
