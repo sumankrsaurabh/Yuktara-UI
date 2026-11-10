@@ -620,7 +620,7 @@ class NavigationScaffold:
             label = item.icon or item.label[:1]
             padding = Insets.symmetric(vertical=13, horizontal=10)
         elif mode == "bottom":
-            label = ((item.icon + "\\n") if item.icon else "") + item.label
+            label = ((item.icon + "\n") if item.icon else "") + item.label
             padding = Insets.symmetric(vertical=8, horizontal=4)
         else:
             prefix = (item.icon + "  ") if item.icon else ""
