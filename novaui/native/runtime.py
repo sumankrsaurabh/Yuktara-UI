@@ -14,6 +14,7 @@ from .renderer import RenderSize, SkiaRenderer
 from .platform.events import EventType
 from .overlays import OverlayManager
 from .animations import AnimationManager, AnimationHandle
+from .adaptive import compute_window_adaptive_info
 
 
 def _positive_finite_dimension(value, name: str) -> float:
@@ -50,13 +51,18 @@ class NativeRuntime:
         height = _positive_finite_dimension(height, "runtime height")
         self.width = width
         self.height = height
-        self.renderer = renderer
-        self.clear_color = clear_color
         renderer_size = getattr(renderer, "size", None)
         self.scale_x = float(getattr(renderer_size, "scale", 1.0))
         self.scale_y = float(getattr(renderer_size, "scale_y", None) or self.scale_x)
         self.pixel_width = int(round(self.width * self.scale_x))
         self.pixel_height = int(round(self.height * self.scale_y))
+        self.adaptive_info = compute_window_adaptive_info(
+            self.width, self.height,
+            pixel_width=self.pixel_width, pixel_height=self.pixel_height,
+            scale_x=self.scale_x, scale_y=self.scale_y,
+        )
+        self.renderer = renderer
+        self.clear_color = clear_color
         if text_measurer is None and isinstance(renderer, SkiaRenderer):
             text_measurer = TextMeasurer(renderer._skia, renderer._fonts)
         self.layout_engine = LayoutEngine(text_measurer=text_measurer)
@@ -327,6 +333,11 @@ class NativeRuntime:
         self.pixel_height = pixel_height
         self.scale_x = scale_x
         self.scale_y = scale_y
+        self.adaptive_info = compute_window_adaptive_info(
+            self.width, self.height,
+            pixel_width=self.pixel_width, pixel_height=self.pixel_height,
+            scale_x=self.scale_x, scale_y=self.scale_y,
+        )
         if isinstance(self.renderer, SkiaRenderer):
             self.renderer.resize(RenderSize(
                 max(1, int(round(self.width))),
