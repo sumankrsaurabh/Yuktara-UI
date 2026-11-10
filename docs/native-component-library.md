@@ -218,3 +218,38 @@ The gallery and headless tests validate native component trees and states,
 not certification against Android Material You, iOS UIKit, macOS AppKit or
 assistive-technology platform bridges. Yuktara keeps its own component APIs
 and visual identity while adopting familiar interaction conventions.
+
+
+### Content and action components (3.10)
+
+The component catalogue now includes:
+
+- `FloatingActionButton`: small (48), regular (56) and large (96) action
+  targets, plus an extended icon-and-label presentation. The accessible name
+  remains the full action label in both forms.
+- `Chip`: neutral, primary, success, warning, danger and information roles,
+  with selected, disabled and optional activation semantics.
+- `Avatar`: small through extra-large initials/glyph presentation with
+  explicit accessible description and semantic color variants.
+- `ListTile`: leading content, title, optional subtitle and trailing content,
+  selected/disabled states, dense spacing and row-wide activation.
+
+Examples:
+
+```python
+from novaui.native import Avatar, Chip, FloatingActionButton, ListTile
+
+profile = Avatar("Asha Sharma", initials="AS", size="large")
+filter_chip = Chip("Recently updated", selected=True)
+create = FloatingActionButton("Create document", icon="+", extended=True)
+row = ListTile(
+    "Project files",
+    subtitle="18 items",
+    leading=Avatar("Project files", initials="P"),
+    trailing=Chip("Synced", variant="success"),
+)
+```
+
+The interactive design-system gallery demonstrates these components. Tests in
+`tests/native/test_content_components.py` cover semantics, dimensions,
+selection, disabled activation and composition.
