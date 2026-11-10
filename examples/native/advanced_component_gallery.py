@@ -183,7 +183,7 @@ def main() -> None:
                 ),
             ),
         )
-    )
+    ).build()
 
     renderer = SkiaRenderer(RenderSize(1160, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1160, 820,
