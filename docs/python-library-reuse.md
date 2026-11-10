@@ -16,13 +16,14 @@ runtime.
 | Text shaping | uharfbuzz | Optional shaping extra | Python shaping adapter, source offsets and Skia glyph painting |
 | Grapheme segmentation | regex (Unicode \X) | Optional unicode extra; used automatically when installed | Python fallback, source-index mapping and editing behavior |
 | Syntax tokenization | Pygments | Optional `syntax` extra; used by the native RichText adapter | Yuktara maps tokens to grapheme-safe spans and paints them with Skia |
+| Markdown parsing | Mistune | Optional `markdown` extra; AST-only adapter | Yuktara maps Markdown blocks, inline styles and link ranges into native text models |
 | Unit/integration tests | pytest + Hypothesis | Development dependencies | Test architecture, fixtures and property-based invariants |
 
 Install the optional text capabilities:
 
 ```bash
 python -m pip install 'yuktara-ui[unicode]'
-python -m pip install 'yuktara-ui[shaping]'
+python -m pip install 'yuktara-ui[shaping]'\npython -m pip install 'yuktara-ui[syntax]'\npython -m pip install 'yuktara-ui[markdown]'
 python -m pip install 'yuktara-ui[syntax]'
 ```
 
