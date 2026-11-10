@@ -98,8 +98,9 @@ def test_list_tile_click_reaches_deep_text_and_selected_semantics():
 
     assert tile.accessibility_role == "button"
     assert tile.accessibility_selected is True
-    assert title.on_click is not None
-    title.on_click(None)
+    assert title.on_click is None
+    assert title.on_pointer_up is not None
+    title.on_pointer_up(None)
     assert calls == ["open"]
 
 
