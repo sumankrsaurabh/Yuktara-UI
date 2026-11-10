@@ -11,7 +11,7 @@ from novaui.native import (
     Label, NativeRuntime, NativeTheme, ParagraphStyle, RichText, TextStyleSpan,
     column,
 )
-from novaui.native.platform import SDL3Window, EventType
+from novaui.native.platform import SDL3Window
 from novaui.native.platform.skia_bridge import renderer_frame
 from novaui.native.renderer import RenderSize, SkiaRenderer
 
@@ -66,22 +66,10 @@ def main():
     runtime = NativeRuntime(lambda: content, renderer, 1000, 680,
                             clear_color=theme.background)
     window = SDL3Window("Yuktara UI — Rich Text and Paragraphs", 1000, 680)
-    window.open()
-    runtime.start()
-    running = True
-    try:
-        while running:
-            for event in window.poll_input_events():
-                if event.type is EventType.QUIT:
-                    running = False
-                    break
-                runtime.dispatch(event)
-            if running:
-                runtime.render()
-                window.present(renderer_frame(renderer, skia_module=skia))
-    finally:
-        runtime.stop()
-        window.close()
+    window.run_runtime(
+        runtime,
+        lambda _runtime: renderer_frame(renderer, skia_module=skia),
+    )
 
 
 if __name__ == "__main__":
