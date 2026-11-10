@@ -22,6 +22,7 @@ SDL_EVENT_WINDOW_FOCUS_GAINED = 0x20B
 SDL_EVENT_WINDOW_FOCUS_LOST = 0x20C
 SDL_EVENT_KEY_DOWN = 0x300
 SDL_EVENT_KEY_UP = 0x301
+SDL_EVENT_TEXT_EDITING = 0x302
 SDL_EVENT_TEXT_INPUT = 0x303
 SDL_EVENT_MOUSE_MOTION = 0x400
 SDL_EVENT_MOUSE_BUTTON_DOWN = 0x401
@@ -76,6 +77,18 @@ class _TextInput(ctypes.Structure):
         ("timestamp", ctypes.c_uint64),
         ("windowID", ctypes.c_uint32),
         ("text", ctypes.c_void_p),
+    ]
+
+
+class _TextEditing(ctypes.Structure):
+    _fields_ = [
+        ("type", ctypes.c_uint32),
+        ("reserved", ctypes.c_uint32),
+        ("timestamp", ctypes.c_uint64),
+        ("windowID", ctypes.c_uint32),
+        ("text", ctypes.c_void_p),
+        ("start", ctypes.c_int32),
+        ("length", ctypes.c_int32),
     ]
 
 
@@ -187,6 +200,14 @@ class SDL3EventDecoder:
                     repeat=bool(ev.repeat),
                 ),
                 raw_type=kind,
+            )
+
+        if kind == SDL_EVENT_TEXT_EDITING:
+            ev = _TextEditing.from_buffer_copy(raw)
+            value = ctypes.string_at(ev.text).decode("utf-8", "replace") if ev.text else ""
+            return InputEvent(
+                EventType.TEXT_EDITING, timestamp, text=value,
+                raw_type=kind, text_start=int(ev.start), text_length=int(ev.length),
             )
 
         if kind == SDL_EVENT_TEXT_INPUT:
