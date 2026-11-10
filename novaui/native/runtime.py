@@ -229,7 +229,7 @@ class NativeRuntime:
                 event.type == EventType.POINTER_MOTION and
                 (pointer.source == "touch" or self.dispatcher.has_capture)
             )
-        elif event.type in {EventType.KEY_DOWN, EventType.TEXT_INPUT}:
+        elif event.type in {EventType.KEY_DOWN, EventType.TEXT_INPUT, EventType.TEXT_EDITING}:
             should_render = True
         if should_render:
             self._pending_render = False
@@ -265,6 +265,7 @@ class NativeRuntime:
             return True
         if event.type in {
             EventType.KEY_DOWN, EventType.KEY_UP, EventType.TEXT_INPUT,
+            EventType.TEXT_EDITING,
             EventType.POINTER_MOTION, EventType.POINTER_DOWN,
             EventType.POINTER_UP, EventType.POINTER_WHEEL,
         }:
