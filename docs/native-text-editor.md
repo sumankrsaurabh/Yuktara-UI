@@ -39,7 +39,7 @@ Lines retain absolute source offsets. Layout helpers provide:
 - `offset_at(x, y)` — nearest insertion boundary for a pointer position.
 - `selection_rects(start, end)` — line-specific native selection rectangles.
 
-Grapheme segmentation uses the optional `regex` package's Unicode `\\X`
+Grapheme segmentation uses the optional `regex` package's Unicode `\X`
 extended-grapheme implementation when installed. Add it with
 `python -m pip install 'yuktara-ui[unicode]'`. The base installation retains a
 dependency-free fallback for combining marks, emoji variation/modifier
