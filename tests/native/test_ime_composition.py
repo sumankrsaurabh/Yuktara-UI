@@ -5,6 +5,7 @@ from threading import get_ident
 from types import SimpleNamespace
 
 from novaui.native import NativeRuntime, TextField
+from novaui.native.layout import Rect
 from novaui.native.platform.events import EventType, InputEvent, PointerEvent
 from novaui.native.platform.sdl3 import SDL3Window
 from novaui.native.platform.sdl3_events import (
@@ -140,10 +141,7 @@ def test_text_field_updates_native_ime_area_from_measured_caret():
     field._built_node = node
     field._focused = True
     field.cursor = 4
-    node.content_bounds.x = 10
-    node.content_bounds.y = 20
-    node.content_bounds.width = 180
-    node.content_bounds.height = 32
+    node.content_bounds = Rect(10, 20, 180, 32)
     node.text_layout = Layout()
 
     field._update_text_input_area(node)
