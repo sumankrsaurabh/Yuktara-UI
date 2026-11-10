@@ -6,7 +6,7 @@ from .core import (
 )
 from .overlays import ContextMenu, Dialog, MenuItem, Popover, Toast, Tooltip
 from .advanced import (AdaptiveLayout, AdaptiveVariant, Calendar, Container, DatePicker, Grid, GridItem, Image,
-                       NavigationDrawer, NavigationItem, NavigationScaffold, ListDetailItem, ListDetailPane, Positioned, ScrollView,
+                       NavigationDrawer, NavigationItem, NavigationScaffold, AdaptiveWorkspace, ListDetailItem, ListDetailPane, Positioned, ScrollView,
                        Table, TreeItem, TreeView, FilePicker, Responsive, ResponsiveVariant)
 
 __all__ = [
@@ -15,7 +15,7 @@ __all__ = [
     "Switch", "TabItem", "Tabs", "TextArea", "TextField", "column", "row",
     "stack", "ContextMenu", "Dialog", "MenuItem", "Popover", "Toast",
     "Tooltip", "AdaptiveLayout", "AdaptiveVariant", "Calendar", "DatePicker", "Grid", "Image",
-    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "ListDetailItem", "ListDetailPane", "Positioned", "GridItem", "ScrollView",
+    "NavigationDrawer", "NavigationItem", "NavigationScaffold", "AdaptiveWorkspace", "ListDetailItem", "ListDetailPane", "Positioned", "GridItem", "ScrollView",
     "Table", "TreeItem",
     "TreeView", "FilePicker", "Responsive", "ResponsiveVariant",
 ]
