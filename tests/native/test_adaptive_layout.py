@@ -13,13 +13,11 @@ def _variants():
         LayoutNode("text", text="wide-side"),
         key="wide",
     )
-    tall_wide = LayoutNode.grid(
-        LayoutNode("text", text="grid-a"),
-        LayoutNode("text", text="grid-b"),
-        columns=2,
-    ) if hasattr(LayoutNode, "grid") else LayoutNode("grid", [
-        LayoutNode("text", text="grid-a"), LayoutNode("text", text="grid-b")
-    ], grid_columns=2)
+    tall_wide = LayoutNode(
+        "grid",
+        [LayoutNode("text", text="grid-a"), LayoutNode("text", text="grid-b")],
+        grid_columns=2,
+    )
     return compact, wide, tall_wide
 
 
