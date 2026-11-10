@@ -45,7 +45,7 @@ Set these properties on `LayoutNode`:
 | `accessibility_actions` | Supported action hints from the standard vocabulary below. |
 
 Supported actions are `activate`, `collapse`, `decrement`, `dismiss`,
-`expand`, `focus`, `scroll_backward`, `scroll_forward`, `set_value` and
+`expand`, `focus`, `increment`, `scroll_backward`, `scroll_forward`, `set_value` and
 `show_menu`. These are declarations for a provider adapter; the provider is
 responsible for mapping each action to the matching widget callback or runtime
 operation.

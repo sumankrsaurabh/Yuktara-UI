@@ -132,6 +132,7 @@ def test_accessibility_metadata_validation_is_explicit():
         LayoutNode("box", accessibility_orientation="diagonal")
     with pytest.raises(ValueError, match="live"):
         LayoutNode("box", accessibility_live="urgent")
+    LayoutNode("box", accessibility_actions=("increment", "decrement"))
     with pytest.raises(ValueError, match="supported actions"):
         LayoutNode("box", accessibility_actions=("teleport",))
     with pytest.raises(ValueError, match="duplicates"):

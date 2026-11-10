@@ -235,7 +235,7 @@ The backend-neutral semantic tree supports:
 - Hidden-subtree pruning and modal-scope construction before identifier checks.
 - Role descriptions, horizontal/vertical orientation and polite/assertive live-region hints.
 - Read-only, required and invalid states; numeric range minimum, maximum and current-value metadata.
-- A validated standard action vocabulary for platform adapters, plus logical-pixel node bounds and focus/state metadata.
+- A validated standard action vocabulary (including increment/decrement) for platform adapters, plus logical-pixel node bounds and focus/state metadata.
 
 These properties are semantic data for an operating-system provider to consume. They do not themselves announce live-region changes, expose a native accessibility object, or invoke actions through a platform accessibility API.
 

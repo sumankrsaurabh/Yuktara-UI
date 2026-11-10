@@ -6,7 +6,7 @@ from typing import Callable, Optional
 from .geometry import Alignment, Insets, MainAxisAlignment, Rect, Size
 
 ACCESSIBILITY_ACTIONS = frozenset({
-    "activate", "collapse", "decrement", "dismiss", "expand", "focus",
+    "activate", "collapse", "decrement", "dismiss", "expand", "focus", "increment",
     "scroll_backward", "scroll_forward", "set_value", "show_menu",
 })
 
