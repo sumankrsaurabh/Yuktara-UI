@@ -75,6 +75,20 @@ class LayoutEngine:
             content = self._measure_scroll(node, content_constraints)
         elif node.kind == "grid":
             content = self._measure_grid(node, content_constraints)
+        elif node.kind == "responsive":
+            available_width = content_constraints.max_width
+            active_index = 0
+            for index, (minimum_width, _child) in enumerate(node.responsive_variants):
+                if available_width >= minimum_width:
+                    active_index = index
+                else:
+                    break
+            selected_child = node.responsive_variants[active_index][1]
+            if (node.responsive_active_index != active_index
+                    or node.children != [selected_child]):
+                node.children = [selected_child]
+                node.responsive_active_index = active_index
+            content = self._measure_box(node, content_constraints)
         else:
             content = self._measure_stack(node, content_constraints)
 
@@ -430,7 +444,7 @@ class LayoutEngine:
         content = bounds.inset(node.padding)
         node.content_bounds = content
 
-        if node.kind == "box":
+        if node.kind in {"box", "responsive"}:
             flow = [child for child in node.children if not _is_absolute(child)]
             if flow:
                 self._arrange_aligned(flow[0], content, node.align)
