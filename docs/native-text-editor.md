@@ -69,7 +69,7 @@ from novaui.native import TextField
 from novaui.native.platform import SDL3Window
 
 window = SDL3Window("Editor", 900, 640).open()
-field = TextField("Select and edit this text", clipboard=window)
+field = TextField("Select and edit this text", clipboard=window, text_input=window)
 # Ctrl+C / Ctrl+X / Ctrl+V now use the operating-system clipboard.
 ```
 
