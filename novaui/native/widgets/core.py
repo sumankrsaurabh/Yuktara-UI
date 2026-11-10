@@ -68,6 +68,33 @@ class Label:
         if self.max_lines is not None and self.max_lines < 1:
             raise ValueError("max_lines must be at least 1")
 
+    def _update_text_input_area(self, _node=None):
+        """Keep SDL's native IME candidate window aligned with the laid-out caret."""
+        node = self._built_node
+        set_input_area = getattr(self.clipboard, "set_text_input_area", None)
+        if not self._focused or node is None or not callable(set_input_area):
+            return
+        layout = node.text_layout
+        if layout is None or not callable(getattr(layout, "caret_position", None)):
+            return
+        visual_cursor = min(len(node.text or ""), self._visual_cursor())
+        caret_x, caret_y, line_index = layout.caret_position(visual_cursor)
+        line_height = layout.lines[line_index].height or layout.line_height
+        area = node.content_bounds
+        if area.width <= 0 or area.height <= 0:
+            return
+        geometry = (
+            round(area.x),
+            round(area.y + caret_y - node.text_scroll_y),
+            max(1, round(area.width)),
+            max(1, round(line_height)),
+            min(max(0, round(caret_x - node.text_scroll_x)), max(1, round(area.width))),
+        )
+        if geometry == getattr(self, "_last_text_input_area", None):
+            return
+        set_input_area(*geometry)
+        self._last_text_input_area = geometry
+
     def build(self) -> LayoutNode:
         node = _text_node(self.text, color=self.color or self.theme.foreground,
                           size=self.size, weight=self.weight, align=self.align,
@@ -512,19 +539,6 @@ class TextField:
                 elif caret_y < node.text_scroll_y:
                     node.text_scroll_y = caret_y
 
-            set_input_area = getattr(self.clipboard, "set_text_input_area", None)
-            if callable(set_input_area) and node.content_bounds.width > 0:
-                area = node.content_bounds
-                area_x = round(area.x)
-                area_y = round(area.y + caret_y - node.text_scroll_y)
-                area_width = max(1, round(area.width))
-                area_height = max(1, round(line_height))
-                cursor_offset = max(0, round(caret_x - node.text_scroll_x))
-                set_input_area(
-                    area_x, area_y, area_width, area_height,
-                    min(cursor_offset, area_width),
-                )
-
     def build(self) -> LayoutNode:
         node = LayoutNode(
             "text", text=self._display_text(), width=self.width, height=self.height,
@@ -549,6 +563,7 @@ class TextField:
             on_key_down=self._key_down,
             on_text_input=self._text_input,
             on_text_editing=self._text_editing,
+            on_text_layout=self._update_text_input_area,
             on_focus=self._focus,
             on_blur=self._blur,
         )
@@ -564,6 +579,7 @@ class TextField:
 
     def _focus(self, _event=None):
         self._focused = True
+        self._last_text_input_area = None
         start_text_input = getattr(self.clipboard, "start_text_input", None)
         if callable(start_text_input):
             start_text_input()
@@ -574,6 +590,7 @@ class TextField:
     def _blur(self, _event=None):
         self._clear_composition(restore_selection=True)
         self._focused = False
+        self._last_text_input_area = None
         stop_text_input = getattr(self.clipboard, "stop_text_input", None)
         if callable(stop_text_input):
             stop_text_input()
