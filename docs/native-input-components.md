@@ -9,11 +9,15 @@ semantics.
 
 ```python
 from novaui.native import TextField
+from novaui.native.platform import SDL3Window
 
+window = SDL3Window("Form", 800, 600)
 name = TextField(
     value="",
     placeholder="Your name",
     width=280,
+    clipboard=window,       # optional Ctrl+C / Ctrl+V service
+    text_input=window,      # SDL3 text input and IME composition service
     on_change=lambda value: print("name:", value),
     on_submit=lambda value: print("submitted:", value),
 )
