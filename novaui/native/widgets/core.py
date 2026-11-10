@@ -392,7 +392,7 @@ class FloatingActionButton:
     def build(self) -> LayoutNode:
         t = self.theme
         dimensions = {
-            "small": 40.0,
+            "small": 48.0,
             "regular": 56.0,
             "large": 96.0,
         }
