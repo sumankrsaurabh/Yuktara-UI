@@ -418,10 +418,10 @@ _MOD_CTRL = 0x00C0
 class TextField:
     """Single-line native text input with keyboard focus and editing.
 
-    Text is delivered by SDL3's committed text-input events, so keyboard
-    layouts and OS input methods remain the platform's responsibility.
-    Clipboard and rich IME pre-edit composition are intentionally separate
-    platform services and are not simulated by this control.
+    SDL3 committed text events update the value, while text-editing events
+    render a temporary underlined pre-edit string until the platform commits
+    it. Clipboard and candidate-window positioning use the supplied SDL3
+    window service when available.
     """
     value: str = ""
     placeholder: str = ""
