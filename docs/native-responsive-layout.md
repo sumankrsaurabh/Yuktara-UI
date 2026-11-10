@@ -142,3 +142,36 @@ the final window metrics once, updates the runtime once, and performs at most
 one surface recreation/layout pass for that batch. Identical repeated metrics
 are treated as a no-op by `NativeRuntime.resize()`. This avoids repeated full
 layout and raster work while the user is dragging a window edge.
+
+## Two-dimensional adaptive composition
+
+Use `AdaptiveLayout` when the best composition depends on both available
+width and height. This is useful for short landscape windows, compact laptop
+windows, and large desktop workspaces. The first variant is the fallback;
+later variants activate only when **both** minimum dimensions are satisfied.
+
+```python
+from novaui.native import AdaptiveLayout, AdaptiveVariant, column, row, Grid
+
+compact = column(sidebar, content)
+wide = row(sidebar, content, spacing=16)
+workspace = Grid(children=(sidebar, content, inspector), columns=3)
+
+screen = AdaptiveLayout(
+    variants=(
+        AdaptiveVariant(0, 0, compact),
+        AdaptiveVariant(760, 0, wide),
+        AdaptiveVariant(1200, 720, workspace),
+    )
+)
+```
+
+Variant thresholds must be ordered by non-decreasing width and height. The
+engine selects the highest qualifying variant on each measure pass. Resizing
+or changing the available window height switches the retained child without
+rebuilding the component. As with `Responsive`, thresholds use logical UI
+units, not framebuffer pixels.
+
+Use `Responsive` for width-only breakpoints and `AdaptiveLayout` when both
+axes materially affect information hierarchy. Avoid using the latter merely
+to scale controls; use fluid constraints, wrapping and scrolling for that.
