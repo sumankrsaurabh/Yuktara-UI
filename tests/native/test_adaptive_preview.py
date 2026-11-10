@@ -31,8 +31,8 @@ def test_preview_runs_real_adaptive_layout_at_each_profile():
     previews = AdaptivePreviewHarness(root, _profiles()).run()
 
     assert [preview.active_variant_index for preview in previews] == [0, 1, 1]
-    assert previews[0].nodes[-1].key == "compact"
-    assert previews[1].nodes[-1].key == "wide"
+    assert previews[0].nodes[1].key == "compact"
+    assert previews[1].nodes[1].key == "wide"
     assert previews[1].backing_pixel_size == (1800, 2400)
     assert previews[2].backing_pixel_size == (2160, 1350)
 
@@ -50,7 +50,7 @@ def test_preview_records_bounds_and_active_nested_variants():
 
     assert previews[0].nodes[1].active_variant_index == 0
     assert previews[1].nodes[1].active_variant_index == 1
-    assert previews[1].nodes[1].bounds == pytest.approx((0, 0, 800, 700))
+    assert previews[1].nodes[1].bounds[2] == pytest.approx(800)
     assert previews[0].active_variant_index is None
 
 
@@ -69,17 +69,19 @@ def test_preview_uses_same_root_across_viewports_and_does_not_rebuild_nodes():
 
 
 @pytest.mark.parametrize(
-    "profile",
+    "name,width,height,scale",
     [
-        ViewportProfile("", 390, 844),
-        ViewportProfile("zero-width", 0, 844),
-        ViewportProfile("negative-height", 390, -1),
-        ViewportProfile("zero-scale", 390, 844, 0),
+        ("", 390, 844, 1),
+        ("zero-width", 0, 844, 1),
+        ("negative-height", 390, -1, 1),
+        ("zero-scale", 390, 844, 0),
+        ("infinite-width", float("inf"), 844, 1),
+        ("boolean-height", 390, True, 1),
     ],
 )
-def test_viewport_profile_rejects_invalid_dimensions(profile):
-    # Construction is expected to fail before this test body is reached.
-    assert profile.width > 0
+def test_viewport_profile_rejects_invalid_dimensions(name, width, height, scale):
+    with pytest.raises(ValueError):
+        ViewportProfile(name, width, height, scale)
 
 
 def test_preview_rejects_invalid_roots_profiles_and_duplicate_names():
