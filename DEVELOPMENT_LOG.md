@@ -328,6 +328,7 @@ The package version remains `3.3.0.dev0`; the following work is on `main` as dev
 ### Window resizing, high DPI and responsive layout
 
 - SDL3 windows now request `SDL_WINDOW_HIGH_PIXEL_DENSITY` by default, translate requested initial UI dimensions into native window coordinates, and enforce a configurable minimum client size (defaults to 320×240 UI units).
+- Linux SDL3 source-build provisioning now installs XTest development headers (`libxtst-dev` and matching package names on supported Linux package managers), which SDL's X11 configuration requires when XTest support is enabled.
 - Window size, backing pixel size, SDL window display scale and pixel density are read separately and normalized into device-independent UI coordinates.
 - Mouse positions/deltas and IME candidate-window rectangles are converted using the same UI coordinate scale; touch coordinates remain normalized and are mapped by the runtime.
 - SDL window display-scale and monitor-move changes trigger a fresh runtime/renderer size synchronization; the event decoder now recognizes `SDL_EVENT_WINDOW_DISPLAY_CHANGED` and `SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED`.
