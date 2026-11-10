@@ -121,8 +121,20 @@ class RichText:
         return node
 
 
+def _blend_argb(base: int, overlay: int, alpha: float) -> int:
+    """Blend two ARGB colors without allocating renderer-side color objects."""
+    alpha = max(0.0, min(1.0, alpha))
+    channels = []
+    for shift in (24, 16, 8, 0):
+        a = (base >> shift) & 0xFF
+        b = (overlay >> shift) & 0xFF
+        channels.append(round(a * (1.0 - alpha) + b * alpha))
+    return sum(value << shift for value, shift in zip(channels, (24, 16, 8, 0)))
+
+
 @dataclass
 class Button:
+    """Accessible action button with shared semantic variants and interaction states."""
     label: str
     on_click: Callable | None = None
     variant: str = "primary"
@@ -131,7 +143,10 @@ class Button:
     theme: NativeTheme = field(default_factory=NativeTheme)
     accessibility_hint: str | None = None
 
-    VARIANTS = frozenset({"primary", "secondary", "outline", "ghost", "danger", "success"})
+    VARIANTS = frozenset({
+        "primary", "tonal", "filled_tonal", "secondary", "outline",
+        "ghost", "text", "danger", "success",
+    })
     SIZES = frozenset({"small", "medium", "large"})
 
     def __post_init__(self):
@@ -143,35 +158,209 @@ class Button:
             raise ValueError("Button label must be a non-empty string")
         if self.on_click is not None and not callable(self.on_click):
             raise TypeError("on_click must be callable")
+        if not isinstance(self.disabled, bool):
+            raise TypeError("disabled must be a boolean")
 
     def build(self) -> LayoutNode:
         t = self.theme
         palettes = {
             "primary": (t.primary, t.on_primary, None),
-            "secondary": (t.surface_variant, t.foreground, t.border),
-            "outline": (t.surface, t.primary, t.primary),
+            "tonal": (t.secondary_soft, t.secondary, None),
+            "filled_tonal": (t.secondary_soft, t.secondary, None),
+            "secondary": (t.surface_container_high, t.on_surface, None),
+            "outline": (t.surface, t.primary, t.outline),
             "ghost": (None, t.primary, None),
+            "text": (None, t.primary, None),
             "danger": (t.danger, t.on_danger, None),
             "success": (t.success, t.on_success, None),
         }
         background, foreground, border = palettes[self.variant]
         if self.disabled:
             background, foreground, border = t.disabled_surface, t.disabled_text, None
-        pads = {
-            "small": Insets.symmetric(vertical=6, horizontal=10),
-            "medium": Insets.symmetric(vertical=9, horizontal=14),
-            "large": Insets.symmetric(vertical=12, horizontal=18),
+
+        heights = {
+            "small": t.control_height_small,
+            "medium": t.control_height_medium,
+            "large": t.control_height_large,
         }
-        sizes = {"small": 13, "medium": 14, "large": 16}
-        return LayoutNode(
-            "text", text=self.label, text_color=foreground, font_size=sizes[self.size],
-            font_weight="semibold", padding=pads[self.size],
-            background=background, radius=t.radius_medium,
-            border_color=border, border_width=1 if border is not None else 0,
-            accessibility_role="button", accessibility_label=self.label,
-            accessibility_disabled=self.disabled, accessibility_hint=self.accessibility_hint,
+        horizontal_padding = {
+            "small": t.space_3,
+            "medium": t.space_4,
+            "large": t.space_6,
+        }
+        text_sizes = {
+            "small": t.type_label_medium,
+            "medium": t.type_label_large,
+            "large": t.type_title_medium,
+        }
+        radius = t.radius_pill if self.variant in {"ghost", "text"} else t.radius_large
+        base_background = background
+        state = {"hover": False, "pressed": False, "focused": False}
+        node = LayoutNode(
+            "text",
+            text=self.label,
+            text_color=foreground,
+            font_size=text_sizes[self.size],
+            font_weight="semibold",
+            padding=Insets.symmetric(vertical=0, horizontal=horizontal_padding[self.size]),
+            min_height=heights[self.size],
+            background=background,
+            radius=radius,
+            border_color=border,
+            border_width=1 if border is not None else 0,
+            accessibility_role="button",
+            accessibility_label=self.label,
+            accessibility_disabled=self.disabled,
+            accessibility_hint=self.accessibility_hint,
             on_click=None if self.disabled else self.on_click,
             accessibility_actions=("activate",),
+        )
+
+        def sync_state(_event=None):
+            if self.disabled:
+                return
+            if state["pressed"]:
+                node.background = (
+                    _blend_argb(base_background, foreground, 0.14)
+                    if base_background is not None else t.surface_container_high
+                )
+            elif state["hover"]:
+                node.background = (
+                    _blend_argb(base_background, foreground, 0.08)
+                    if base_background is not None else t.surface_container_low
+                )
+            else:
+                node.background = base_background
+            node.border_color = t.focus if state["focused"] else border
+            node.border_width = 2 if state["focused"] else (1 if border is not None else 0)
+
+        if not self.disabled:
+            def enter(event):
+                state["hover"] = True
+                sync_state(event)
+
+            def leave(event):
+                state["hover"] = False
+                state["pressed"] = False
+                sync_state(event)
+
+            def down(event):
+                state["pressed"] = True
+                sync_state(event)
+
+            def up(event):
+                state["pressed"] = False
+                sync_state(event)
+
+            def focus(event):
+                state["focused"] = True
+                sync_state(event)
+
+            def blur(event):
+                state["focused"] = False
+                state["pressed"] = False
+                sync_state(event)
+
+            node.on_pointer_enter = enter
+            node.on_pointer_leave = leave
+            node.on_pointer_down = down
+            node.on_pointer_up = up
+            node.on_focus = focus
+            node.on_blur = blur
+        self._built_node = node
+        return node
+
+
+@dataclass
+class IconButton:
+    """Compact icon action with a required accessible text label."""
+    icon: str
+    label: str
+    on_click: Callable | None = None
+    variant: str = "standard"
+    size: str = "medium"
+    disabled: bool = False
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"standard", "filled", "tonal", "outlined"})
+    SIZES = frozenset({"small", "medium", "large"})
+
+    def __post_init__(self):
+        if not isinstance(self.icon, str) or not self.icon.strip():
+            raise ValueError("IconButton icon must be a non-empty string")
+        if not isinstance(self.label, str) or not self.label.strip():
+            raise ValueError("IconButton label must be a non-empty accessible name")
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported icon button variant: {self.variant}")
+        if self.size not in self.SIZES:
+            raise ValueError(f"Unsupported icon button size: {self.size}")
+
+    def build(self) -> LayoutNode:
+        variant = {
+            "standard": "text",
+            "filled": "primary",
+            "tonal": "tonal",
+            "outlined": "outline",
+        }[self.variant]
+        node = Button(
+            self.icon,
+            on_click=self.on_click,
+            variant=variant,
+            size=self.size,
+            disabled=self.disabled,
+            theme=self.theme,
+            accessibility_hint=self.label,
+        ).build()
+        node.width = node.min_height
+        node.min_width = node.min_height
+        node.padding = Insets.all(0)
+        node.align = Alignment.CENTER
+        node.accessibility_label = self.label
+        node.accessibility_hint = self.label
+        node.accessibility_identifier = f"icon-button:{self.label}"
+        return node
+
+
+@dataclass
+class Surface:
+    """A semantic container surface using the shared elevation/surface scale."""
+    children: Sequence[object] = ()
+    variant: str = "base"
+    padding: float | Insets = 16
+    spacing: float = 8
+    radius: float | None = None
+    theme: NativeTheme = field(default_factory=NativeTheme)
+
+    VARIANTS = frozenset({"lowest", "low", "base", "high", "highest", "outlined"})
+
+    def __post_init__(self):
+        if self.variant not in self.VARIANTS:
+            raise ValueError(f"Unsupported surface variant: {self.variant}")
+        if isinstance(self.padding, (int, float)) and self.padding < 0:
+            raise ValueError("Surface padding must be non-negative")
+
+    def build(self) -> LayoutNode:
+        t = self.theme
+        backgrounds = {
+            "lowest": t.surface_container_lowest,
+            "low": t.surface_container_low,
+            "base": t.surface_container,
+            "high": t.surface_container_high,
+            "highest": t.surface_container_highest,
+            "outlined": t.surface,
+        }
+        outlined = self.variant == "outlined"
+        insets = self.padding if isinstance(self.padding, Insets) else Insets.all(self.padding)
+        return LayoutNode.column(
+            *[_node(child) for child in self.children],
+            spacing=self.spacing,
+            padding=insets,
+            background=backgrounds[self.variant],
+            radius=self.radius if self.radius is not None else t.radius_extra_large,
+            border_color=t.outline_variant if outlined else None,
+            border_width=1 if outlined else 0,
+            cross_align=Alignment.STRETCH,
+            accessibility_role="group",
         )
 
 
