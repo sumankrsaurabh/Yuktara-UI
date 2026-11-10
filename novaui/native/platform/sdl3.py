@@ -814,6 +814,12 @@ class SDL3Window:
                 EventType.WINDOW_DISPLAY_SCALE_CHANGED,
             }:
                 self.get_sizes()
+                # A backing-size transition can accompany a desktop mode or
+                # refresh change even when the window remains on the same display.
+                try:
+                    self.get_display_metrics()
+                except AttributeError:
+                    pass
             coordinate_scale = self._coordinate_scale
             if event.type == EventType.WINDOW_RESIZED and event.window is not None:
                 event = replace(
@@ -902,13 +908,16 @@ class SDL3Window:
                                 "SDL_SetRenderVSync", ctypes.c_bool,
                                 [ctypes.c_void_p, ctypes.c_int],
                             )
-                            self.actual_vsync = (
-                                self.requested_vsync
-                                if set_vsync(self._renderer, self.requested_vsync)
-                                else SDL_RENDERER_VSYNC_DISABLED
-                            )
+                            if set_vsync(self._renderer, self.requested_vsync):
+                                self.actual_vsync = self.requested_vsync
+                            elif self.requested_vsync != SDL_RENDERER_VSYNC_DISABLED and set_vsync(
+                                self._renderer, SDL_RENDERER_VSYNC_DISABLED
+                            ):
+                                self.actual_vsync = SDL_RENDERER_VSYNC_DISABLED
+                            else:
+                                self.actual_vsync = None
                         except AttributeError:
-                            pass
+                            self.actual_vsync = None
                         continue
                     if not runtime.handle_event(event):
                         running = False
