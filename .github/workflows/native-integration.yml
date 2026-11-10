@@ -1,0 +1,49 @@
+name: Native desktop integration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-sdl3-skia:
+    name: SDL3 + Skia live window smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install SDL3 Linux build and virtual-display dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config xvfb xauth \
+            libasound2-dev libpulse-dev libwayland-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev libxkbcommon-dev \
+            libdrm-dev libgbm-dev libegl1-mesa-dev libgl1-mesa-dev \
+            libibus-1.0-dev libudev-dev libdbus-1-dev
+
+      - name: Install Yuktara UI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Provision Skia and verified SDL3
+        run: python -m novaui setup
+
+      - name: Open a real SDL3 window and present Skia frames
+        run: xvfb-run -a -s "-screen 0 1280x800x24" python scripts/native_runtime_smoke.py
+        env:
+          SDL_VIDEODRIVER: x11
+          SDL_RENDER_DRIVER: software
+          SDL_AUDIODRIVER: dummy
