@@ -61,3 +61,16 @@ with open("yuktara-ui-preview.png", "wb") as output:
 - Complex-script shaping, bidi cursor movement and deterministic bundled font
   resolution need further validation and implementation.
 - Android and iOS require dedicated Python embedding and native surface hosts.
+
+
+## Window resizing and aspect preservation
+
+The SDL3 host tracks UI dimensions separately from the backing pixel size.
+When the frame and SDL renderer output have different aspect ratios,
+`SDL3Window.present()` centers the frame using an aspect-fit destination
+rectangle and clears the remaining area with the configured letterbox color.
+This prevents texture stretching during transient size mismatches.
+
+The runtime resizes the Skia raster surface when the window's logical or pixel
+size changes. For display-scale changes, use `SDL3Window.run_runtime()` so
+window metrics are re-read and the layout is measured again.
