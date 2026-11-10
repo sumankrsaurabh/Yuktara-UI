@@ -169,3 +169,68 @@ def test_poll_input_events_normalizes_mouse_and_window_coordinates():
     assert events[0].pointer.delta_x == pytest.approx(10)
     assert events[0].pointer.delta_y == pytest.approx(4)
     assert (events[1].window.width, events[1].window.height) == (600, 400)
+
+
+
+def test_open_treats_initial_window_size_as_ui_units_on_high_dpi_windows():
+    from novaui.native.platform.sdl3 import SDL_WINDOW_HIGH_PIXEL_DENSITY
+
+    calls = {}
+    current_size = [1100, 720]
+
+    class FakeFunction:
+        def __init__(self, callback):
+            self.callback = callback
+            self.restype = None
+            self.argtypes = None
+
+        def __call__(self, *args):
+            return self.callback(*args)
+
+    def write_size(_window, width_ptr, height_ptr):
+        _write_int(width_ptr, current_size[0])
+        _write_int(height_ptr, current_size[1])
+        return True
+
+    library = SimpleNamespace(
+        SDL_SetHint=FakeFunction(lambda *_args: True),
+        SDL_Init=FakeFunction(lambda *_args: True),
+        SDL_CreateWindow=FakeFunction(
+            lambda _title, width, height, flags: (
+                calls.update(create=(width, height), flags=flags) or 101
+            )
+        ),
+        SDL_GetWindowPixelDensity=FakeFunction(lambda _window: 1.0),
+        SDL_GetWindowDisplayScale=FakeFunction(lambda _window: 2.0),
+        SDL_SetWindowSize=FakeFunction(
+            lambda _window, width, height: (
+                calls.update(size=(width, height)),
+                current_size.__setitem__(slice(None), [width, height]),
+                True,
+            )[-1]
+        ),
+        SDL_SyncWindow=FakeFunction(lambda _window: True),
+        SDL_SetWindowMinimumSize=FakeFunction(
+            lambda _window, width, height: calls.update(minimum=(width, height)) or True
+        ),
+        SDL_CreateRenderer=FakeFunction(lambda *_args: 202),
+        SDL_GetWindowSize=FakeFunction(write_size),
+        SDL_GetWindowSizeInPixels=FakeFunction(write_size),
+        SDL_DestroyRenderer=FakeFunction(lambda *_args: None),
+        SDL_DestroyWindow=FakeFunction(lambda *_args: None),
+        SDL_Quit=FakeFunction(lambda *_args: None),
+    )
+    window = SDL3Window(width=1100, height=720)
+    window._lib = library
+
+    window.open()
+    try:
+        assert calls["create"] == (1100, 720)
+        assert calls["flags"] & SDL_WINDOW_HIGH_PIXEL_DENSITY
+        assert calls["size"] == (2200, 1440)
+        assert calls["minimum"] == (640, 480)
+        logical, pixels = window.get_sizes()
+        assert logical == (1100, 720)
+        assert pixels == (2200, 1440)
+    finally:
+        window.close()
