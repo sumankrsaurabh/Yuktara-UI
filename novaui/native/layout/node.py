@@ -21,7 +21,6 @@ class LayoutNode:
     min_height: Optional[float | str] = None
     max_height: Optional[float | str] = None
     padding: Insets = field(default_factory=Insets)
-    clip_children: bool = False
     spacing: float = 0.0
     weight: float = 0.0
     align: Alignment = Alignment.START
@@ -131,6 +130,8 @@ class LayoutNode:
     responsive_variants: tuple[tuple[float, "LayoutNode"], ...] = ()
     adaptive_variants: tuple[tuple[float, float, "LayoutNode"], ...] = ()
     responsive_active_index: int = field(default=-1, init=False)
+    # Appended to preserve the positional constructor order of existing fields.
+    clip_children: bool = False
 
     def __post_init__(self):
         self.kind = self.kind.lower()
