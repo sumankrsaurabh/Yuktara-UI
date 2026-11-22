@@ -666,9 +666,9 @@ def hit_test(root: LayoutNode, x: float, y: float) -> LayoutNode | None:
     def visit(node, clip=None):
         if clip is not None and not clip.contains(point):
             return None
-        if node.kind == "scroll":
+        if node.kind == "scroll" or node.clip_children:
             viewport = node.content_bounds
-            if not viewport.contains(point):
+            if node.kind == "scroll" and not viewport.contains(point):
                 return node if node.bounds.contains(point) else None
             child_clip = viewport if clip is None else _intersect(clip, viewport)
         else:
