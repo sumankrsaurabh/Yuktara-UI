@@ -192,6 +192,26 @@ class LayoutNode:
             if (not isinstance(raw_value, (int, float)) or isinstance(raw_value, bool)
                     or not isfinite(float(raw_value)) or raw_value < 0):
                 raise ValueError(f"{name} must be a finite non-negative number")
+        if (isinstance(self.grid_columns, bool) or not isinstance(self.grid_columns, int)
+                or self.grid_columns < 1):
+            raise ValueError("grid_columns must be a positive integer")
+        if self.grid_min_column_width is not None and (
+            isinstance(self.grid_min_column_width, bool)
+            or not isinstance(self.grid_min_column_width, (int, float))
+            or not isfinite(float(self.grid_min_column_width))
+            or self.grid_min_column_width <= 0
+        ):
+            raise ValueError("grid_min_column_width must be finite and positive")
+        for name in ("grid_row_span", "grid_column_span"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
+        for name in ("grid_row", "grid_column"):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise ValueError(f"{name} must be a non-negative integer or None")
         if not 0.0 <= self.opacity <= 1.0:
             raise ValueError("opacity must be between 0 and 1")
         if self.scroll_axis not in {"vertical", "horizontal", "both"}:
