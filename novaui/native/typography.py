@@ -6,9 +6,9 @@ from pathlib import Path
 from math import isfinite
 from typing import Any
 
-DEFAULT_FONT_FAMILY = "Inter"
+DEFAULT_FONT_FAMILY = "Yuktara Sans"
 FALLBACK_FONT_FAMILIES = (
-    "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
+    "Inter", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
     "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Kannada",
     "Noto Sans Malayalam", "Noto Sans Gujarati", "Noto Sans Gurmukhi",
     "Noto Sans Arabic", "Noto Sans CJK SC", "Noto Color Emoji",
@@ -151,8 +151,37 @@ class FontResolver:
             )
         return face, str(resolved)
 
+    @staticmethod
+    def _bundled_font_path(family: str, config: FontConfig) -> str | None:
+        """Find the matching bundled/opt-in Yuktara Sans face for this style."""
+        import os
+
+        if family not in {"Yuktara Sans", "Yuktara Sans Display"}:
+            return None
+        stem = "YuktaraSans" if family == "Yuktara Sans" else "YuktaraSansDisplay"
+        style = {
+            ("normal", False): "Regular",
+            ("medium", False): "Medium",
+            ("semibold", False): "SemiBold",
+            ("bold", False): "Bold",
+            ("normal", True): "Italic",
+            ("bold", True): "BoldItalic",
+        }.get((config.weight, config.italic), "Regular")
+        filename = f"{stem}-{style}.otf"
+        candidates = []
+        override = os.environ.get("YUKTARA_UI_FONT_DIR")
+        if override:
+            candidates.append(Path(override).expanduser() / filename)
+        candidates.append(Path(__file__).parent / "assets" / "fonts" / filename)
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate.resolve())
+        return None
+
     def _typeface(self, family: str, config: FontConfig):
         configured_path = config.path_for_family(family)
+        if configured_path is None:
+            configured_path = self._bundled_font_path(family, config)
         path_key = str(Path(configured_path).expanduser().resolve()) if configured_path else None
         key = (family, path_key, config.weight, config.italic)
         if key in self._cache:
