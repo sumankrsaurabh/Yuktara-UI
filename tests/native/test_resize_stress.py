@@ -5,6 +5,7 @@ from math import isfinite
 import pytest
 
 from novaui.native import LayoutNode, NativeRuntime
+from novaui.native.layout import Size
 
 
 class RecordingRenderer:
@@ -55,9 +56,7 @@ def _build_responsive_tree():
         LayoutNode(
             "grid",
             *[
-                LayoutNode("box", intrinsic_size=__import__(
-                    "novaui.native.layout", fromlist=["Size"]
-                ).Size(100, 72))
+                LayoutNode("box", intrinsic_size=Size(100, 72))
                 for _ in range(18)
             ],
             grid_columns=4,
