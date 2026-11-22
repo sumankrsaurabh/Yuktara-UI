@@ -28,7 +28,7 @@ from novaui.native.renderer import RenderSize
 )
 def test_render_size_rejects_invalid_dimensions_and_scales(kwargs, error):
     with pytest.raises(error):
-        RenderSize(100, 50, **kwargs)
+        RenderSize(**{"width": 100, "height": 50, **kwargs})
 
 
 def test_render_size_preserves_independent_fractional_scale_factors():
