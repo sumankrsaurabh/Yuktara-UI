@@ -130,14 +130,22 @@ class LayoutTreePainter:
             self._paint_text_caret(node, opacity, layout, origin_x, origin_y)
             if clip:
                 self.renderer.restore()
-        if node.kind == "scroll" and hasattr(self.renderer, "save"):
-            viewport=node.content_bounds
-            self.renderer.save()
-            self.renderer.clip_rect(viewport.x,viewport.y,viewport.width,viewport.height)
-            for child in node.children:
-                self._paint_node(child,opacity if not callable(save_layer) else 1.0)
-            self.renderer.restore()
-            self._paint_scrollbar(node,opacity)
+        if node.kind == "scroll":
+            save = getattr(self.renderer, "save", None)
+            clip_rect = getattr(self.renderer, "clip_rect", None)
+            if callable(save) and callable(clip_rect):
+                viewport = node.content_bounds
+                save()
+                try:
+                    clip_rect(viewport.x, viewport.y, viewport.width, viewport.height)
+                    for child in node.children:
+                        self._paint_node(child, opacity if not callable(save_layer) else 1.0)
+                finally:
+                    self.renderer.restore()
+            else:
+                for child in node.children:
+                    self._paint_node(child, opacity if not callable(save_layer) else 1.0)
+            self._paint_scrollbar(node, opacity)
         else:
             for child in node.children:
                 self._paint_node(child,opacity if not callable(save_layer) else 1.0)
@@ -272,7 +280,10 @@ class LayoutTreePainter:
             thumb_h=max(18.0,v.height*v.height/node.content_size.height)
             travel=max(0.0,v.height-thumb_h)
             y=v.y+(node.scroll_y/node.max_scroll_y)*travel
-            self.renderer.draw_rect(v.right-thickness,y,thickness,apply_opacity(thumb,opacity),radius=2)
+            self.renderer.draw_rect(
+                v.right - thickness, y, thickness, thumb_h,
+                apply_opacity(thumb, opacity), radius=2,
+            )
         if node.max_scroll_x>0 and v.width>0:
             thickness=4.0
             thumb_w=max(18.0,v.width*v.width/node.content_size.width)
