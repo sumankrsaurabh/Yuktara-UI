@@ -178,10 +178,13 @@ class FontResolver:
                 return str(candidate.resolve())
         return None
 
-    def _typeface(self, family: str, config: FontConfig):
+    def font_path_for_family(self, family: str, config: FontConfig) -> str | None:
+        """Return the exact explicit or bundled font file for a family/style."""
         configured_path = config.path_for_family(family)
-        if configured_path is None:
-            configured_path = self._bundled_font_path(family, config)
+        return configured_path or self._bundled_font_path(family, config)
+
+    def _typeface(self, family: str, config: FontConfig):
+        configured_path = self.font_path_for_family(family, config)
         path_key = str(Path(configured_path).expanduser().resolve()) if configured_path else None
         key = (family, path_key, config.weight, config.italic)
         if key in self._cache:
