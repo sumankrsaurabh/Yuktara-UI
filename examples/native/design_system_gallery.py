@@ -61,7 +61,7 @@ def main() -> None:
             row(
                 Button("Text", variant="text", on_click=lambda _e: print("Text"), theme=theme),
                 Button("Destructive", variant="danger", on_click=lambda _e: print("Danger"), theme=theme),
-                IconButton("＋", "Create", on_click=lambda _e: print("Create"), variant="tonal", theme=theme),
+                IconButton("add", "Create", on_click=lambda _e: print("Create"), variant="tonal", theme=theme),
                 spacing=8,
                 wrap=True,
             ),
@@ -99,10 +99,10 @@ def main() -> None:
             AppBar(
                 "Yuktara Workspace",
                 subtitle="Design system preview",
-                leading=IconButton("☰", "Open navigation", theme=theme),
+                leading=IconButton("menu", "Open navigation", theme=theme),
                 actions=(
-                    IconButton("⌕", "Search", variant="tonal", theme=theme),
-                    IconButton("⋯", "More options", variant="tonal", theme=theme),
+                    IconButton("search", "Search", variant="tonal", theme=theme),
+                    IconButton("more", "More options", variant="tonal", theme=theme),
                 ),
                 theme=theme,
             ),
