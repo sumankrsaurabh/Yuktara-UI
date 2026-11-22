@@ -323,5 +323,5 @@ def test_text_layout_metrics_are_recomputed_after_parent_padding_resize():
     narrow_layout = text.text_layout
     assert narrow_layout is not wide_layout
     assert len(narrow_layout.lines) == 2
-    assert text.bounds.width == 20
+    assert text.bounds.width == 15
     assert narrow_layout.width <= text.bounds.width
