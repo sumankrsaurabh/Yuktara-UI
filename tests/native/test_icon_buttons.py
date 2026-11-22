@@ -22,3 +22,12 @@ def test_icon_button_uses_theme_metrics_for_square_touch_target():
     node = IconButton("add", "Create", theme=theme).build()
     assert node.width == theme.control_height_medium
     assert node.min_width == theme.control_height_medium
+
+from novaui.native.widgets.core import Button
+
+
+def test_button_labels_are_centered_with_symmetric_vertical_insets():
+    node = Button("Primary").build()
+    assert node.text_align == "center"
+    assert node.padding.top == node.padding.bottom
+    assert node.padding.top > 0
