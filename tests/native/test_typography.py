@@ -7,9 +7,10 @@ from novaui.native.typography import (
 )
 
 
-def test_inter_is_the_primary_font():
-    assert DEFAULT_FONT_FAMILY == "Inter"
-    assert FontConfig().family == "Inter"
+def test_yuktara_sans_is_the_primary_font():
+    assert DEFAULT_FONT_FAMILY == "Yuktara Sans"
+    assert FontConfig().family == "Yuktara Sans"
+    assert "Inter" in FontConfig().fallback_families
 
 
 def test_fallbacks_are_available():
@@ -214,3 +215,36 @@ def test_font_size_must_be_finite():
     for value in (math.nan, math.inf, -math.inf):
         with pytest.raises(ValueError, match="finite"):
             FontConfig(size=value)
+
+
+
+def test_bundled_yuktara_font_discovery_uses_weight_and_override_dir(tmp_path, monkeypatch):
+    from novaui.native.typography import FontResolver
+
+    regular = tmp_path / "YuktaraSans-Regular.otf"
+    bold = tmp_path / "YuktaraSans-Bold.otf"
+    regular.write_bytes(b"regular")
+    bold.write_bytes(b"bold")
+    monkeypatch.setenv("YUKTARA_UI_FONT_DIR", str(tmp_path))
+
+    assert FontResolver._bundled_font_path(
+        "Yuktara Sans", FontConfig(weight="normal")
+    ) == str(regular.resolve())
+    assert FontResolver._bundled_font_path(
+        "Yuktara Sans", FontConfig(weight="bold")
+    ) == str(bold.resolve())
+
+
+def test_bundled_display_font_discovery_is_separate(tmp_path, monkeypatch):
+    from novaui.native.typography import FontResolver
+
+    display = tmp_path / "YuktaraSansDisplay-SemiBold.otf"
+    display.write_bytes(b"display")
+    monkeypatch.setenv("YUKTARA_UI_FONT_DIR", str(tmp_path))
+
+    assert FontResolver._bundled_font_path(
+        "Yuktara Sans Display", FontConfig(weight="semibold")
+    ) == str(display.resolve())
+    assert FontResolver._bundled_font_path(
+        "Inter", FontConfig()
+    ) is None
