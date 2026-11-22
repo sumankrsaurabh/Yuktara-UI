@@ -73,3 +73,38 @@ def test_painter_clips_scroll_children_and_paints_thumb():
     names=[op[0] for op in renderer.ops]
     assert names.index("save") < names.index("clip") < names.index("restore")
     assert names[-1] == "rect"  # scrollbar thumb is painted above clipped content
+
+
+
+def test_container_clip_children_clips_descendants_only():
+    child = LayoutNode("box", width=80, height=80, background="#ff0000")
+    container = LayoutNode.box(child, width=40, height=40, clip_children=True)
+    LayoutEngine().layout(container, Rect(0, 0, 40, 40))
+    renderer = FakeRenderer()
+
+    LayoutTreePainter(renderer).paint(container)
+
+    clips = [op for op in renderer.ops if op[0] == "clip"]
+    assert clips == [("clip", (0, 0, 40, 40))]
+    names = [op[0] for op in renderer.ops]
+    assert names.index("rect") < names.index("save") < names.index("clip") < names.index("restore")
+
+
+def test_hit_testing_respects_container_child_clip():
+    child = LayoutNode("box", width=80, height=80, intrinsic_size=Size(80, 80))
+    container = LayoutNode.box(child, width=40, height=40, clip_children=True)
+    LayoutEngine().layout(container, Rect(0, 0, 40, 40))
+
+    assert hit_test(container, 20, 20) is child
+    assert hit_test(container, 60, 20) is None
+
+
+def test_container_clipping_is_opt_in():
+    child = LayoutNode("box", width=80, height=80, background="#ff0000")
+    container = LayoutNode.box(child, width=40, height=40)
+    LayoutEngine().layout(container, Rect(0, 0, 40, 40))
+    renderer = FakeRenderer()
+
+    LayoutTreePainter(renderer).paint(container)
+
+    assert not any(op[0] == "clip" for op in renderer.ops)
