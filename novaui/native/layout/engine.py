@@ -24,7 +24,10 @@ def _resolve_length(value, available: float) -> float | None:
     if isinstance(value, str):
         if not isfinite(available):
             return None
-        return max(0.0, float(value.strip()[:-1].strip()) * available / 100.0)
+        # Signed percentage offsets are valid for absolute positioning.
+        # Dimension lengths are constrained to non-negative values at node
+        # construction, so resolution itself must not silently clamp offsets.
+        return float(value.strip()[:-1].strip()) * available / 100.0
     return float(value)
 
 
@@ -258,9 +261,16 @@ class LayoutEngine:
                 if basis_value is None:
                     dimension = child.width if horizontal else child.height
                     basis_value = dimension if isinstance(dimension, (int, float)) else None
-                basis = _resolve_length(basis_value, main_max) if basis_value is not None else 0.0
-                basis = 0.0 if basis is None else basis
-                size = self.measure(child, make_child_constraints(basis, basis, tight=True))
+                basis = _resolve_length(basis_value, main_max) if basis_value is not None else None
+                if basis is None and not isfinite(main_max):
+                    # An unbounded main axis (for example, a row inside a
+                    # horizontal scroll view) has no finite remainder to
+                    # distribute. Preserve the child's intrinsic size instead
+                    # of forcing a zero-width/zero-height flex basis.
+                    size = self.measure(child, make_child_constraints())
+                else:
+                    basis = 0.0 if basis is None else basis
+                    size = self.measure(child, make_child_constraints(basis, basis, tight=True))
             else:
                 size = self.measure(child, make_child_constraints())
             base_sizes.append(size)
@@ -666,9 +676,9 @@ def hit_test(root: LayoutNode, x: float, y: float) -> LayoutNode | None:
     def visit(node, clip=None):
         if clip is not None and not clip.contains(point):
             return None
-        if node.kind == "scroll":
+        if node.kind == "scroll" or node.clip_children:
             viewport = node.content_bounds
-            if not viewport.contains(point):
+            if node.kind == "scroll" and not viewport.contains(point):
                 return node if node.bounds.contains(point) else None
             child_clip = viewport if clip is None else _intersect(clip, viewport)
         else:

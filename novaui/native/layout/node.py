@@ -130,6 +130,8 @@ class LayoutNode:
     responsive_variants: tuple[tuple[float, "LayoutNode"], ...] = ()
     adaptive_variants: tuple[tuple[float, float, "LayoutNode"], ...] = ()
     responsive_active_index: int = field(default=-1, init=False)
+    # Appended to preserve the positional constructor order of existing fields.
+    clip_children: bool = False
 
     def __post_init__(self):
         self.kind = self.kind.lower()
@@ -190,26 +192,62 @@ class LayoutNode:
             if (not isinstance(raw_value, (int, float)) or isinstance(raw_value, bool)
                     or not isfinite(float(raw_value)) or raw_value < 0):
                 raise ValueError(f"{name} must be a finite non-negative number")
-        if not 0.0 <= self.opacity <= 1.0:
-            raise ValueError("opacity must be between 0 and 1")
+        if (isinstance(self.grid_columns, bool) or not isinstance(self.grid_columns, int)
+                or self.grid_columns < 1):
+            raise ValueError("grid_columns must be a positive integer")
+        if self.grid_min_column_width is not None and (
+            isinstance(self.grid_min_column_width, bool)
+            or not isinstance(self.grid_min_column_width, (int, float))
+            or not isfinite(float(self.grid_min_column_width))
+            or self.grid_min_column_width <= 0
+        ):
+            raise ValueError("grid_min_column_width must be finite and positive")
+        for name in ("grid_row_span", "grid_column_span"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"grid spans: {name} must be a positive integer")
+        for name in ("grid_row", "grid_column"):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise ValueError(f"{name} must be a non-negative integer or None")
+        if (isinstance(self.opacity, bool) or not isinstance(self.opacity, (int, float))
+                or not isfinite(float(self.opacity)) or not 0.0 <= self.opacity <= 1.0):
+            raise ValueError("opacity must be finite and between 0 and 1")
         if self.scroll_axis not in {"vertical", "horizontal", "both"}:
             raise ValueError("scroll_axis must be vertical, horizontal or both")
-        if self.scroll_x < 0 or self.scroll_y < 0:
-            raise ValueError("scroll offsets must be non-negative")
+        for name in ("scroll_x", "scroll_y", "text_scroll_x", "text_scroll_y"):
+            value = getattr(self, name)
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not isfinite(float(value)) or value < 0):
+                raise ValueError(f"{name} must be finite and non-negative")
         if self.text_align not in {"start", "center", "end"}:
             raise ValueError("text_align must be start, center or end")
-        if self.text_line_height is not None and self.text_line_height <= 0:
-            raise ValueError("text_line_height must be positive")
-        if self.text_max_lines is not None and self.text_max_lines < 1:
-            raise ValueError("text_max_lines must be at least 1")
-        if self.font_size <= 0 or not self.font_family:
-            raise ValueError("font_size must be positive and font_family non-empty")
-        if self.text_caret_width <= 0:
-            raise ValueError("text_caret_width must be positive")
-        if self.text_scroll_x < 0 or self.text_scroll_y < 0:
-            raise ValueError("text scroll offsets must be non-negative")
-        if self.text_cursor is not None and self.text_cursor < 0:
-            raise ValueError("text_cursor must be non-negative")
+        if self.text_line_height is not None and (
+            isinstance(self.text_line_height, bool)
+            or not isinstance(self.text_line_height, (int, float))
+            or not isfinite(float(self.text_line_height)) or self.text_line_height <= 0
+        ):
+            raise ValueError("text_line_height must be finite and positive")
+        if self.text_max_lines is not None and (
+            isinstance(self.text_max_lines, bool) or not isinstance(self.text_max_lines, int)
+            or self.text_max_lines < 1
+        ):
+            raise ValueError("text_max_lines must be a positive integer")
+        if (isinstance(self.font_size, bool) or not isinstance(self.font_size, (int, float))
+                or not isfinite(float(self.font_size)) or self.font_size <= 0
+                or not isinstance(self.font_family, str) or not self.font_family):
+            raise ValueError("font_size must be finite and positive and font_family non-empty")
+        if (isinstance(self.text_caret_width, bool)
+                or not isinstance(self.text_caret_width, (int, float))
+                or not isfinite(float(self.text_caret_width)) or self.text_caret_width <= 0):
+            raise ValueError("text_caret_width must be finite and positive")
+        if self.text_cursor is not None and (
+            isinstance(self.text_cursor, bool) or not isinstance(self.text_cursor, int)
+            or self.text_cursor < 0
+        ):
+            raise ValueError("text_cursor must be a non-negative integer")
         if self.text_selection is not None:
             if len(self.text_selection) != 2 or min(self.text_selection) < 0:
                 raise ValueError("text_selection must be a non-negative (start, end) pair")
@@ -222,8 +260,10 @@ class LayoutNode:
             TextMeasurer._normalize_style_spans(self.text or "", self.text_style_spans)
             TextMeasurer._normalize_paragraph_styles(self.text or "", self.text_paragraph_styles)
         for name in ("width", "height", "min_width", "max_width", "min_height", "max_height",
-                     "flex_basis", "left", "right", "top", "bottom"):
+                     "flex_basis"):
             _validate_length(getattr(self, name), name)
+        for name in ("left", "right", "top", "bottom"):
+            _validate_length(getattr(self, name), name, allow_negative=True)
         for minimum, maximum, axis in ((self.min_width, self.max_width, "width"),
                                        (self.min_height, self.max_height, "height")):
             if isinstance(minimum, (int, float)) and isinstance(maximum, (int, float)) and minimum > maximum:
@@ -232,6 +272,8 @@ class LayoutNode:
             raise ValueError("position must be 'flow' or 'absolute'")
         if self.baseline is not None and (not isfinite(float(self.baseline)) or self.baseline < 0):
             raise ValueError("baseline must be finite and non-negative")
+        if not isinstance(self.clip_children, bool):
+            raise TypeError("clip_children must be a bool")
         if not isinstance(self.flex_wrap, bool):
             raise TypeError("flex_wrap must be a bool")
         if self.accessibility_identifier is not None and (
@@ -324,13 +366,15 @@ class LayoutResult:
     bounds: Rect
 
 
-def _validate_length(value, name: str) -> None:
-    """Validate non-negative logical-pixel or percentage lengths."""
+def _validate_length(value, name: str, *, allow_negative: bool = False) -> None:
+    """Validate finite logical-pixel or percentage lengths."""
+
     if value is None:
         return
     if isinstance(value, (int, float)) and not isinstance(value, bool):
-        if not isfinite(float(value)) or value < 0:
-            raise ValueError(f"{name} must be finite and non-negative")
+        if not isfinite(float(value)) or (value < 0 and not allow_negative):
+            qualifier = "finite" if allow_negative else "finite and non-negative"
+            raise ValueError(f"{name} must be {qualifier}")
         return
     if isinstance(value, str) and value.strip().endswith("%"):
         raw = value.strip()[:-1].strip()
@@ -338,7 +382,8 @@ def _validate_length(value, name: str) -> None:
             number = float(raw)
         except ValueError as exc:
             raise ValueError(f"{name} must be a number or percentage") from exc
-        if not isfinite(number) or number < 0:
-            raise ValueError(f"{name} percentage must be finite and non-negative")
+        if not isfinite(number) or (number < 0 and not allow_negative):
+            qualifier = "finite" if allow_negative else "finite and non-negative"
+            raise ValueError(f"{name} percentage must be {qualifier}")
         return
     raise TypeError(f"{name} must be a number, percentage string, or None")

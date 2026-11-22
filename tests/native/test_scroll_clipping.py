@@ -73,3 +73,167 @@ def test_painter_clips_scroll_children_and_paints_thumb():
     names=[op[0] for op in renderer.ops]
     assert names.index("save") < names.index("clip") < names.index("restore")
     assert names[-1] == "rect"  # scrollbar thumb is painted above clipped content
+
+
+
+def test_container_clip_children_clips_descendants_only():
+    child = LayoutNode("box", width=80, height=80, position="absolute", left=0, top=0, background="#ff0000")
+    container = LayoutNode.box(child, width=40, height=40, clip_children=True, background="#ffffff")
+    LayoutEngine().layout(container, Rect(0, 0, 40, 40))
+    renderer = FakeRenderer()
+
+    LayoutTreePainter(renderer).paint(container)
+
+    clips = [op for op in renderer.ops if op[0] == "clip"]
+    assert clips == [("clip", (0, 0, 40, 40))]
+    names = [op[0] for op in renderer.ops]
+    assert names.index("rect") < names.index("save") < names.index("clip") < names.index("restore")
+
+
+def test_hit_testing_respects_container_child_clip():
+    child = LayoutNode("box", width=80, height=80, position="absolute", left=0, top=0, intrinsic_size=Size(80, 80))
+    container = LayoutNode.box(child, width=40, height=40, clip_children=True)
+    LayoutEngine().layout(container, Rect(0, 0, 40, 40))
+
+    assert hit_test(container, 20, 20) is child
+    assert hit_test(container, 60, 20) is None
+
+
+def test_container_clipping_is_opt_in():
+    child = LayoutNode("box", width=80, height=80, background="#ff0000")
+    container = LayoutNode.box(child, width=40, height=40)
+    LayoutEngine().layout(container, Rect(0, 0, 40, 40))
+    renderer = FakeRenderer()
+
+    LayoutTreePainter(renderer).paint(container)
+
+    assert not any(op[0] == "clip" for op in renderer.ops)
+
+
+def test_nested_scroll_wheel_chains_to_parent_at_inner_boundary():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=100, intrinsic_size=Size(100, 100)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=100, height=100)
+    engine = LayoutEngine()
+    engine.layout(outer, Rect(0, 0, 100, 100))
+    dispatcher = InputDispatcher(outer)
+    wheel = InputEvent(
+        EventType.POINTER_WHEEL,
+        pointer=PointerEvent(10, 10, wheel_y=-1),
+    )
+
+    # The inner viewport consumes the initial wheel movement.
+    dispatcher.dispatch(wheel)
+    assert inner.scroll_y == 40
+    assert outer.scroll_y == 0
+
+    # Once the inner viewport reaches its end, the same delta reaches its parent.
+    inner.scroll_y = inner.max_scroll_y
+    engine.layout(outer, Rect(0, 0, 100, 100))
+    result = dispatcher.dispatch(wheel)
+    assert result.handled
+    assert inner.scroll_y == inner.max_scroll_y
+    assert outer.scroll_y == 40
+
+
+def test_nested_scroll_painter_nests_viewport_clips():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200), background="#ff0000")
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(inner, LayoutNode("box", height=100, intrinsic_size=Size(100, 100)))
+    outer = LayoutNode.scroll(outer_content, width=100, height=100)
+    LayoutEngine().layout(outer, Rect(0, 0, 100, 100))
+    renderer = FakeRenderer()
+
+    LayoutTreePainter(renderer).paint(outer)
+
+    clips = [op[1] for op in renderer.ops if op[0] == "clip"]
+    assert clips[:2] == [(0, 0, 100, 100), (0, 0, 100, 60)]
+    assert renderer.ops.count(("save",)) == renderer.ops.count(("restore",))
+
+
+def test_nested_touch_drag_hands_remaining_delta_to_parent():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=100, intrinsic_size=Size(100, 100)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=100, height=100)
+    LayoutEngine().layout(outer, Rect(0, 0, 100, 100))
+    dispatcher = InputDispatcher(outer)
+
+    dispatcher.dispatch(InputEvent(
+        EventType.POINTER_DOWN,
+        pointer=PointerEvent(10, 10, source="touch", pointer_id=7),
+    ))
+    dispatcher.dispatch(InputEvent(
+        EventType.POINTER_MOTION,
+        pointer=PointerEvent(10, -240, source="touch", pointer_id=7),
+    ))
+
+    assert inner.scroll_y == inner.max_scroll_y
+    assert outer.scroll_y == outer.max_scroll_y
+    assert inner.scroll_y + outer.scroll_y == 200
+
+
+def test_nested_scroll_offsets_clamp_after_repeated_viewport_resizes():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=300, intrinsic_size=Size(100, 300)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=120, height=100)
+    engine = LayoutEngine()
+
+    engine.layout(outer, Rect(0, 0, 120, 100))
+    assert inner.max_scroll_y == 140
+    assert outer.max_scroll_y == 260
+    inner.scroll_y = 140
+    outer.scroll_y = 250
+
+    # Growing the outer viewport reduces its range and must clamp its offset.
+    engine.layout(outer, Rect(0, 0, 120, 200))
+    assert inner.scroll_y == 140
+    assert outer.max_scroll_y == 160
+    assert outer.scroll_y == 160
+
+    # A larger viewport removes the outer scroll range without changing the
+    # independent inner viewport's own content/viewport relationship.
+    engine.layout(outer, Rect(0, 0, 120, 400))
+    assert outer.max_scroll_y == 0
+    assert outer.scroll_y == 0
+    assert inner.max_scroll_y == 140
+    assert inner.scroll_y == 140
+
+    # Shrinking again restores a valid outer range and clamps both offsets.
+    engine.layout(outer, Rect(0, 0, 120, 80))
+    assert outer.max_scroll_y == 280
+    assert outer.scroll_y == 0
+    assert inner.scroll_y == 140
+
+
+def test_nested_scroll_hit_testing_tracks_resized_viewport_bounds():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=100, intrinsic_size=Size(100, 100)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=100, height=100)
+    engine = LayoutEngine()
+
+    engine.layout(outer, Rect(0, 0, 100, 100))
+    assert hit_test(outer, 10, 50) is inner_content
+    assert hit_test(outer, 10, 150) is None
+
+    engine.layout(outer, Rect(0, 0, 100, 40))
+    assert hit_test(outer, 10, 30) is inner_content
+    assert hit_test(outer, 10, 50) is None
+
+    engine.layout(outer, Rect(0, 0, 100, 160))
+    assert hit_test(outer, 10, 150) is not None

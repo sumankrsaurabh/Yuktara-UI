@@ -112,3 +112,24 @@ def test_adaptive_layout_requires_valid_variants():
         AdaptiveLayout(variants=()).build()
     with pytest.raises(ValueError, match="non-negative"):
         AdaptiveLayout(variants=((-1, 0, LayoutNode.column()),)).build()
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_adaptive_variant_rejects_non_finite_thresholds(value):
+    with pytest.raises(ValueError, match="finite non-negative"):
+        AdaptiveVariant(value, 0, LayoutNode.column())
+    with pytest.raises(ValueError, match="finite non-negative"):
+        AdaptiveVariant(0, value, LayoutNode.column())
+
+
+@pytest.mark.parametrize(
+    "variants",
+    [
+        ((float("nan"), 0, LayoutNode.column()),),
+        ((0, float("inf"), LayoutNode.column()),),
+        ((float("-inf"), 0, LayoutNode.column()),),
+    ],
+)
+def test_adaptive_layout_rejects_non_finite_tuple_thresholds(variants):
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        AdaptiveLayout(variants=variants).build()

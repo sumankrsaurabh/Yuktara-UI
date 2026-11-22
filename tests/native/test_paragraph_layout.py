@@ -291,3 +291,37 @@ def test_fixed_width_text_node_wraps_and_aligns_within_its_own_content_width():
     assert [line.text for line in node.text_layout.lines] == ["abc", "def"]
     assert [line.x_offset for line in node.text_layout.lines] == [5, 5]
     assert node.measured_size.width == 20
+
+
+def test_nested_percentage_text_reflows_when_viewport_width_changes():
+    text = LayoutNode(kind="text", text="abc def", font_size=10)
+    inner = LayoutNode.box(text, width="100%", height="100%", padding=8)
+    root = LayoutNode.box(inner, width="100%", height=120, padding=8)
+    engine = LayoutEngine(TextMeasurer(FakeSkia))
+
+    for width, expected_lines in ((120, 1), (60, 2), (120, 1)):
+        engine.layout(root, Rect(0, 0, width, 120))
+        assert len(text.text_layout.lines) == expected_lines
+        assert text.bounds.x >= inner.content_bounds.x
+        assert text.bounds.right <= inner.content_bounds.right + 1e-6
+        assert inner.bounds.x >= root.content_bounds.x
+        assert inner.bounds.right <= root.content_bounds.right + 1e-6
+        assert text.measured_size.width <= inner.content_bounds.width + 1e-6
+
+
+def test_text_layout_metrics_are_recomputed_after_parent_padding_resize():
+    text = LayoutNode(kind="text", text="abc def", font_size=10)
+    root = LayoutNode.box(text, width=80, height=80, padding=10)
+    engine = LayoutEngine(TextMeasurer(FakeSkia))
+
+    engine.layout(root, Rect(0, 0, 80, 80))
+    wide_layout = text.text_layout
+    assert len(wide_layout.lines) == 1
+
+    root.width = 40
+    engine.layout(root, Rect(0, 0, 40, 80))
+    narrow_layout = text.text_layout
+    assert narrow_layout is not wide_layout
+    assert len(narrow_layout.lines) == 2
+    assert text.bounds.width == 15
+    assert narrow_layout.width <= text.bounds.width

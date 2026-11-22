@@ -135,3 +135,123 @@ def test_native_runtime_resize_reflows_responsive_tree_without_component_rebuild
         assert runtime.component.build_count == initial_build_count
     finally:
         runtime.stop()
+
+
+@pytest.mark.parametrize(
+    "width,height,scale_x,scale_y,expected_index",
+    [
+        (320, 568, 1.0, 1.0, 0),
+        (480, 800, 1.25, 1.5, 0),
+        (600, 900, 1.5, 1.25, 1),
+        (799, 600, 1.75, 1.5, 1),
+        (800, 600, 1.25, 1.75, 2),
+        (1280, 720, 2.0, 1.5, 2),
+        (1920, 1080, 1.5, 2.0, 2),
+        (3840, 2160, 1.25, 1.25, 2),
+    ],
+)
+def test_responsive_layout_survives_logical_and_asymmetric_dpi_resize_matrix(
+    width, height, scale_x, scale_y, expected_index,
+):
+    from math import isfinite
+
+    compact, medium, expanded = _variants()
+    responsive = Responsive(
+        variants=(
+            (0, compact),
+            (600, medium),
+            (800, expanded),
+        )
+    )
+    runtime = NativeRuntime(
+        lambda: responsive.build(),
+        _RecordingRenderer(),
+        390,
+        844,
+    )
+    runtime.start()
+    try:
+        initial_build_count = runtime.component.build_count
+        runtime.resize(
+            width,
+            height,
+            pixel_width=round(width * scale_x),
+            pixel_height=round(height * scale_y),
+        )
+
+        assert runtime.root.responsive_active_index == expected_index
+        assert runtime.component.build_count == initial_build_count
+        assert runtime.adaptive_info.width == width
+        assert runtime.adaptive_info.height == height
+        assert runtime.adaptive_info.scale_x == pytest.approx(
+            round(width * scale_x) / width
+        )
+        assert runtime.adaptive_info.scale_y == pytest.approx(
+            round(height * scale_y) / height
+        )
+
+        def assert_finite_tree(node):
+            for rect in (node.bounds, node.content_bounds):
+                assert all(isfinite(value) for value in (
+                    rect.x, rect.y, rect.width, rect.height,
+                ))
+                assert rect.width >= 0
+                assert rect.height >= 0
+            for child in node.children:
+                assert_finite_tree(child)
+
+        assert_finite_tree(runtime.root)
+    finally:
+        runtime.stop()
+
+
+def test_repeated_resize_across_breakpoints_does_not_leave_stale_variant_bounds():
+    compact, medium, expanded = _variants()
+    responsive = Responsive(
+        variants=(
+            (0, compact),
+            (600, medium),
+            (960, expanded),
+        )
+    )
+    runtime = NativeRuntime(
+        lambda: responsive.build(),
+        _RecordingRenderer(),
+        390,
+        844,
+    )
+    runtime.start()
+    try:
+        initial_build_count = runtime.component.build_count
+        sequence = [
+            (1440, 900, 2.0, 1.5),
+            (320, 568, 1.0, 1.0),
+            (800, 900, 1.25, 1.75),
+            (3840, 2160, 1.5, 1.25),
+            (599, 479, 1.75, 1.5),
+            (960, 900, 2.0, 2.0),
+            (390, 844, 1.0, 1.0),
+        ]
+        for width, height, scale_x, scale_y in sequence:
+            runtime.resize(
+                width,
+                height,
+                pixel_width=round(width * scale_x),
+                pixel_height=round(height * scale_y),
+            )
+            expected = 2 if width >= 960 else 1 if width >= 600 else 0
+            assert runtime.root.responsive_active_index == expected
+            assert runtime.root.children[0] is (compact, medium, expanded)[expected]
+            assert runtime.root.bounds.width == pytest.approx(width)
+            assert runtime.root.bounds.height == pytest.approx(height)
+            assert runtime.component.build_count == initial_build_count
+    finally:
+        runtime.stop()
+
+
+@pytest.mark.parametrize("minimum_width", [float("nan"), float("inf"), float("-inf")])
+def test_responsive_rejects_non_finite_width_thresholds(minimum_width):
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        Responsive(
+            variants=((minimum_width, LayoutNode.column()),)
+        ).build()
