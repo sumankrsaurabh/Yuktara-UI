@@ -219,7 +219,7 @@ class HarfBuzzShaper:
         base = self._base_direction(text, base_direction)
         pieces = []
         for font_run in font_runs:
-            path = config.path_for_family(font_run.family)
+            path = resolver.font_path_for_family(font_run.family, config)
             if path is None:
                 raise ValueError(
                     f"No font file configured for shaping family {font_run.family!r}. "
