@@ -260,8 +260,10 @@ class LayoutNode:
             TextMeasurer._normalize_style_spans(self.text or "", self.text_style_spans)
             TextMeasurer._normalize_paragraph_styles(self.text or "", self.text_paragraph_styles)
         for name in ("width", "height", "min_width", "max_width", "min_height", "max_height",
-                     "flex_basis", "left", "right", "top", "bottom"):
+                     "flex_basis"):
             _validate_length(getattr(self, name), name)
+        for name in ("left", "right", "top", "bottom"):
+            _validate_length(getattr(self, name), name, allow_negative=True)
         for minimum, maximum, axis in ((self.min_width, self.max_width, "width"),
                                        (self.min_height, self.max_height, "height")):
             if isinstance(minimum, (int, float)) and isinstance(maximum, (int, float)) and minimum > maximum:
@@ -364,13 +366,15 @@ class LayoutResult:
     bounds: Rect
 
 
-def _validate_length(value, name: str) -> None:
-    """Validate non-negative logical-pixel or percentage lengths."""
+def _validate_length(value, name: str, *, allow_negative: bool = False) -> None:
+    """Validate finite logical-pixel or percentage lengths."""
+
     if value is None:
         return
     if isinstance(value, (int, float)) and not isinstance(value, bool):
-        if not isfinite(float(value)) or value < 0:
-            raise ValueError(f"{name} must be finite and non-negative")
+        if not isfinite(float(value)) or (value < 0 and not allow_negative):
+            qualifier = "finite" if allow_negative else "finite and non-negative"
+            raise ValueError(f"{name} must be {qualifier}")
         return
     if isinstance(value, str) and value.strip().endswith("%"):
         raw = value.strip()[:-1].strip()
@@ -378,7 +382,8 @@ def _validate_length(value, name: str) -> None:
             number = float(raw)
         except ValueError as exc:
             raise ValueError(f"{name} must be a number or percentage") from exc
-        if not isfinite(number) or number < 0:
-            raise ValueError(f"{name} percentage must be finite and non-negative")
+        if not isfinite(number) or (number < 0 and not allow_negative):
+            qualifier = "finite" if allow_negative else "finite and non-negative"
+            raise ValueError(f"{name} percentage must be {qualifier}")
         return
     raise TypeError(f"{name} must be a number, percentage string, or None")
