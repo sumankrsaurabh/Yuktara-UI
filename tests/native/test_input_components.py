@@ -278,7 +278,8 @@ def test_tabs_select_panel_and_keyboard_navigation():
     tabs = Tabs((TabItem("General", "general panel"), TabItem("Advanced", "advanced panel")),
                 on_change=changes.append)
     root = tabs.build()
-    assert root.children[1].text == "general panel"
+    assert root.children[1].accessibility_role == "tabpanel"
+    assert root.children[1].children[0].text == "general panel"
     tablist = root.children[0]
     node = tablist.children[1]
     layout(root, 400, 160)
