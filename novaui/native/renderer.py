@@ -29,6 +29,21 @@ class RenderSize:
     def pixel_height(self) -> int:
         return round(self.height * (self.scale_y or self.scale))
 
+    @property
+    def content_scale(self) -> float:
+        """Uniform scale used for drawing, preventing glyph/component distortion."""
+        return min(self.scale, self.scale_y or self.scale)
+
+    @property
+    def content_offset_x(self) -> float:
+        """Horizontal pixel inset when the backing surface has a wider aspect."""
+        return (self.pixel_width - self.width * self.content_scale) / 2
+
+    @property
+    def content_offset_y(self) -> float:
+        """Vertical pixel inset when the backing surface has a taller aspect."""
+        return (self.pixel_height - self.height * self.content_scale) / 2
+
 
 class SkiaRenderer:
     """Owns a Skia raster surface and exposes safe high-level draw methods.
@@ -74,7 +89,14 @@ class SkiaRenderer:
         if self._surface is None:
             raise RuntimeError("Skia could not allocate the raster surface.")
         self._canvas = self._surface.getCanvas()
-        self._canvas.scale(self.size.scale, self.size.scale_y or self.size.scale)
+        # Backing pixel dimensions may differ slightly on the two axes after
+        # DPI rounding or display migration. Never apply independent X/Y
+        # transforms to UI content: that stretches glyphs, circles and controls.
+        # Fit the logical viewport uniformly and center it in the raster surface.
+        self._canvas.translate(
+            self.size.content_offset_x, self.size.content_offset_y
+        )
+        self._canvas.scale(self.size.content_scale, self.size.content_scale)
 
     @property
     def canvas(self):
