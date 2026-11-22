@@ -72,7 +72,9 @@ def test_icon_button_has_accessible_name_and_consistent_square_target():
     theme = NativeTheme()
     node = IconButton("＋", "Create item", theme=theme).build()
 
-    assert node.text == "＋"
+    # Icon buttons use vector painting rather than relying on a font glyph.
+    assert node.text is None
+    assert callable(node.paint_callback)
     assert node.accessibility_role == "button"
     assert node.accessibility_label == "Create item"
     assert node.width == theme.icon_button_size_medium
