@@ -238,6 +238,8 @@ class InputDispatcher:
 
         def walk(node):
             if node is target:
+                if node.kind == "scroll":
+                    chain.append(node)
                 return True
             for child in node.children:
                 if walk(child):
@@ -246,12 +248,9 @@ class InputDispatcher:
                     return True
             return False
 
-        if target.kind == "scroll":
-            chain.append(target)
-        else:
-            for root in self._roots():
-                if walk(root):
-                    break
+        for root in self._roots():
+            if walk(root):
+                break
         return chain
 
     @staticmethod
