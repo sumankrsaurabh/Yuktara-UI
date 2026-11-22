@@ -21,6 +21,7 @@ class LayoutNode:
     min_height: Optional[float | str] = None
     max_height: Optional[float | str] = None
     padding: Insets = field(default_factory=Insets)
+    clip_children: bool = False
     spacing: float = 0.0
     weight: float = 0.0
     align: Alignment = Alignment.START
@@ -232,6 +233,8 @@ class LayoutNode:
             raise ValueError("position must be 'flow' or 'absolute'")
         if self.baseline is not None and (not isfinite(float(self.baseline)) or self.baseline < 0):
             raise ValueError("baseline must be finite and non-negative")
+        if not isinstance(self.clip_children, bool):
+            raise TypeError("clip_children must be a bool")
         if not isinstance(self.flex_wrap, bool):
             raise TypeError("flex_wrap must be a bool")
         if self.accessibility_identifier is not None and (
