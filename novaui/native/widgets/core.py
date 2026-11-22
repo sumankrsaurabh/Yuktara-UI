@@ -202,8 +202,14 @@ class Button:
             text_color=foreground,
             font_size=text_sizes[self.size],
             font_weight="semibold",
-            padding=Insets.symmetric(vertical=0, horizontal=horizontal_padding[self.size]),
+            # Reserve symmetric vertical space so glyph ascenders/descenders
+            # sit on the visual centerline of the control rather than its top edge.
+            padding=Insets.symmetric(
+                vertical=max(0.0, (heights[self.size] - text_sizes[self.size] * 1.35) / 2),
+                horizontal=horizontal_padding[self.size],
+            ),
             min_height=heights[self.size],
+            text_align="center",
             background=background,
             radius=radius,
             border_color=border,
