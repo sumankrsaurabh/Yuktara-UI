@@ -24,6 +24,9 @@ yuktara-ui = "novaui.cli:main"
 where = ["."]
 include = ["novaui*"]
 
+[tool.setuptools.package-data]
+novaui = ["native/assets/fonts/*.otf"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
