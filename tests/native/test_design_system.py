@@ -2,30 +2,44 @@ from __future__ import annotations
 
 import pytest
 
-from novaui.native import (
-    Button, IconButton, NativeTheme, Surface,
-)
+from novaui.native import Button, IconButton, NativeTheme, Surface
 
 
-def test_theme_exposes_consistent_color_shape_spacing_and_type_tokens():
-    light = NativeTheme()
-    dark = NativeTheme.dark()
+def test_clarity_theme_uses_quiet_neutral_light_palette_and_blue_accent():
+    theme = NativeTheme()
+    assert theme.name == "yuktara-clarity-light"
+    assert theme.background == 0xFFF5F5F7
+    assert theme.foreground == 0xFF1D1D1F
+    assert theme.muted == 0xFF6E6E73
+    assert theme.primary == 0xFF0071E3
+    assert theme.surface == 0xFFFFFFFF
 
-    assert light.surface_container_lowest == light.surface
-    assert light.surface_container_highest != light.surface_container_lowest
-    assert light.radius_extra_large > light.radius_large
-    assert [light.space_1, light.space_2, light.space_3, light.space_4] == [4, 8, 12, 16]
-    assert light.control_height_medium >= light.minimum_touch_target
-    assert light.type_title_large > light.type_body_large
+
+def test_dark_theme_is_purpose_designed_not_a_light_palette_inversion():
+    light, dark = NativeTheme(), NativeTheme.dark()
+    assert dark.name == "yuktara-clarity-dark"
+    assert dark.background == 0xFF000000
+    assert dark.surface == 0xFF1C1C1E
+    assert dark.primary == 0xFF0A84FF
+    assert dark.outline_variant == 0xFF48484A
     assert dark.on_surface != light.on_surface
-    assert dark.secondary_soft != light.secondary_soft
+    assert dark.surface_container_lowest != light.surface_container_lowest
+
+
+def test_theme_exposes_consistent_shape_spacing_type_and_touch_tokens():
+    theme = NativeTheme()
+    assert theme.surface_container_lowest == theme.surface
+    assert theme.surface_container_highest != theme.surface_container_lowest
+    assert theme.radius_extra_large > theme.radius_large > theme.radius_medium
+    assert [theme.space_1, theme.space_2, theme.space_3, theme.space_4] == [4, 8, 12, 16]
+    assert theme.control_height_medium >= theme.minimum_touch_target
+    assert theme.type_title_large > theme.type_body_large
 
 
 @pytest.mark.parametrize("variant", sorted(Button.VARIANTS))
 def test_button_variants_share_accessibility_and_minimum_control_metrics(variant):
     theme = NativeTheme()
     node = Button("Continue", variant=variant, theme=theme).build()
-
     assert node.accessibility_role == "button"
     assert node.accessibility_label == "Continue"
     assert node.min_height == theme.control_height_medium
@@ -37,19 +51,15 @@ def test_button_has_distinct_hover_pressed_and_focus_visual_states():
     theme = NativeTheme()
     node = Button("Save", theme=theme).build()
     resting = node.background
-
     node.on_pointer_enter(None)
     hovered = node.background
     assert hovered != resting
-
     node.on_pointer_down(None)
     pressed = node.background
     assert pressed != hovered
-
     node.on_focus(None)
     assert node.border_color == theme.focus
     assert node.border_width == 2
-
     node.on_pointer_up(None)
     node.on_pointer_leave(None)
     node.on_blur(None)
@@ -60,7 +70,6 @@ def test_button_has_distinct_hover_pressed_and_focus_visual_states():
 
 def test_disabled_button_does_not_install_interaction_handlers():
     node = Button("Unavailable", disabled=True).build()
-
     assert node.on_click is None
     assert node.on_pointer_enter is None
     assert node.on_pointer_down is None
@@ -71,8 +80,6 @@ def test_disabled_button_does_not_install_interaction_handlers():
 def test_icon_button_has_accessible_name_and_consistent_square_target():
     theme = NativeTheme()
     node = IconButton("＋", "Create item", theme=theme).build()
-
-    # Icon buttons use vector painting rather than relying on a font glyph.
     assert node.text is None
     assert callable(node.paint_callback)
     assert node.accessibility_role == "button"
@@ -94,7 +101,6 @@ def test_surface_variants_use_semantic_container_roles():
     low = Surface(variant="low", theme=theme).build()
     high = Surface(variant="high", theme=theme).build()
     outlined = Surface(variant="outlined", theme=theme).build()
-
     assert low.background == theme.surface_container_low
     assert high.background == theme.surface_container_high
     assert outlined.background == theme.surface
@@ -118,10 +124,8 @@ def test_surface_rejects_invalid_variant_and_negative_padding():
 ])
 def test_card_variants_use_shared_surface_and_shape_tokens(variant, background, bordered):
     from novaui.native import Card
-
     theme = NativeTheme()
     node = Card(variant=variant, theme=theme).build()
-
     assert node.background == getattr(theme, background)
     assert node.radius == theme.radius_large
     assert node.border_width == (1 if bordered else 0)
@@ -130,11 +134,9 @@ def test_card_variants_use_shared_surface_and_shape_tokens(variant, background, 
 
 def test_card_legacy_bordered_flag_remains_compatible():
     from novaui.native import Card
-
     theme = NativeTheme()
     outlined = Card(theme=theme).build()
     flat = Card(bordered=False, theme=theme).build()
-
     assert outlined.border_color == theme.border
     assert outlined.border_width == 1
     assert flat.border_color is None
@@ -150,6 +152,5 @@ def test_card_legacy_bordered_flag_remains_compatible():
 ])
 def test_card_rejects_invalid_configuration(kwargs, match):
     from novaui.native import Card
-
     with pytest.raises((ValueError, TypeError), match=match):
         Card(**kwargs)

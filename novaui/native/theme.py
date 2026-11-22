@@ -1,4 +1,4 @@
-"""Yuktara UI semantic color, typography and component design tokens."""
+"""Yuktara Clarity design tokens: an original, restrained native design language."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,66 +7,67 @@ from .typography import FontConfig
 
 @dataclass(frozen=True, slots=True)
 class NativeTheme:
-    """Immutable semantic design system consumed by native components.
+    """Immutable semantic tokens shared by every native component.
 
-    Colors use ARGB integers. The original palette and radius names remain
-    available for compatibility; newer tokens provide consistent surface,
-    spacing, typography and control metrics across the component catalogue.
+    The visual direction favors quiet neutral surfaces, crisp hierarchy,
+    restrained blue actions and generous geometry. Colors are ARGB integers.
+    Inter remains the only implicit typeface; FontConfig controls explicit
+    opt-in font customization.
     """
-    name: str = "yuktara-light"
+    name: str = "yuktara-clarity-light"
 
-    # Semantic color roles
-    background: int = 0xFFF6F7F9
+    # Semantic color roles — light appearance
+    background: int = 0xFFF5F5F7
     surface: int = 0xFFFFFFFF
-    surface_variant: int = 0xFFF0F2F5
-    foreground: int = 0xFF202735
-    muted: int = 0xFF667085
-    border: int = 0xFFE2E6EC
-    primary: int = 0xFF315FEA
-    primary_soft: int = 0xFFEAF0FF
+    surface_variant: int = 0xFFF2F2F4
+    foreground: int = 0xFF1D1D1F
+    muted: int = 0xFF6E6E73
+    border: int = 0xFFD2D2D7
+    primary: int = 0xFF0071E3
+    primary_soft: int = 0xFFE8F2FC
     on_primary: int = 0xFFFFFFFF
-    success: int = 0xFF16834A
-    success_soft: int = 0xFFE7F6ED
+    success: int = 0xFF248A3D
+    success_soft: int = 0xFFE8F5E9
     on_success: int = 0xFFFFFFFF
-    warning: int = 0xFFB86B08
-    warning_text: int = 0xFF8B4F05
-    warning_soft: int = 0xFFFFF3D8
-    danger: int = 0xFFC43D4B
-    danger_soft: int = 0xFFFFE9EC
+    warning: int = 0xFF9A6700
+    warning_text: int = 0xFF805500
+    warning_soft: int = 0xFFFFF4D6
+    danger: int = 0xFFD70015
+    danger_soft: int = 0xFFFCE8E9
     on_danger: int = 0xFFFFFFFF
-    info: int = 0xFF1769AA
-    info_soft: int = 0xFFE7F3FF
-    disabled_surface: int = 0xFFE9ECF1
-    disabled_text: int = 0xFF98A1AF
-    focus: int = 0xFF7C9BFF
+    info: int = 0xFF0071E3
+    info_soft: int = 0xFFE8F2FC
+    disabled_surface: int = 0xFFE5E5EA
+    disabled_text: int = 0xFFAEAEB2
+    focus: int = 0xFF409CFF
 
-    # Extended Material-style semantic roles
-    secondary: int = 0xFF53627D
+    # Extended semantic roles; names remain stable for API compatibility.
+    secondary: int = 0xFF515154
     on_secondary: int = 0xFFFFFFFF
-    secondary_soft: int = 0xFFE9EDF5
+    secondary_soft: int = 0xFFEAEAEC
     tertiary: int = 0xFF7656A8
     on_tertiary: int = 0xFFFFFFFF
     tertiary_soft: int = 0xFFF0EAF8
-    on_background: int = 0xFF202735
-    on_surface: int = 0xFF202735
+    on_background: int = 0xFF1D1D1F
+    on_surface: int = 0xFF1D1D1F
     surface_container_lowest: int = 0xFFFFFFFF
-    surface_container_low: int = 0xFFFAFBFC
-    surface_container: int = 0xFFF4F5F7
-    surface_container_high: int = 0xFFEAEDF1
-    surface_container_highest: int = 0xFFE2E6EC
-    outline: int = 0xFF8A93A2
-    outline_variant: int = 0xFFD9DEE6
-    inverse_surface: int = 0xFF293140
-    inverse_on_surface: int = 0xFFF3F5F8
+    surface_container_low: int = 0xFFFAFAFC
+    surface_container: int = 0xFFF2F2F4
+    surface_container_high: int = 0xFFEAEAEC
+    surface_container_highest: int = 0xFFE0E0E5
+    outline: int = 0xFF8E8E93
+    outline_variant: int = 0xFFD2D2D7
+    inverse_surface: int = 0xFF2C2C2E
+    inverse_on_surface: int = 0xFFF5F5F7
     scrim: int = 0x66000000
 
-    # Shape scale; legacy radius names remain stable.
-    radius_small: float = 6.0
-    radius_medium: float = 10.0
-    radius_large: float = 16.0
-    radius_pill: float = 999.0
-    radius_extra_small: float = 4.0
+    # Shape scale — soft but disciplined; pill is reserved for compact controls.
+    radius_extra_small: float = 6.0
+    radius_small: float = 10.0
+    radius_medium: float = 14.0
+    radius_large: float = 18.0
     radius_extra_large: float = 24.0
+    radius_pill: float = 999.0
 
     # 4-point spacing scale
     space_1: float = 4.0
@@ -88,7 +89,7 @@ class NativeTheme:
     icon_button_size_large: float = 52.0
     minimum_touch_target: float = 44.0
 
-    # Typography roles, in logical pixels
+    # Typography roles, in logical pixels. Inter is the implicit font.
     type_display_large: float = 48.0
     type_display_medium: float = 40.0
     type_headline_large: float = 32.0
@@ -102,8 +103,7 @@ class NativeTheme:
     type_label_medium: float = 12.0
     type_label_small: float = 11.0
 
-    # Elevation levels are semantic tokens. Current CPU renderer expresses
-    # elevation through surface roles and outlines; shadow rendering is future work.
+    # Semantic elevation levels. Actual shadow compositor remains renderer work.
     elevation_0: float = 0.0
     elevation_1: float = 1.0
     elevation_2: float = 3.0
@@ -113,46 +113,47 @@ class NativeTheme:
 
     @classmethod
     def dark(cls) -> "NativeTheme":
+        """Return a purpose-designed dark palette, not an inverted light theme."""
         return cls(
-            name="yuktara-dark",
-            background=0xFF151922,
-            surface=0xFF202735,
-            surface_variant=0xFF2A3444,
-            foreground=0xFFF4F6FA,
-            muted=0xFFAFB9C8,
-            border=0xFF364253,
-            primary=0xFF8AA7FF,
-            primary_soft=0xFF27365D,
-            on_primary=0xFF111A2E,
-            success=0xFF57C889,
-            success_soft=0xFF1F3E30,
-            on_success=0xFF10271A,
-            warning=0xFFF2B84B,
-            warning_text=0xFFFFD37C,
-            warning_soft=0xFF49391D,
-            danger=0xFFFF7D89,
-            danger_soft=0xFF4A252D,
-            on_danger=0xFF351218,
-            info=0xFF7EC4FF,
-            info_soft=0xFF1E3548,
-            disabled_surface=0xFF303947,
-            disabled_text=0xFF7C8797,
-            focus=0xFF9CB4FF,
-            secondary=0xFFB8C5E0,
-            on_secondary=0xFF263247,
-            secondary_soft=0xFF344158,
-            tertiary=0xFFD0B7F5,
-            on_tertiary=0xFF38264F,
-            tertiary_soft=0xFF49365F,
-            on_background=0xFFF4F6FA,
-            on_surface=0xFFF4F6FA,
-            surface_container_lowest=0xFF171D27,
-            surface_container_low=0xFF1B222E,
-            surface_container=0xFF202735,
-            surface_container_high=0xFF2A3444,
-            surface_container_highest=0xFF354153,
-            outline=0xFF8793A7,
-            outline_variant=0xFF465266,
-            inverse_surface=0xFFE4EAF4,
-            inverse_on_surface=0xFF293140,
+            name="yuktara-clarity-dark",
+            background=0xFF000000,
+            surface=0xFF1C1C1E,
+            surface_variant=0xFF2C2C2E,
+            foreground=0xFFF5F5F7,
+            muted=0xFF98989D,
+            border=0xFF38383A,
+            primary=0xFF0A84FF,
+            primary_soft=0xFF172C43,
+            on_primary=0xFFFFFFFF,
+            success=0xFF30D158,
+            success_soft=0xFF183A27,
+            on_success=0xFF06210F,
+            warning=0xFFFFD60A,
+            warning_text=0xFFFFD60A,
+            warning_soft=0xFF3A3214,
+            danger=0xFFFF453A,
+            danger_soft=0xFF3B1C1C,
+            on_danger=0xFFFFFFFF,
+            info=0xFF64D2FF,
+            info_soft=0xFF173344,
+            disabled_surface=0xFF2C2C2E,
+            disabled_text=0xFF636366,
+            focus=0xFF409CFF,
+            secondary=0xFFAEAEB2,
+            on_secondary=0xFF1C1C1E,
+            secondary_soft=0xFF38383A,
+            tertiary=0xFFBF9AF7,
+            on_tertiary=0xFF27183D,
+            tertiary_soft=0xFF382A4C,
+            on_background=0xFFF5F5F7,
+            on_surface=0xFFF5F5F7,
+            surface_container_lowest=0xFF141416,
+            surface_container_low=0xFF1C1C1E,
+            surface_container=0xFF242426,
+            surface_container_high=0xFF2C2C2E,
+            surface_container_highest=0xFF3A3A3C,
+            outline=0xFF8E8E93,
+            outline_variant=0xFF48484A,
+            inverse_surface=0xFFE5E5EA,
+            inverse_on_surface=0xFF1C1C1E,
         )
