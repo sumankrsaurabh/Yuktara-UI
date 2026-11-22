@@ -272,6 +272,69 @@ class Button:
 
 
 @dataclass
+def _paint_icon(renderer, node, icon: str, color: int) -> None:
+    """Paint a small, resolution-independent vector icon (no font glyph dependency).
+
+    Icon names and the legacy gallery glyphs are normalized to a stable set of
+    simple paths. Unknown values fall back to a visible neutral dot rather than
+    a missing-glyph square.
+    """
+    aliases = {
+        "☰": "menu", "menu": "menu",
+        "⌕": "search", "search": "search",
+        "⋯": "more", "more": "more", "more-horizontal": "more",
+        "＋": "add", "+": "add", "add": "add", "plus": "add",
+        "×": "close", "close": "close", "x": "close",
+        "back": "back", "arrow-left": "back",
+        "chevron-down": "chevron-down", "expand-more": "chevron-down",
+        "check": "check", "done": "check",
+    }
+    name = aliases.get(icon.strip().lower(), aliases.get(icon.strip(), "unknown"))
+    skia = renderer._module()
+    canvas = renderer.canvas
+    bounds = node.content_bounds
+    cx = bounds.x + bounds.width / 2
+    cy = bounds.y + bounds.height / 2
+    unit = min(bounds.width, bounds.height) * 0.22
+    paint = skia.Paint(AntiAlias=True, Color=color)
+    paint.setStyle(skia.Paint.kStroke_Style)
+    paint.setStrokeWidth(max(1.6, unit * 0.22))
+    paint.setStrokeCap(skia.Paint.kRound_Cap)
+    paint.setStrokeJoin(skia.Paint.kRound_Join)
+    path = skia.Path()
+    if name == "menu":
+        for offset in (-0.65, 0.0, 0.65):
+            canvas.drawLine(cx-unit, cy+offset*unit, cx+unit, cy+offset*unit, paint)
+    elif name == "search":
+        canvas.drawCircle(cx-unit*0.22, cy-unit*0.22, unit*0.68, paint)
+        canvas.drawLine(cx+unit*0.28, cy+unit*0.28, cx+unit, cy+unit, paint)
+    elif name == "more":
+        for offset in (-0.72, 0.0, 0.72):
+            canvas.drawCircle(cx+offset*unit, cy, max(1.4, unit*0.13), paint)
+    elif name == "add":
+        canvas.drawLine(cx-unit*0.75, cy, cx+unit*0.75, cy, paint)
+        canvas.drawLine(cx, cy-unit*0.75, cx, cy+unit*0.75, paint)
+    elif name == "close":
+        canvas.drawLine(cx-unit*0.65, cy-unit*0.65, cx+unit*0.65, cy+unit*0.65, paint)
+        canvas.drawLine(cx+unit*0.65, cy-unit*0.65, cx-unit*0.65, cy+unit*0.65, paint)
+    elif name == "back":
+        canvas.moveTo(cx+unit*0.65, cy-unit*0.75)
+        canvas.lineTo(cx-unit*0.15, cy)
+        canvas.lineTo(cx+unit*0.65, cy+unit*0.75)
+        canvas.moveTo(cx-unit*0.15, cy)
+        canvas.lineTo(cx+unit, cy)
+        canvas.drawPath(path, paint)
+    elif name == "chevron-down":
+        canvas.drawLine(cx-unit*0.7, cy-unit*0.25, cx, cy+unit*0.45, paint)
+        canvas.drawLine(cx, cy+unit*0.45, cx+unit*0.7, cy-unit*0.25, paint)
+    elif name == "check":
+        canvas.drawLine(cx-unit*0.7, cy, cx-unit*0.15, cy+unit*0.55, paint)
+        canvas.drawLine(cx-unit*0.15, cy+unit*0.55, cx+unit*0.8, cy-unit*0.55, paint)
+    else:
+        canvas.drawCircle(cx, cy, max(2.0, unit*0.18), paint)
+
+
+@dataclass
 class IconButton:
     """Compact icon action with a required accessible text label."""
     icon: str
@@ -303,7 +366,7 @@ class IconButton:
             "outlined": "outline",
         }[self.variant]
         node = Button(
-            self.icon,
+            "",
             on_click=self.on_click,
             variant=variant,
             size=self.size,
@@ -315,6 +378,11 @@ class IconButton:
         node.min_width = node.min_height
         node.padding = Insets.all(0)
         node.align = Alignment.CENTER
+        node.text = None
+        node.paint_callback = lambda renderer, target: _paint_icon(
+            renderer, target, self.icon, self.theme.primary if not self.disabled
+            else self.theme.disabled_text
+        )
         node.accessibility_label = self.label
         node.accessibility_hint = self.label
         node.accessibility_identifier = f"icon-button:{self.label}"
