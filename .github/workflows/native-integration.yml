@@ -11,6 +11,7 @@ on:
       - "novaui/native/runtime.py"
       - "novaui/native/dependencies/**"
       - "scripts/native_runtime_smoke.py"
+      - "examples/native/design_system_gallery.py"
       - ".github/workflows/native-integration.yml"
   workflow_dispatch:
 
@@ -51,6 +52,17 @@ jobs:
 
       - name: Provision Skia and verified SDL3
         run: python -m novaui setup
+
+      - name: Capture rendered Yuktara design-system gallery
+        run: python examples/native/design_system_gallery.py --screenshot artifacts/yuktara-design-system.png
+
+      - name: Upload live-run screenshot
+        uses: actions/upload-artifact@v6
+        with:
+          name: yuktara-ui-live-screenshot
+          path: artifacts/yuktara-design-system.png
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Open a real SDL3 window and present Skia frames
         run: xvfb-run -a -s "-screen 0 1280x800x24" python scripts/native_runtime_smoke.py
