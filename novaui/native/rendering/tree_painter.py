@@ -138,6 +138,24 @@ class LayoutTreePainter:
                 self._paint_node(child,opacity if not callable(save_layer) else 1.0)
             self.renderer.restore()
             self._paint_scrollbar(node,opacity)
+        elif node.clip_children:
+            save = getattr(self.renderer, "save", None)
+            clip_rect = getattr(self.renderer, "clip_rect", None)
+            restore = getattr(self.renderer, "restore", None)
+            if (callable(save) and callable(clip_rect) and callable(restore)):
+                area = node.content_bounds
+                save()
+                try:
+                    clip_rect(area.x, area.y, area.width, area.height)
+                    for child in node.children:
+                        self._paint_node(child, opacity if not callable(save_layer) else 1.0)
+                finally:
+                    restore()
+            else:
+                # A renderer without the complete state/clip contract still
+                # paints correctly, but cannot enforce descendant clipping.
+                for child in node.children:
+                    self._paint_node(child, opacity if not callable(save_layer) else 1.0)
         else:
             for child in node.children:
                 self._paint_node(child,opacity if not callable(save_layer) else 1.0)
