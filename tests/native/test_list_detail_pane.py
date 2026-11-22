@@ -33,7 +33,7 @@ def test_list_detail_uses_single_pane_on_compact_and_two_panes_on_wide():
 
     engine.layout(root, Rect(0, 0, 1200, 800))
     assert root.responsive_active_index == 1
-    assert root.children[0].children[0] is pane._list_pane
+    assert root.children[0].children[0].children[0] is pane._list_pane
     assert root.children[0].children[1].children[1] is pane._detail_body
 
 
