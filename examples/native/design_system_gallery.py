@@ -203,6 +203,19 @@ def main() -> None:
     )
     renderer = SkiaRenderer(RenderSize(1120, 820), skia_module=skia)
     runtime = NativeRuntime(lambda: root, renderer, 1120, 820, clear_color=theme.background)
+    if "--screenshot" in sys.argv:
+        from pathlib import Path
+
+        output_index = sys.argv.index("--screenshot")
+        output_path = Path(sys.argv[output_index + 1]) if output_index + 1 < len(sys.argv) else Path("yuktara-design-system.png")
+        runtime.start()
+        runtime.render()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(renderer.to_png_bytes())
+        runtime.stop()
+        print(f"Saved Yuktara UI screenshot: {output_path}")
+        return
+
     window = SDL3Window(
         "Yuktara — Design System",
         1120,
