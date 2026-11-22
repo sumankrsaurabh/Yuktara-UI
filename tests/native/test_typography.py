@@ -7,15 +7,16 @@ from novaui.native.typography import (
 )
 
 
-def test_yuktara_sans_is_the_primary_font():
-    assert DEFAULT_FONT_FAMILY == "Yuktara Sans"
-    assert FontConfig().family == "Yuktara Sans"
-    assert "Inter" in FontConfig().fallback_families
+def test_inter_is_the_only_implicit_font():
+    assert DEFAULT_FONT_FAMILY == "Inter"
+    assert FontConfig().family == "Inter"
+    assert FALLBACK_FONT_FAMILIES == ()
+    assert FontConfig().fallback_families == ()
 
 
-def test_fallbacks_are_available():
-    assert "Noto Sans" in FALLBACK_FONT_FAMILIES
-    assert "DejaVu Sans" in FALLBACK_FONT_FAMILIES
+def test_additional_font_families_must_be_explicitly_declared():
+    config = FontConfig(fallback_families=("Noto Sans",))
+    assert config.fallback_families == ("Noto Sans",)
 
 
 def test_font_size_must_be_positive():
@@ -248,3 +249,33 @@ def test_bundled_display_font_discovery_is_separate(tmp_path, monkeypatch):
     assert FontResolver._bundled_font_path(
         "Inter", FontConfig()
     ) is None
+
+
+def test_font_resolver_does_not_silently_substitute_system_default():
+    from novaui.native.typography import FontResolver
+
+    class FakeSkia:
+        class FontStyle:
+            kNormal_Weight = 0
+            kMedium_Weight = 1
+            kSemiBold_Weight = 2
+            kBold_Weight = 3
+            kNormal_Width = 0
+            kUpright_Slant = 0
+            kItalic_Slant = 1
+
+            def __init__(self, *args):
+                pass
+
+        class Typeface:
+            @staticmethod
+            def MakeFromName(family, style):
+                return None
+
+            @staticmethod
+            def MakeDefault():
+                raise AssertionError("must not silently select the system default")
+
+    resolver = FontResolver(FakeSkia)
+    with pytest.raises(RuntimeError, match="Install Inter"):
+        resolver.resolve(FontConfig())

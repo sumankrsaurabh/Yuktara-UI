@@ -6,14 +6,11 @@ from pathlib import Path
 from math import isfinite
 from typing import Any
 
-DEFAULT_FONT_FAMILY = "Yuktara Sans"
-FALLBACK_FONT_FAMILIES = (
-    "Inter", "Noto Sans", "Noto Sans Devanagari", "Noto Sans Bengali",
-    "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Kannada",
-    "Noto Sans Malayalam", "Noto Sans Gujarati", "Noto Sans Gurmukhi",
-    "Noto Sans Arabic", "Noto Sans CJK SC", "Noto Color Emoji",
-    "Arial", "DejaVu Sans", "sans-serif",
-)
+DEFAULT_FONT_FAMILY = "Inter"
+# Inter is the sole implicit font. Additional families must be explicitly
+# supplied through FontConfig.fallback_families / font_files or selected as
+# FontConfig.family by the application.
+FALLBACK_FONT_FAMILIES: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,8 +200,10 @@ class FontResolver:
             face = self._typeface(family, config)
             if face is not None:
                 return face
-        skia = self._module()
-        return skia.Typeface.MakeDefault()
+        raise RuntimeError(
+            f"Required font family {config.family!r} is unavailable. "
+            "Install Inter or explicitly configure another font family."
+        )
 
     @staticmethod
     def _supports_cluster(typeface, cluster: str) -> bool | None:
@@ -240,7 +239,10 @@ class FontResolver:
         faces = [(family, self._typeface(family, config)) for family in families]
         faces = [(family, face) for family, face in faces if face is not None]
         if not faces:
-            return (FontRun(text, 0, len(text), "default", self._module().Typeface.MakeDefault()),)
+            raise RuntimeError(
+                f"Required font family {config.family!r} is unavailable. "
+                "Install Inter or explicitly configure another font family."
+            )
         selected = []
         for start, end in grapheme_spans(text):
             cluster = text[start:end]
