@@ -65,7 +65,7 @@ class Responsive:
                     or isinstance(minimum_width, bool)
                     or not isfinite(float(minimum_width))
                     or minimum_width < 0):
-                raise ValueError("responsive variant min_width must be non-negative")
+                raise ValueError("responsive variant min_width must be finite and non-negative")
             minimum_width = float(minimum_width)
             if minimum_width <= previous_width:
                 raise ValueError("responsive variant min_width values must be strictly increasing")
