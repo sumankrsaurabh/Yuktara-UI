@@ -63,6 +63,7 @@ class Responsive:
                 raise TypeError("responsive variants must be ResponsiveVariant or (min_width, child) pairs")
             if (not isinstance(minimum_width, (int, float))
                     or isinstance(minimum_width, bool)
+                    or not isfinite(float(minimum_width))
                     or minimum_width < 0):
                 raise ValueError("responsive variant min_width must be non-negative")
             minimum_width = float(minimum_width)
@@ -93,8 +94,8 @@ class AdaptiveVariant:
     def __post_init__(self):
         for value, name in ((self.min_width, "min_width"), (self.min_height, "min_height")):
             if (isinstance(value, bool) or not isinstance(value, (int, float))
-                    or value < 0):
-                raise ValueError(f"AdaptiveVariant {name} must be a non-negative number")
+                    or not isfinite(float(value)) or value < 0):
+                raise ValueError(f"AdaptiveVariant {name} must be a finite non-negative number")
         if self.child is None:
             raise ValueError("AdaptiveVariant child cannot be None")
 
@@ -131,8 +132,8 @@ class AdaptiveLayout:
                 )
             values = (minimum_width, minimum_height)
             if any(isinstance(value, bool) or not isinstance(value, (int, float))
-                   or value < 0 for value in values):
-                raise ValueError("adaptive variant minimum dimensions must be non-negative")
+                   or not isfinite(float(value)) or value < 0 for value in values):
+                raise ValueError("adaptive variant minimum dimensions must be finite and non-negative")
             current = (float(minimum_width), float(minimum_height))
             if current in seen_thresholds:
                 raise ValueError("adaptive variant thresholds must be unique")
