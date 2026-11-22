@@ -178,7 +178,7 @@ def test_accessibility_tree_preserves_control_state():
 
 def test_dark_theme_exposes_complete_semantic_palette():
     theme = NativeTheme.dark()
-    assert theme.name == "yuktara-dark"
+    assert theme.name == "yuktara-clarity-dark"
     assert theme.primary != NativeTheme().primary
     assert theme.on_primary != 0
     assert theme.danger_soft != theme.warning_soft
