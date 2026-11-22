@@ -127,6 +127,22 @@ class SkiaRenderer:
         else:
             self._canvas.drawRect(rect, paint)
 
+    @staticmethod
+    def _configure_text_font(skia, typeface, size):
+        """Create a consistently antialiased, subpixel-positioned Skia font."""
+        font = self._configure_text_font(skia, typeface, size)
+        # Skia Font defaults are intentionally conservative; explicitly enable
+        # smooth edge coverage and fractional glyph placement for UI text.
+        edging = getattr(getattr(skia.Font, "Edging", None), "kAntiAlias", None)
+        if edging is not None and callable(getattr(font, "setEdging", None)):
+            font.setEdging(edging)
+        if callable(getattr(font, "setSubpixel", None)):
+            font.setSubpixel(True)
+        hinting = getattr(getattr(skia.Font, "Hinting", None), "kNormal", None)
+        if hinting is not None and callable(getattr(font, "setHinting", None)):
+            font.setHinting(hinting)
+        return font
+
     def draw_text(
         self,
         text: str,
@@ -143,7 +159,7 @@ class SkiaRenderer:
         paint = skia.Paint(AntiAlias=True, Color=color)
         cursor_x = x
         for run in self._fonts.resolve_runs(config, text):
-            skia_font = skia.Font(run.typeface, config.size)
+            skia_font = self._configure_text_font(skia, run.typeface, config.size)
             self._canvas.drawString(run.text, cursor_x, baseline_y, skia_font, paint)
             cursor_x += float(skia_font.measureText(run.text))
 
