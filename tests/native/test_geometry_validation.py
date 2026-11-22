@@ -19,10 +19,14 @@ def test_point_rejects_non_finite_or_non_numeric_coordinates(value):
         Point(x=value)
 
 
-@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, True, "12", -1])
-def test_rect_rejects_invalid_coordinates_and_extents(value):
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, True, "12"])
+def test_rect_rejects_invalid_coordinates(value):
     with pytest.raises((TypeError, ValueError)):
         Rect(x=value)
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, True, "12", -1])
+def test_rect_rejects_invalid_extents(value):
     with pytest.raises((TypeError, ValueError)):
         Rect(width=value)
 
