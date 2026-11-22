@@ -24,7 +24,10 @@ def _resolve_length(value, available: float) -> float | None:
     if isinstance(value, str):
         if not isfinite(available):
             return None
-        return max(0.0, float(value.strip()[:-1].strip()) * available / 100.0)
+        # Signed percentage offsets are valid for absolute positioning.
+        # Dimension lengths are constrained to non-negative values at node
+        # construction, so resolution itself must not silently clamp offsets.
+        return float(value.strip()[:-1].strip()) * available / 100.0
     return float(value)
 
 
