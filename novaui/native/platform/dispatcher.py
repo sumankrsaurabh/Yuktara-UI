@@ -230,28 +230,29 @@ class InputDispatcher:
         self._set_focus(focusables[next_index])
         return True
 
-    def _scroll_ancestor(self, target):
+    def _scroll_ancestors(self, target):
+        """Return scroll containers from the deepest target outward."""
         if target is None:
-            return None
-        if target.kind == "scroll":
-            return target
-        found = None
+            return []
+        chain = []
 
         def walk(node):
-            nonlocal found
             if node is target:
                 return True
             for child in node.children:
                 if walk(child):
-                    if node.kind == "scroll" and found is None:
-                        found = node
+                    if node.kind == "scroll":
+                        chain.append(node)
                     return True
             return False
 
-        for root in self._roots():
-            if walk(root):
-                break
-        return found
+        if target.kind == "scroll":
+            chain.append(target)
+        else:
+            for root in self._roots():
+                if walk(root):
+                    break
+        return chain
 
     @staticmethod
     def _scroll_by(node, dx, dy):
@@ -355,8 +356,22 @@ class InputDispatcher:
             return DispatchResult(target or pressed, previous, previous, handled or target is not None)
 
         if event.type == EventType.POINTER_WHEEL:
-            scroll = self._scroll_ancestor(target)
-            changed = self._scroll_by(scroll, -p.wheel_x * 40.0, -p.wheel_y * 40.0)
+            # Let the innermost scroll view consume as much as it can. Any
+            # unconsumed delta chains outward, so a wheel gesture at an inner
+            # scroll boundary naturally continues the parent viewport.
+            remaining_x = -p.wheel_x * 40.0
+            remaining_y = -p.wheel_y * 40.0
+            changed = False
+            for scroll in self._scroll_ancestors(target):
+                old_x, old_y = scroll.scroll_x, scroll.scroll_y
+                self._scroll_by(scroll, remaining_x, remaining_y)
+                consumed_x = scroll.scroll_x - old_x
+                consumed_y = scroll.scroll_y - old_y
+                remaining_x -= consumed_x
+                remaining_y -= consumed_y
+                changed = changed or consumed_x != 0 or consumed_y != 0
+                if remaining_x == 0 and remaining_y == 0:
+                    break
             handled = self._invoke(target, "on_wheel", event) if target else False
             return DispatchResult(target, previous, previous, handled or changed)
 
