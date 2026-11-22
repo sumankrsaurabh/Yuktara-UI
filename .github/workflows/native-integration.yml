@@ -10,6 +10,8 @@ on:
       - "novaui/native/layout/**"
       - "novaui/native/runtime.py"
       - "novaui/native/renderer.py"
+      - "novaui/native/typography.py"
+      - "novaui/native/text/**"
       - "novaui/native/dependencies/**"
       - "scripts/native_runtime_smoke.py"
       - "examples/native/design_system_gallery.py"
