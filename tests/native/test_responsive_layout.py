@@ -247,3 +247,11 @@ def test_repeated_resize_across_breakpoints_does_not_leave_stale_variant_bounds(
             assert runtime.component.build_count == initial_build_count
     finally:
         runtime.stop()
+
+
+@pytest.mark.parametrize("minimum_width", [float("nan"), float("inf"), float("-inf")])
+def test_responsive_rejects_non_finite_width_thresholds(minimum_width):
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        Responsive(
+            variants=((minimum_width, LayoutNode.column()),)
+        ).build()
