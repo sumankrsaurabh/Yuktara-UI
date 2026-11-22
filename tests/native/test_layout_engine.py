@@ -54,3 +54,47 @@ def test_numeric_padding_is_normalized_to_insets():
     root = LayoutNode.column(LayoutNode.box(intrinsic_size=Size(10, 10)), padding=8)
     LayoutEngine().layout(root, Rect(0, 0, 100, 100))
     assert root.content_bounds == Rect(8, 8, 84, 84)
+
+
+def test_weighted_row_children_keep_intrinsic_size_in_horizontal_scroll():
+    first = LayoutNode.box(weight=1, intrinsic_size=Size(30, 12))
+    second = LayoutNode.box(weight=2, intrinsic_size=Size(45, 16))
+    row = LayoutNode.row(first, second, spacing=5)
+    scroll = LayoutNode.scroll(
+        row, width=100, height=40, scroll_axis="horizontal"
+    )
+
+    LayoutEngine().layout(scroll, Rect(0, 0, 100, 40))
+
+    assert first.bounds.width == 30
+    assert second.bounds.width == 45
+    assert row.measured_size.width == 80
+
+
+def test_weighted_column_children_keep_intrinsic_size_in_vertical_scroll():
+    first = LayoutNode.box(weight=1, intrinsic_size=Size(12, 30))
+    second = LayoutNode.box(weight=2, intrinsic_size=Size(16, 45))
+    column = LayoutNode.column(first, second, spacing=5)
+    scroll = LayoutNode.scroll(
+        column, width=40, height=100, scroll_axis="vertical"
+    )
+
+    LayoutEngine().layout(scroll, Rect(0, 0, 40, 100))
+
+    assert first.bounds.height == 30
+    assert second.bounds.height == 45
+    assert column.measured_size.height == 80
+
+
+def test_weighted_child_keeps_explicit_flex_basis_in_unbounded_axis():
+    child = LayoutNode.box(
+        weight=1, flex_basis=25, intrinsic_size=Size(60, 10)
+    )
+    row = LayoutNode.row(child)
+    scroll = LayoutNode.scroll(
+        row, width=100, height=30, scroll_axis="horizontal"
+    )
+
+    LayoutEngine().layout(scroll, Rect(0, 0, 100, 30))
+
+    assert child.bounds.width == 25
