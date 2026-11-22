@@ -44,7 +44,7 @@ class InputDispatcher:
         self.overlays = overlays
         self._pressed: dict[tuple[str, int], LayoutNode] = {}
         self._hover: dict[tuple[str, int], LayoutNode] = {}
-        self._touch_scroll: dict[tuple[str, int], LayoutNode] = {}
+        self._touch_scroll: dict[tuple[str, int], list[LayoutNode]] = {}
         self._touch_positions: dict[tuple[str, int], tuple[float, float]] = {}
         self.focused: LayoutNode | None = None
         self._had_modal = bool(overlays.has_modal) if overlays is not None else False
@@ -61,11 +61,15 @@ class InputDispatcher:
             raise TypeError("dispatcher root must be a LayoutNode")
         self.root = root
         live = {id(node) for tree in self._roots() for node in self._walk(tree)}
-        for mapping in (self._pressed, self._hover, self._touch_scroll):
+        for mapping in (self._pressed, self._hover):
             for key, node in tuple(mapping.items()):
                 if id(node) not in live:
                     mapping.pop(key, None)
                     self._touch_positions.pop(key, None)
+        for key, chain in tuple(self._touch_scroll.items()):
+            if any(id(node) not in live for node in chain):
+                self._touch_scroll.pop(key, None)
+                self._touch_positions.pop(key, None)
         # Do not retain detached nodes through the back-navigation history.
         self._focus_history = [node for node in self._focus_history if id(node) in live]
         if self._modal_restore_focus is not None and id(self._modal_restore_focus) not in live:
@@ -262,6 +266,19 @@ class InputDispatcher:
         node.scroll_y = min(node.max_scroll_y, max(0.0, node.scroll_y + dy))
         return old != (node.scroll_x, node.scroll_y)
 
+    def _scroll_chain_by(self, chain, dx, dy):
+        """Apply a drag delta to nested scroll views, passing on unconsumed motion."""
+        changed = False
+        for scroll in chain:
+            old_x, old_y = scroll.scroll_x, scroll.scroll_y
+            self._scroll_by(scroll, dx, dy)
+            dx -= scroll.scroll_x - old_x
+            dy -= scroll.scroll_y - old_y
+            changed = changed or scroll.scroll_x != old_x or scroll.scroll_y != old_y
+            if dx == 0 and dy == 0:
+                break
+        return changed
+
     def dispatch(self, event: InputEvent) -> DispatchResult:
         if event.type == EventType.KEY_DOWN and event.key is not None:
             self._normalize_focus()
@@ -315,7 +332,7 @@ class InputDispatcher:
                 previous_pos = self._touch_positions.get(key, (p.x, p.y))
                 dx = previous_pos[0] - p.x
                 dy = previous_pos[1] - p.y
-                self._scroll_by(self._touch_scroll[key], dx, dy)
+                self._scroll_chain_by(self._touch_scroll[key], dx, dy)
                 self._touch_positions[key] = (p.x, p.y)
             if captured is None and target is not previous:
                 if previous:
@@ -334,9 +351,9 @@ class InputDispatcher:
                 self._pressed[key] = target
             self._focus_from_target(target)
             if p.source == "touch":
-                scroll = self._scroll_ancestor(target)
-                if scroll is not None:
-                    self._touch_scroll[key] = scroll
+                scroll_chain = self._scroll_ancestors(target)
+                if scroll_chain:
+                    self._touch_scroll[key] = scroll_chain
                     self._touch_positions[key] = (p.x, p.y)
             handled = self._invoke(target, "on_pointer_down", event) if target else False
             return DispatchResult(target, previous, previous, handled or target is not None)
