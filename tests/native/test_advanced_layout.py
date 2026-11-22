@@ -324,3 +324,13 @@ def test_grid_minimum_column_width_reflows_at_viewport_breakpoints():
         assert all(child.bounds.x >= 0 for child in children)
         assert all(child.bounds.right <= width + 1e-6 for child in children)
         assert all(track >= 150 for track in grid.grid_column_widths)
+
+
+def test_absolute_offsets_allow_negative_pixels_and_percentages():
+    child = LayoutNode(
+        "box", width=20, height=10, position="absolute",
+        left="-10%", top=-5,
+    )
+    root = LayoutNode.box(child, width=200, height=100)
+    LayoutEngine().layout(root, Rect(0, 0, 200, 100))
+    assert child.bounds == Rect(-20, -5, 20, 10)
