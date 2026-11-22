@@ -130,7 +130,7 @@ class SkiaRenderer:
     @staticmethod
     def _configure_text_font(skia, typeface, size):
         """Create a consistently antialiased, subpixel-positioned Skia font."""
-        font = self._configure_text_font(skia, typeface, size)
+        font = skia.Font(typeface, float(size))
         # Skia Font defaults are intentionally conservative; explicitly enable
         # smooth edge coverage and fractional glyph placement for UI text.
         edging = getattr(getattr(skia.Font, "Edging", None), "kAntiAlias", None)
