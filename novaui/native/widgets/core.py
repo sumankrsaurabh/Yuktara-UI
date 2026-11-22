@@ -370,8 +370,11 @@ class IconButton:
             "tonal": "tonal",
             "outlined": "outline",
         }[self.variant]
+        # Build through the shared Button implementation with a valid semantic
+        # label, then replace its visible text with the vector icon below.
+        # Passing an empty string violates Button's public label contract.
         node = Button(
-            "",
+            self.label,
             on_click=self.on_click,
             variant=variant,
             size=self.size,
