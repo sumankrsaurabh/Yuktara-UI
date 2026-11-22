@@ -73,3 +73,57 @@ def test_painter_clips_scroll_children_and_paints_thumb():
     names=[op[0] for op in renderer.ops]
     assert names.index("save") < names.index("clip") < names.index("restore")
     assert names[-1] == "rect"  # scrollbar thumb is painted above clipped content
+
+
+class StrictRectangleRenderer:
+    """Mirror Skia's required rectangle signature instead of accepting bad calls."""
+
+    def __init__(self):
+        self.rectangles = []
+
+    def draw_rect(self, x, y, width, height, color, *, radius=0.0):
+        assert width >= 0
+        assert height >= 0
+        self.rectangles.append((x, y, width, height, color, radius))
+
+    def draw_text(self, *_args, **_kwargs):
+        pass
+
+    def save(self):
+        pass
+
+    def clip_rect(self, *_args):
+        pass
+
+    def restore(self):
+        pass
+
+
+@pytest.mark.parametrize("axis", ["vertical", "horizontal"])
+def test_scrollbar_uses_complete_rectangle_geometry(axis):
+    if axis == "vertical":
+        content = LayoutNode("box", height=300, intrinsic_size=Size(100, 300))
+        viewport = LayoutNode.scroll(content, width=100, height=100, scroll_axis=axis)
+    else:
+        content = LayoutNode.row(
+            LayoutNode("box", width=100, height=20, intrinsic_size=Size(100, 20)),
+            LayoutNode("box", width=100, height=20, intrinsic_size=Size(100, 20)),
+            spacing=0,
+        )
+        viewport = LayoutNode.scroll(content, width=100, height=40, scroll_axis=axis)
+
+    LayoutEngine().layout(viewport, Rect(0, 0, 100, 100 if axis == "vertical" else 40))
+    assert (viewport.max_scroll_y if axis == "vertical" else viewport.max_scroll_x) > 0
+
+    renderer = StrictRectangleRenderer()
+    LayoutTreePainter(renderer).paint(viewport)
+
+    assert len(renderer.rectangles) == 1
+    _x, _y, width, height, _color, radius = renderer.rectangles[0]
+    assert radius == 2
+    if axis == "vertical":
+        assert width == 4
+        assert height >= 18
+    else:
+        assert width >= 18
+        assert height == 4
