@@ -267,12 +267,19 @@ class Grid:
     accessibility_label: str = "Grid"
 
     def __post_init__(self):
-        if self.columns < 1:
-            raise ValueError("Grid columns must be at least 1")
-        if self.column_gap < 0 or self.row_gap < 0:
-            raise ValueError("Grid gaps must be non-negative")
-        if self.min_column_width is not None and self.min_column_width <= 0:
-            raise ValueError("min_column_width must be positive")
+        if isinstance(self.columns, bool) or not isinstance(self.columns, int) or self.columns < 1:
+            raise ValueError("Grid columns must be a positive integer")
+        for name, value in (("column_gap", self.column_gap), ("row_gap", self.row_gap)):
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not isfinite(float(value)) or value < 0):
+                raise ValueError(f"Grid {name} must be finite and non-negative")
+        if self.min_column_width is not None and (
+            isinstance(self.min_column_width, bool)
+            or not isinstance(self.min_column_width, (int, float))
+            or not isfinite(float(self.min_column_width))
+            or self.min_column_width <= 0
+        ):
+            raise ValueError("Grid min_column_width must be finite and positive")
 
     def build(self) -> LayoutNode:
         cells = []
