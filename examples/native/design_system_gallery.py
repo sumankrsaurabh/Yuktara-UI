@@ -202,7 +202,7 @@ def main() -> None:
         axis="vertical",
     )
     renderer = SkiaRenderer(RenderSize(1120, 820), skia_module=skia)
-    runtime = NativeRuntime(lambda: root, renderer, 1120, 820, clear_color=theme.background)
+    runtime = NativeRuntime(root.build, renderer, 1120, 820, clear_color=theme.background)
     if "--screenshot" in sys.argv:
         from pathlib import Path
 
