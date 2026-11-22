@@ -1889,9 +1889,13 @@ class Tabs:
             panel = Label(current.content, theme=self.theme).build()
         else:
             panel = _node(current.content)
-        panel.accessibility_role = "tabpanel"
-        panel.accessibility_label = f"{current.label} panel"
-        return panel
+        # Keep the embedded widget's own semantic role (for example,
+        # textbox or button) beneath a dedicated tabpanel container.
+        return LayoutNode.box(
+            panel,
+            accessibility_role="tabpanel",
+            accessibility_label=f"{current.label} panel",
+        )
 
     def _sync(self):
         for item in self.tabs:
