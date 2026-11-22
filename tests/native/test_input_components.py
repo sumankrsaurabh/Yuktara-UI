@@ -286,7 +286,8 @@ def test_tabs_select_panel_and_keyboard_navigation():
     dispatcher = InputDispatcher(root)
     click(dispatcher, root, node.bounds.x + 4, node.bounds.y + 4)
     assert tabs.value == "Advanced"
-    assert root.children[1].text == "advanced panel"
+    assert root.children[1].accessibility_role == "tabpanel"
+    assert root.children[1].children[0].text == "advanced panel"
     assert node.accessibility_selected is True
     assert changes == ["Advanced"]
     dispatcher.dispatch(key(KEY_LEFT))
