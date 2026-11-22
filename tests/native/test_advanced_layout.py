@@ -240,3 +240,40 @@ def test_grid_auto_placement_reserves_explicit_cells_that_appear_later():
     LayoutEngine().layout(grid, Rect(0, 0, 300, 100))
     assert auto_first.bounds.x > explicit_later.bounds.x
     assert auto_first.bounds.y == explicit_later.bounds.y
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), True, 0])
+def test_grid_minimum_column_width_rejects_invalid_values(value):
+    with pytest.raises(ValueError, match="grid_min_column_width"):
+        LayoutNode("grid", grid_min_column_width=value)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), True, 1.5, 0])
+def test_grid_column_count_requires_positive_integer(value):
+    with pytest.raises(ValueError, match="grid_columns"):
+        LayoutNode("grid", grid_columns=value)
+
+
+@pytest.mark.parametrize("name", ["grid_column_gap", "grid_row_gap"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_grid_gaps_reject_non_finite_values(name, value):
+    with pytest.raises(ValueError, match=name):
+        LayoutNode("grid", **{name: value})
+
+
+@pytest.mark.parametrize("name", ["grid_row_span", "grid_column_span"])
+@pytest.mark.parametrize("value", [True, 0, -1, 1.5])
+def test_grid_spans_require_positive_integers(name, value):
+    with pytest.raises(ValueError, match=name):
+        LayoutNode("box", **{name: value})
+
+
+def test_grid_widget_rejects_non_finite_responsive_track_configuration():
+    from novaui.native import Grid
+
+    with pytest.raises(ValueError, match="min_column_width"):
+        Grid([], min_column_width=float("nan"))
+    with pytest.raises(ValueError, match="column_gap"):
+        Grid([], column_gap=float("inf"))
+    with pytest.raises(ValueError, match="positive integer"):
+        Grid([], columns=True)
