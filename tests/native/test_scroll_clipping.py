@@ -178,3 +178,62 @@ def test_nested_touch_drag_hands_remaining_delta_to_parent():
     assert inner.scroll_y == inner.max_scroll_y
     assert outer.scroll_y == outer.max_scroll_y
     assert inner.scroll_y + outer.scroll_y == 200
+
+
+def test_nested_scroll_offsets_clamp_after_repeated_viewport_resizes():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=300, intrinsic_size=Size(100, 300)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=120, height=100)
+    engine = LayoutEngine()
+
+    engine.layout(outer, Rect(0, 0, 120, 100))
+    assert inner.max_scroll_y == 140
+    assert outer.max_scroll_y == 260
+    inner.scroll_y = 140
+    outer.scroll_y = 250
+
+    # Growing the outer viewport reduces its range and must clamp its offset.
+    engine.layout(outer, Rect(0, 0, 120, 200))
+    assert inner.scroll_y == 140
+    assert outer.max_scroll_y == 160
+    assert outer.scroll_y == 160
+
+    # A larger viewport removes the outer scroll range without changing the
+    # independent inner viewport's own content/viewport relationship.
+    engine.layout(outer, Rect(0, 0, 120, 400))
+    assert outer.max_scroll_y == 0
+    assert outer.scroll_y == 0
+    assert inner.max_scroll_y == 140
+    assert inner.scroll_y == 140
+
+    # Shrinking again restores a valid outer range and clamps both offsets.
+    engine.layout(outer, Rect(0, 0, 120, 80))
+    assert outer.max_scroll_y == 280
+    assert outer.scroll_y == 0
+    assert inner.scroll_y == 140
+
+
+def test_nested_scroll_hit_testing_tracks_resized_viewport_bounds():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=100, intrinsic_size=Size(100, 100)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=100, height=100)
+    engine = LayoutEngine()
+
+    engine.layout(outer, Rect(0, 0, 100, 100))
+    assert hit_test(outer, 10, 50) is inner_content
+    assert hit_test(outer, 10, 150) is None
+
+    engine.layout(outer, Rect(0, 0, 100, 40))
+    assert hit_test(outer, 10, 30) is inner_content
+    assert hit_test(outer, 10, 50) is None
+
+    engine.layout(outer, Rect(0, 0, 100, 160))
+    assert hit_test(outer, 10, 150) is not None
