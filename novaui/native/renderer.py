@@ -266,7 +266,7 @@ class SkiaRenderer:
                 "and Canvas.drawTextBlob; pre-shaped text cannot be rendered."
             )
         paint = skia.Paint(AntiAlias=True, Color=color)
-        font = skia.Font(typeface, float(size))
+        font = self._configure_text_font(skia, typeface, size)
         points = [skia.Point(float(px), float(py)) for px, py in positions]
         builder = builder_type()
         builder.allocRunPos(font, list(map(int, glyph_ids)), points)
