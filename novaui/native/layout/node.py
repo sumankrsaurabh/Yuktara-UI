@@ -205,7 +205,7 @@ class LayoutNode:
         for name in ("grid_row_span", "grid_column_span"):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-                raise ValueError(f"{name} must be a positive integer")
+                raise ValueError(f"grid spans: {name} must be a positive integer")
         for name in ("grid_row", "grid_column"):
             value = getattr(self, name)
             if value is not None and (
