@@ -153,3 +153,28 @@ def test_nested_scroll_painter_nests_viewport_clips():
     clips = [op[1] for op in renderer.ops if op[0] == "clip"]
     assert clips[:2] == [(0, 0, 100, 100), (0, 0, 100, 60)]
     assert renderer.ops.count(("save",)) == renderer.ops.count(("restore",))
+
+
+def test_nested_touch_drag_hands_remaining_delta_to_parent():
+    inner_content = LayoutNode("box", height=200, intrinsic_size=Size(100, 200))
+    inner = LayoutNode.scroll(inner_content, width=100, height=60)
+    outer_content = LayoutNode.column(
+        inner,
+        LayoutNode("box", height=100, intrinsic_size=Size(100, 100)),
+    )
+    outer = LayoutNode.scroll(outer_content, width=100, height=100)
+    LayoutEngine().layout(outer, Rect(0, 0, 100, 100))
+    dispatcher = InputDispatcher(outer)
+
+    dispatcher.dispatch(InputEvent(
+        EventType.POINTER_DOWN,
+        pointer=PointerEvent(10, 10, source="touch", pointer_id=7),
+    ))
+    dispatcher.dispatch(InputEvent(
+        EventType.POINTER_MOTION,
+        pointer=PointerEvent(10, -240, source="touch", pointer_id=7),
+    ))
+
+    assert inner.scroll_y == inner.max_scroll_y
+    assert outer.scroll_y == outer.max_scroll_y
+    assert inner.scroll_y + outer.scroll_y == 200
