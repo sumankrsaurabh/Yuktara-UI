@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Any
 
 from .typography import FontConfig, FontResolver
@@ -16,18 +17,27 @@ class RenderSize:
     scale_y: float | None = None
 
     def __post_init__(self) -> None:
-        if self.width <= 0 or self.height <= 0:
-            raise ValueError("Render dimensions must be positive.")
-        if self.scale <= 0 or (self.scale_y is not None and self.scale_y <= 0):
-            raise ValueError("Render scales must be positive.")
+        for name, value in (("width", self.width), ("height", self.height)):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"Render {name} must be a positive integer.")
+            if value <= 0:
+                raise ValueError(f"Render {name} must be a positive integer.")
+
+        for name, value in (("scale", self.scale), ("scale_y", self.scale_y)):
+            if value is None and name == "scale_y":
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"Render {name} must be a finite positive number.")
+            if not isfinite(float(value)) or value <= 0:
+                raise ValueError(f"Render {name} must be a finite positive number.")
 
     @property
     def pixel_width(self) -> int:
-        return round(self.width * self.scale)
+        return max(1, round(self.width * self.scale))
 
     @property
     def pixel_height(self) -> int:
-        return round(self.height * (self.scale_y or self.scale))
+        return max(1, round(self.height * (self.scale_y or self.scale)))
 
 
 class SkiaRenderer:
@@ -246,50 +256,27 @@ class SkiaRenderer:
         builder_type = getattr(skia, "TextBlobBuilder", None)
         if builder_type is None or not callable(getattr(self._canvas, "drawTextBlob", None)):
             raise RuntimeError(
-                "This Skia Python build does not expose TextBlobBuilder.allocRunPos "
-                "and Canvas.drawTextBlob; pre-shaped text cannot be rendered."
+                "This Skia Python binding does not support TextBlobBuilder glyph runs."
             )
-        paint = skia.Paint(AntiAlias=True, Color=color)
-        font = skia.Font(typeface, float(size))
-        points = [skia.Point(float(px), float(py)) for px, py in positions]
         builder = builder_type()
-        builder.allocRunPos(font, list(map(int, glyph_ids)), points)
+        font = skia.Font(typeface, size)
+        builder.allocRunPos(font, len(glyph_ids), 0, 0)
         blob = builder.make()
-        if blob is None:
-            return
-        self._canvas.drawTextBlob(blob, float(x), float(baseline_y), paint)
-
-    def save(self) -> int:
-        return self._canvas.save()
-
-    def save_layer(self, opacity: float = 1.0) -> int:
-        """Save a compositing layer whose contents use the supplied opacity."""
-        if not 0.0 <= opacity <= 1.0:
-            raise ValueError("Layer opacity must be between 0 and 1.")
-        skia = self._module()
-        paint = skia.Paint()
-        paint.setAlphaf(float(opacity))
-        return self._canvas.saveLayer(None, paint)
-
-    def clip_rect(self, x: float, y: float, width: float, height: float) -> None:
-        skia = self._module()
-        self._canvas.clipRect(skia.Rect.MakeXYWH(x, y, width, height))
-
-    def restore(self) -> None:
-        self._canvas.restore()
-
-    def snapshot(self):
-        """Return an immutable Skia image snapshot of the current frame."""
-        return self._surface.makeImageSnapshot()
-
-    def to_png_bytes(self) -> bytes:
-        """Encode the current frame as PNG bytes."""
-        skia = self._module()
-        data = self.snapshot().encodeToData(skia.kPNG)
-        if data is None:
-            raise RuntimeError("Skia failed to encode the frame as PNG.")
-        return bytes(data)
+        self._canvas.drawTextBlob(blob, x, baseline_y, skia.Paint(AntiAlias=True, Color=color))
 
     def resize(self, size: RenderSize) -> None:
         self.size = size
         self._create_surface()
+
+    def snapshot(self):
+        return self._surface.makeImageSnapshot()
+
+    def to_rgba_bytes(self) -> bytes:
+        image = self.snapshot()
+        pixmap = self._skia.Pixmap()
+        if not image.peekPixels(pixmap):
+            raise RuntimeError("Skia could not expose the rendered pixels.")
+        info = pixmap.info()
+        row_bytes = pixmap.rowBytes()
+        raw = pixmap.addr()
+        return ctypes.string_at(raw, row_bytes * info.height())
