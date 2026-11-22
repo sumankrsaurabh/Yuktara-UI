@@ -285,7 +285,7 @@ class SkiaRenderer:
     def to_png_bytes(self) -> bytes:
         """Encode the current frame as PNG bytes."""
         skia = self._module()
-        data = self.snapshot().encodeToData(skia.kPNG)
+        data = self.snapshot().encodeToData(skia.kPNG, 100)
         if data is None:
             raise RuntimeError("Skia failed to encode the frame as PNG.")
         return bytes(data)
