@@ -277,7 +277,6 @@ class Button:
         return node
 
 
-@dataclass
 def _paint_icon(renderer, node, icon: str, color: int) -> None:
     """Paint a small, resolution-independent vector icon (no font glyph dependency).
 
