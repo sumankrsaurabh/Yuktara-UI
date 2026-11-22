@@ -49,13 +49,13 @@ def _build_responsive_tree():
         key="compact-layout",
     )
     expanded = LayoutNode.column(
-        LayoutNode("row", *[
+        LayoutNode("row", children=[
             LayoutNode("text", text=f"Toolbar {index}", width=140, height=40)
             for index in range(8)
         ], spacing=8, flex_wrap=True, wrap_spacing=8),
         LayoutNode(
             "grid",
-            *[
+            children=[
                 LayoutNode("box", intrinsic_size=Size(100, 72))
                 for _ in range(18)
             ],
@@ -139,7 +139,7 @@ def test_rapid_resize_sequence_reflows_without_rebuilding_component():
 def test_resize_clamps_scroll_offsets_when_viewport_shrinks_then_grows():
     scroll = LayoutNode(
         "scroll",
-        [LayoutNode("column", *[
+        [LayoutNode("column", children=[
             LayoutNode("text", text=f"Row {index}", height=40)
             for index in range(30)
         ])],
