@@ -77,7 +77,7 @@ def test_painter_clips_scroll_children_and_paints_thumb():
 
 
 def test_container_clip_children_clips_descendants_only():
-    child = LayoutNode("box", width=80, height=80, background="#ff0000")
+    child = LayoutNode("box", width=80, height=80, position="absolute", left=0, top=0, background="#ff0000")
     container = LayoutNode.box(child, width=40, height=40, clip_children=True)
     LayoutEngine().layout(container, Rect(0, 0, 40, 40))
     renderer = FakeRenderer()
@@ -91,7 +91,7 @@ def test_container_clip_children_clips_descendants_only():
 
 
 def test_hit_testing_respects_container_child_clip():
-    child = LayoutNode("box", width=80, height=80, intrinsic_size=Size(80, 80))
+    child = LayoutNode("box", width=80, height=80, position="absolute", left=0, top=0, intrinsic_size=Size(80, 80))
     container = LayoutNode.box(child, width=40, height=40, clip_children=True)
     LayoutEngine().layout(container, Rect(0, 0, 40, 40))
 
