@@ -212,26 +212,42 @@ class LayoutNode:
                 isinstance(value, bool) or not isinstance(value, int) or value < 0
             ):
                 raise ValueError(f"{name} must be a non-negative integer or None")
-        if not 0.0 <= self.opacity <= 1.0:
-            raise ValueError("opacity must be between 0 and 1")
+        if (isinstance(self.opacity, bool) or not isinstance(self.opacity, (int, float))
+                or not isfinite(float(self.opacity)) or not 0.0 <= self.opacity <= 1.0):
+            raise ValueError("opacity must be finite and between 0 and 1")
         if self.scroll_axis not in {"vertical", "horizontal", "both"}:
             raise ValueError("scroll_axis must be vertical, horizontal or both")
-        if self.scroll_x < 0 or self.scroll_y < 0:
-            raise ValueError("scroll offsets must be non-negative")
+        for name in ("scroll_x", "scroll_y", "text_scroll_x", "text_scroll_y"):
+            value = getattr(self, name)
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not isfinite(float(value)) or value < 0):
+                raise ValueError(f"{name} must be finite and non-negative")
         if self.text_align not in {"start", "center", "end"}:
             raise ValueError("text_align must be start, center or end")
-        if self.text_line_height is not None and self.text_line_height <= 0:
-            raise ValueError("text_line_height must be positive")
-        if self.text_max_lines is not None and self.text_max_lines < 1:
-            raise ValueError("text_max_lines must be at least 1")
-        if self.font_size <= 0 or not self.font_family:
-            raise ValueError("font_size must be positive and font_family non-empty")
-        if self.text_caret_width <= 0:
-            raise ValueError("text_caret_width must be positive")
-        if self.text_scroll_x < 0 or self.text_scroll_y < 0:
-            raise ValueError("text scroll offsets must be non-negative")
-        if self.text_cursor is not None and self.text_cursor < 0:
-            raise ValueError("text_cursor must be non-negative")
+        if self.text_line_height is not None and (
+            isinstance(self.text_line_height, bool)
+            or not isinstance(self.text_line_height, (int, float))
+            or not isfinite(float(self.text_line_height)) or self.text_line_height <= 0
+        ):
+            raise ValueError("text_line_height must be finite and positive")
+        if self.text_max_lines is not None and (
+            isinstance(self.text_max_lines, bool) or not isinstance(self.text_max_lines, int)
+            or self.text_max_lines < 1
+        ):
+            raise ValueError("text_max_lines must be a positive integer")
+        if (isinstance(self.font_size, bool) or not isinstance(self.font_size, (int, float))
+                or not isfinite(float(self.font_size)) or self.font_size <= 0
+                or not isinstance(self.font_family, str) or not self.font_family):
+            raise ValueError("font_size must be finite and positive and font_family non-empty")
+        if (isinstance(self.text_caret_width, bool)
+                or not isinstance(self.text_caret_width, (int, float))
+                or not isfinite(float(self.text_caret_width)) or self.text_caret_width <= 0):
+            raise ValueError("text_caret_width must be finite and positive")
+        if self.text_cursor is not None and (
+            isinstance(self.text_cursor, bool) or not isinstance(self.text_cursor, int)
+            or self.text_cursor < 0
+        ):
+            raise ValueError("text_cursor must be a non-negative integer")
         if self.text_selection is not None:
             if len(self.text_selection) != 2 or min(self.text_selection) < 0:
                 raise ValueError("text_selection must be a non-negative (start, end) pair")
