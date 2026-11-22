@@ -9,6 +9,7 @@ on:
       - "novaui/native/rendering/**"
       - "novaui/native/layout/**"
       - "novaui/native/runtime.py"
+      - "novaui/native/renderer.py"
       - "novaui/native/dependencies/**"
       - "scripts/native_runtime_smoke.py"
       - "examples/native/design_system_gallery.py"
