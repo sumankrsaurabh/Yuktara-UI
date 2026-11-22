@@ -318,11 +318,11 @@ def _paint_icon(renderer, node, icon: str, color: int) -> None:
         canvas.drawLine(cx-unit*0.65, cy-unit*0.65, cx+unit*0.65, cy+unit*0.65, paint)
         canvas.drawLine(cx+unit*0.65, cy-unit*0.65, cx-unit*0.65, cy+unit*0.65, paint)
     elif name == "back":
-        canvas.moveTo(cx+unit*0.65, cy-unit*0.75)
-        canvas.lineTo(cx-unit*0.15, cy)
-        canvas.lineTo(cx+unit*0.65, cy+unit*0.75)
-        canvas.moveTo(cx-unit*0.15, cy)
-        canvas.lineTo(cx+unit, cy)
+        path.moveTo(cx+unit*0.65, cy-unit*0.75)
+        path.lineTo(cx-unit*0.15, cy)
+        path.lineTo(cx+unit*0.65, cy+unit*0.75)
+        path.moveTo(cx-unit*0.15, cy)
+        path.lineTo(cx+unit, cy)
         canvas.drawPath(path, paint)
     elif name == "chevron-down":
         canvas.drawLine(cx-unit*0.7, cy-unit*0.25, cx, cy+unit*0.45, paint)
