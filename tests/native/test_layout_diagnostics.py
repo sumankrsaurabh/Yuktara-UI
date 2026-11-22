@@ -4,29 +4,36 @@ from novaui.native.layout import LayoutEngine, LayoutNode, Rect, Size, diagnose_
 
 
 def test_diagnose_overflow_reports_each_exceeded_edge():
-    child = LayoutNode(
-        "box", width=50, height=50, position="absolute",
-        left=-5, top=-4, key="child",
-    )
-    parent = LayoutNode.box(child, width=40, height=40, key="parent")
+    children = [
+        LayoutNode("box", width=20, height=20, position="absolute",
+                   left=-5, top=0, key="left"),
+        LayoutNode("box", width=20, height=20, position="absolute",
+                   left=0, top=-4, key="top"),
+        LayoutNode("box", width=20, height=20, position="absolute",
+                   left=30, top=0, key="right"),
+        LayoutNode("box", width=20, height=20, position="absolute",
+                   left=0, top=30, key="bottom"),
+    ]
+    parent = LayoutNode("box", children=children, width=40, height=40, key="parent")
     LayoutEngine().layout(parent, Rect(0, 0, 40, 40))
 
     issues = diagnose_overflow(parent)
 
-    assert len(issues) == 1
-    issue = issues[0]
-    assert issue.path == (0,)
-    assert issue.parent_key == "parent"
-    assert issue.child_key == "child"
-    assert issue.overflow == (5, 4, 5, 6)
-    assert issue.sides == ("left", "top", "right", "bottom")
-    assert issue.intentional is False
-
+    assert [issue.path for issue in issues] == [(0,), (1,), (2,), (3,)]
+    assert [issue.child_key for issue in issues] == ["left", "top", "right", "bottom"]
+    assert [issue.sides for issue in issues] == [
+        ("left",), ("top",), ("right",), ("bottom",),
+    ]
+    assert [issue.overflow for issue in issues] == [
+        (5, 0, 0, 0), (0, 4, 0, 0), (0, 0, 10, 0), (0, 0, 0, 10),
+    ]
+    assert all(issue.parent_key == "parent" for issue in issues)
+    assert all(issue.intentional is False for issue in issues)
 
 def test_diagnostics_walk_nested_layout_and_keep_stable_child_paths():
     grandchild = LayoutNode(
         "box", width=60, height=20, position="absolute",
-        left=0, top=0, key="grandchild",
+        left=15, top=0, key="grandchild",
     )
     child = LayoutNode.box(grandchild, width=30, height=30, key="child")
     sibling = LayoutNode("box", width=10, height=10, key="sibling")
@@ -54,8 +61,8 @@ def test_scroll_content_overflow_is_classified_as_intentional():
 
 def test_explicit_container_clip_is_classified_as_intentional():
     child = LayoutNode(
-        "box", width=80, height=60, position="absolute",
-        left=0, top=0,
+        "box", width=20, height=20, position="absolute",
+        left=25, top=0,
     )
     parent = LayoutNode.box(child, width=40, height=40, clip_children=True)
     LayoutEngine().layout(parent, Rect(0, 0, 40, 40))
@@ -67,8 +74,8 @@ def test_explicit_container_clip_is_classified_as_intentional():
 
 def test_tolerance_filters_subpixel_overflow():
     child = LayoutNode(
-        "box", width=40.25, height=40, position="absolute",
-        left=0, top=0,
+        "box", width=40, height=40, position="absolute",
+        left=0.25, top=0,
     )
     parent = LayoutNode.box(child, width=40, height=40)
     LayoutEngine().layout(parent, Rect(0, 0, 40, 40))
