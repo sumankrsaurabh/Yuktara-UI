@@ -258,9 +258,16 @@ class LayoutEngine:
                 if basis_value is None:
                     dimension = child.width if horizontal else child.height
                     basis_value = dimension if isinstance(dimension, (int, float)) else None
-                basis = _resolve_length(basis_value, main_max) if basis_value is not None else 0.0
-                basis = 0.0 if basis is None else basis
-                size = self.measure(child, make_child_constraints(basis, basis, tight=True))
+                basis = _resolve_length(basis_value, main_max) if basis_value is not None else None
+                if basis is None and not isfinite(main_max):
+                    # An unbounded main axis (for example, a row inside a
+                    # horizontal scroll view) has no finite remainder to
+                    # distribute. Preserve the child's intrinsic size instead
+                    # of forcing a zero-width/zero-height flex basis.
+                    size = self.measure(child, make_child_constraints())
+                else:
+                    basis = 0.0 if basis is None else basis
+                    size = self.measure(child, make_child_constraints(basis, basis, tight=True))
             else:
                 size = self.measure(child, make_child_constraints())
             base_sizes.append(size)
