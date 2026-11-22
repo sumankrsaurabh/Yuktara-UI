@@ -277,3 +277,50 @@ def test_grid_widget_rejects_non_finite_responsive_track_configuration():
         Grid([], column_gap=float("inf"))
     with pytest.raises(ValueError, match="positive integer"):
         Grid([], columns=True)
+
+
+@pytest.mark.parametrize("name", ["font_size", "text_line_height", "text_caret_width"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), True])
+def test_text_metrics_reject_non_finite_or_boolean_values(name, value):
+    with pytest.raises(ValueError, match=name):
+        LayoutNode("text", **{name: value})
+
+
+@pytest.mark.parametrize("name", ["scroll_x", "scroll_y", "text_scroll_x", "text_scroll_y"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), True])
+def test_scroll_offsets_reject_non_finite_or_boolean_values(name, value):
+    with pytest.raises(ValueError, match=name):
+        LayoutNode("box", **{name: value})
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), True])
+def test_opacity_rejects_non_finite_or_boolean_values(value):
+    with pytest.raises(ValueError, match="opacity"):
+        LayoutNode("box", opacity=value)
+
+
+@pytest.mark.parametrize("value", [True, 1.5, 0])
+def test_text_max_lines_requires_positive_integer(value):
+    with pytest.raises(ValueError, match="text_max_lines"):
+        LayoutNode("text", text_max_lines=value)
+
+
+@pytest.mark.parametrize("value", [True, 1.5, -1])
+def test_text_cursor_requires_non_negative_integer(value):
+    with pytest.raises(ValueError, match="text_cursor"):
+        LayoutNode("text", text_cursor=value)
+
+
+def test_grid_minimum_column_width_reflows_at_viewport_breakpoints():
+    children = [LayoutNode("box", intrinsic_size=Size(20, 12)) for _ in range(8)]
+    grid = LayoutNode("grid", children=children, grid_columns=4,
+                      grid_min_column_width=150, grid_column_gap=16)
+    engine = LayoutEngine()
+
+    for width, expected_columns in ((320, 2), (600, 3), (1200, 4), (320, 2)):
+        engine.layout(grid, Rect(0, 0, width, 240))
+        assert grid.grid_actual_columns == expected_columns
+        assert len(grid.grid_column_widths) == expected_columns
+        assert all(child.bounds.x >= 0 for child in children)
+        assert all(child.bounds.right <= width + 1e-6 for child in children)
+        assert all(track >= 150 for track in grid.grid_column_widths)
