@@ -39,7 +39,6 @@ class RenderSize:
     def pixel_height(self) -> int:
         return max(1, round(self.height * (self.scale_y or self.scale)))
 
-
 class SkiaRenderer:
     """Owns a Skia raster surface and exposes safe high-level draw methods.
 
@@ -256,27 +255,50 @@ class SkiaRenderer:
         builder_type = getattr(skia, "TextBlobBuilder", None)
         if builder_type is None or not callable(getattr(self._canvas, "drawTextBlob", None)):
             raise RuntimeError(
-                "This Skia Python binding does not support TextBlobBuilder glyph runs."
+                "This Skia Python build does not expose TextBlobBuilder.allocRunPos "
+                "and Canvas.drawTextBlob; pre-shaped text cannot be rendered."
             )
+        paint = skia.Paint(AntiAlias=True, Color=color)
+        font = skia.Font(typeface, float(size))
+        points = [skia.Point(float(px), float(py)) for px, py in positions]
         builder = builder_type()
-        font = skia.Font(typeface, size)
-        builder.allocRunPos(font, len(glyph_ids), 0, 0)
+        builder.allocRunPos(font, list(map(int, glyph_ids)), points)
         blob = builder.make()
-        self._canvas.drawTextBlob(blob, x, baseline_y, skia.Paint(AntiAlias=True, Color=color))
+        if blob is None:
+            return
+        self._canvas.drawTextBlob(blob, float(x), float(baseline_y), paint)
+
+    def save(self) -> int:
+        return self._canvas.save()
+
+    def save_layer(self, opacity: float = 1.0) -> int:
+        """Save a compositing layer whose contents use the supplied opacity."""
+        if not 0.0 <= opacity <= 1.0:
+            raise ValueError("Layer opacity must be between 0 and 1.")
+        skia = self._module()
+        paint = skia.Paint()
+        paint.setAlphaf(float(opacity))
+        return self._canvas.saveLayer(None, paint)
+
+    def clip_rect(self, x: float, y: float, width: float, height: float) -> None:
+        skia = self._module()
+        self._canvas.clipRect(skia.Rect.MakeXYWH(x, y, width, height))
+
+    def restore(self) -> None:
+        self._canvas.restore()
+
+    def snapshot(self):
+        """Return an immutable Skia image snapshot of the current frame."""
+        return self._surface.makeImageSnapshot()
+
+    def to_png_bytes(self) -> bytes:
+        """Encode the current frame as PNG bytes."""
+        skia = self._module()
+        data = self.snapshot().encodeToData(skia.kPNG)
+        if data is None:
+            raise RuntimeError("Skia failed to encode the frame as PNG.")
+        return bytes(data)
 
     def resize(self, size: RenderSize) -> None:
         self.size = size
         self._create_surface()
-
-    def snapshot(self):
-        return self._surface.makeImageSnapshot()
-
-    def to_rgba_bytes(self) -> bytes:
-        image = self.snapshot()
-        pixmap = self._skia.Pixmap()
-        if not image.peekPixels(pixmap):
-            raise RuntimeError("Skia could not expose the rendered pixels.")
-        info = pixmap.info()
-        row_bytes = pixmap.rowBytes()
-        raw = pixmap.addr()
-        return ctypes.string_at(raw, row_bytes * info.height())
