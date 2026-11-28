@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Any
 
 from .typography import FontConfig, FontResolver
@@ -16,18 +17,27 @@ class RenderSize:
     scale_y: float | None = None
 
     def __post_init__(self) -> None:
-        if self.width <= 0 or self.height <= 0:
-            raise ValueError("Render dimensions must be positive.")
-        if self.scale <= 0 or (self.scale_y is not None and self.scale_y <= 0):
-            raise ValueError("Render scales must be positive.")
+        for name, value in (("width", self.width), ("height", self.height)):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"Render {name} must be a positive integer.")
+            if value <= 0:
+                raise ValueError(f"Render {name} must be a positive integer.")
+
+        for name, value in (("scale", self.scale), ("scale_y", self.scale_y)):
+            if value is None and name == "scale_y":
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise TypeError(f"Render {name} must be a finite positive number.")
+            if not isfinite(float(value)) or value <= 0:
+                raise ValueError(f"Render {name} must be a finite positive number.")
 
     @property
     def pixel_width(self) -> int:
-        return round(self.width * self.scale)
+        return max(1, round(self.width * self.scale))
 
     @property
     def pixel_height(self) -> int:
-        return round(self.height * (self.scale_y or self.scale))
+        return max(1, round(self.height * (self.scale_y or self.scale)))
 
     @property
     def content_scale(self) -> float:
