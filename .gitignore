@@ -1,12 +1,33 @@
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+
+# Virtual environments
 .venv/
 venv/
+
+# Build and packaging output
 build/
 dist/
 *.egg-info/
+
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Generated runtime artifacts
+artifacts/
+*.log
+*.prof
+
+# Operating-system metadata
 .DS_Store
 Thumbs.db
